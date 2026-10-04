@@ -28,7 +28,7 @@ reports/remaining_goals_local/
 
 构造报告保留尝试、失败和排除原因。只有整组四掩码通过才导出；数量与结果以报告为准。所有自动生成状态仍为 `construction.legal=false`，需另行审查语义、可见性、支撑关系及剩余执行可行性。
 
-新版证据包使用 [v0.2.0-pilot Release](https://github.com/No1dry/LIBERO-Remain/releases/tag/v0.2.0-pilot) 与 `libero-remain-v0.2.0-pilot.zip` 命名，以Release实际附件清单为准；没有附件时仍可使用上面的重建流程。[v0.1.0-pilot历史版本](https://github.com/No1dry/LIBERO-Remain/releases/tag/v0.1.0-pilot)保留。仓库改名与新增录像不代表历史候选已重新构造；旧状态仍绑定原构造和环境指纹。文件哈希只证明包内一致性，不是正式研究批准或跨机器运行保证。
+新版证据包使用 [v0.2.0-pilot Release](https://github.com/No1dry/LIBERO-PAB/releases/tag/v0.2.0-pilot) 与 `libero-remain-v0.2.0-pilot.zip` 命名，以Release实际附件清单为准；没有附件时仍可使用上面的重建流程。[v0.1.0-pilot历史版本](https://github.com/No1dry/LIBERO-PAB/releases/tag/v0.1.0-pilot)保留。仓库改名与新增录像不代表历史候选已重新构造；旧状态仍绑定原构造和环境指纹。文件哈希只证明包内一致性，不是正式研究批准或跨机器运行保证。
 
 若附件采用本项目的候选交付格式，可以使用仅依赖标准库的验证入口：
 

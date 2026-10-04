@@ -24,7 +24,7 @@ LIBERO-Remain 是 Learning_Not_to_Act 的可复用评测套件。仓库改名和
 需要 Python 3.10–3.12。下列命令创建仓库内 `.venv`，安装轻量依赖，再运行已知答案的toy策略和离线重评分，不下载LIBERO资产或模型权重。
 
 ```bash
-git clone https://github.com/No1dry/LIBERO-Remain.git
+git clone https://github.com/No1dry/LIBERO-PAB.git LIBERO-Remain
 cd LIBERO-Remain
 python scripts/bootstrap_remaining_benchmark.py cpu --out reports/cpu_smoke
 ```
@@ -114,6 +114,6 @@ python scripts/remaining_libero.py evaluate matrix \
 - [六模型安装、权重来源与统一命令](docs/remaining_goals_six_model_evaluation.md)
 - [运行配置与研究元数据的区别](configs/remaining_goals/README.md)
 - [候选数据、可选证据包与重建](data/README.md)
-- [Releases](https://github.com/No1dry/LIBERO-Remain/releases)：v0.2.0-pilot 使用 `libero-remain-v0.2.0-pilot.zip` 命名；以该版本实际附件清单为准，clone不自动下载附件。v0.1.0-pilot历史版本保留。
+- [Releases](https://github.com/No1dry/LIBERO-PAB/releases)：v0.2.0-pilot 使用 `libero-remain-v0.2.0-pilot.zip` 命名；以该版本实际附件清单为准，clone不自动下载附件。v0.1.0-pilot历史版本保留。
 
 源码、外部模型、LIBERO及其资产可能采用不同许可。请遵守对应上游许可与模型卡；本README不替第三方授予许可，也不把模型权重视为本仓库的一部分。
