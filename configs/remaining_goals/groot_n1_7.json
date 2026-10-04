@@ -1,0 +1,66 @@
+{
+  "schema_version": "remaining-goals-baseline-config-v1",
+  "model_id": "groot_n1_7",
+  "display_name": "GR00T N1.7",
+  "is_template": true,
+  "policy_id": null,
+  "policy_factory": null,
+  "suite": null,
+  "checkpoint": {
+    "uri": null,
+    "artifact_manifest_sha256": null
+  },
+  "model_code": {
+    "repository": null,
+    "revision": null
+  },
+  "adapter_code": {
+    "repository": null,
+    "revision": null,
+    "source_sha256": null
+  },
+  "observation": {
+    "camera_keys": null,
+    "image_preprocessing": null,
+    "proprio_preprocessing": null
+  },
+  "action": {
+    "translation_mapping": null,
+    "rotation_mapping": null,
+    "gripper_mapping": null,
+    "stop_behavior": null,
+    "normalization": {
+      "mode": null,
+      "key": null,
+      "reference": null,
+      "reference_sha256": null,
+      "description": null,
+      "identity_reason": null
+    }
+  },
+  "execution": {
+    "max_chunk_steps": null,
+    "random_seed": null,
+    "seed_scope": null
+  },
+  "runtime": {
+    "python_executable": null,
+    "python_version": null,
+    "dependency_isolation": null,
+    "environment_spec": null,
+    "environment_spec_sha256": null
+  },
+  "evidence": {
+    "official_00": {
+      "report_path": null,
+      "report_sha256": null,
+      "review_summary": null
+    },
+    "new_protocol_00": {
+      "report_path": null,
+      "report_sha256": null,
+      "review_summary": null
+    }
+  },
+  "adapter_options": {}
+}

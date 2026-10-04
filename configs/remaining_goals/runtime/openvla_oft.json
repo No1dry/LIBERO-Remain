@@ -1,0 +1,32 @@
+{
+  "schema_version": "remaining-goals-model-runtime-v1",
+  "model_id": "openvla_oft",
+  "policy_id": "openvla-oft-official-libero10-seed7",
+  "policy_factory": "benchmark.remaining_goals.adapters.openvla_oft:make_policy",
+  "suite": "libero_10",
+  "runtime": {
+    "python_executable": "/opt/conda/envs/openvla-oft/bin/python",
+    "cuda_visible_devices": "0",
+    "startup_timeout_seconds": 1200,
+    "predict_timeout_seconds": 180
+  },
+  "execution": {
+    "max_chunk_steps": 8,
+    "random_seed": 7,
+    "seed_scope": "worker_and_episode_reset"
+  },
+  "adapter_options": {
+    "repo_path": "external/openvla-oft",
+    "repo_revision": "e4287e94541f459edc4feabc4e181f537cd569a8",
+    "checkpoint": "checkpoints/openvla-oft-libero-10",
+    "suite": "libero_10",
+    "center_crop": true,
+    "load_in_8bit": false,
+    "load_in_4bit": false
+  },
+  "checkpoint_source": {
+    "repository": "moojink/openvla-7b-oft-finetuned-libero-10",
+    "revision": "95220f9a3421a7ff12d4218e73d09ade830fa9a3"
+  },
+  "notes": "Edit local absolute paths. Requires the official transformers-openvla-oft fork and full checkpoint including action_head and proprio_projector. The adapter uses a temporary checkpoint view for upstream metadata/code synchronization, leaving downloaded originals unchanged. No LIBERO90 checkpoint is implied."
+}

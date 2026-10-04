@@ -1,0 +1,43 @@
+# Local environments, downloaded simulators and model checkouts/weights.
+.venv/
+venv/
+.runtime/
+checkpoints/
+weights/
+models/
+third_party/
+external/
+
+# Generated state packs and run evidence. Keep the public data guide.
+data/*
+!data/README.md
+reports/
+outputs/
+runs/
+*.zip
+*.pt
+*.pth
+*.safetensors
+
+# Python/build/editor files and local credentials/config overrides.
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.egg-info/
+build/
+dist/
+.coverage
+htmlcov/
+.env
+.env.*
+!.env.example
+configs/**/*.local.json
+configs/remaining_goals/local/
+.hf_token
+*.log
+.release-work/
+.release-tools/
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

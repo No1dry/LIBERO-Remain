@@ -1,0 +1,26 @@
+{
+  "model_id": "groot_n1_7",
+  "policy_id": "groot_n1_7_official_libero10_2ea293aa_chunk8",
+  "policy_factory": "benchmark.remaining_goals.adapters.groot:make_policy",
+  "suite": "libero_10",
+  "execution": {
+    "max_chunk_steps": 8,
+    "random_seed": 0
+  },
+  "runtime": {
+    "python_executable": "external/Isaac-GR00T/.venv/bin/python",
+    "python_version": "3.12",
+    "dependency_isolation": "Dedicated Linux model worker; the simulator uses its own interpreter",
+    "environment_spec": "external/Isaac-GR00T/uv.lock"
+  },
+  "adapter_options": {
+    "repo_path": "external/Isaac-GR00T",
+    "repo_revision": "51d4c89f72fda44cbf77285c6a8114b52676b8a1",
+    "checkpoint": "checkpoints/GR00T-N1.7-LIBERO/libero_10",
+    "checkpoint_suite": "libero_10",
+    "checkpoint_repository": "nvidia/GR00T-N1.7-LIBERO",
+    "checkpoint_revision": "2ea293aa20ba7cf5bbf3ba17a5fbcb1a01cbfe21",
+    "suite": "libero_10",
+    "device": "cuda:0"
+  }
+}

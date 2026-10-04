@@ -1,0 +1,32 @@
+{
+  "model_id": "pi05",
+  "policy_id": "pi05_libero_official",
+  "policy_factory": "benchmark.remaining_goals.adapters.openpi:make_policy",
+  "suite": "libero_10",
+  "execution": {
+    "max_chunk_steps": 5,
+    "random_seed": 7,
+    "seed_scope": "NumPy PCG64 float32 flow noise, reset to same stream per episode for paired masks; differs from official default JAX RNG"
+  },
+  "runtime": {
+    "python_executable": "external/openpi/.venv/bin/python"
+  },
+  "adapter_options": {
+    "repo_path": "external/openpi",
+    "repo_revision": "215abfb217dbac7d5f1273282331b9b1866c0479",
+    "checkpoint": "gs://openpi-assets/checkpoints/pi05_libero",
+    "train_config": "pi05_libero",
+    "suite": "libero_10",
+    "normalization_key": "physical-intelligence/libero",
+    "random_seed": 7,
+    "num_inference_steps": 10,
+    "pytorch_device": null
+  },
+  "notes": [
+    "Official pi05 LIBERO flow-matching checkpoint. Official create_trained_policy loads checkpoint normalization assets; no extra output normalization or gripper inversion is applied here.",
+    "Set runtime.python_executable to the pinned official openpi Ubuntu/Python>=3.11 environment and repo_path to its checkout. Keep dependencies separate from the simulation environment.",
+    "Native prediction horizon is 10; the shared runner executes at most five actions per observation.",
+    "The official LIBERO dataset combines spatial/object/goal/10 and excludes LIBERO90. On 90, require both suite fields plus adapter_options.evaluation_track='zero_shot_extension' and a separate 00 regression, not an official 90-trained baseline. No claim is made that pretraining lacked similar tasks. A 90-finetuned model needs separately documented weights and matching training configuration.",
+    "Weights have not been downloaded or executed in this project; this runtime recipe is not model validation evidence."
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "description": "Six separate model workers; paths below are relative to this plan file. Complete local/*.json first. Current states remain candidate pilots.",
+  "jobs": [
+    {"id": "openvla", "config": "../local/openvla.json", "manifest": "../../../data/remaining_goals_local/libero_10/manifest.candidates.json", "candidate_replay": "../../../reports/remaining_goals_local/libero_10/replay_report.json"},
+    {"id": "openvla_oft", "config": "../local/openvla_oft.json", "manifest": "../../../data/remaining_goals_local/libero_10/manifest.candidates.json", "candidate_replay": "../../../reports/remaining_goals_local/libero_10/replay_report.json"},
+    {"id": "pi0", "config": "../local/pi0.json", "manifest": "../../../data/remaining_goals_local/libero_10/manifest.candidates.json", "candidate_replay": "../../../reports/remaining_goals_local/libero_10/replay_report.json"},
+    {"id": "pi05", "config": "../local/pi05.json", "manifest": "../../../data/remaining_goals_local/libero_10/manifest.candidates.json", "candidate_replay": "../../../reports/remaining_goals_local/libero_10/replay_report.json"},
+    {"id": "groot_n1_7", "config": "../local/groot_n1_7.json", "manifest": "../../../data/remaining_goals_local/libero_10/manifest.candidates.json", "candidate_replay": "../../../reports/remaining_goals_local/libero_10/replay_report.json"},
+    {"id": "univla", "config": "../local/univla.json", "manifest": "../../../data/remaining_goals_local/libero_10/manifest.candidates.json", "candidate_replay": "../../../reports/remaining_goals_local/libero_10/replay_report.json"}
+  ]
+}

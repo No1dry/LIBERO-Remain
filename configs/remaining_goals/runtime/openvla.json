@@ -1,0 +1,32 @@
+{
+  "schema_version": "remaining-goals-model-runtime-v1",
+  "model_id": "openvla",
+  "policy_id": "openvla-official-libero10-seed7",
+  "policy_factory": "benchmark.remaining_goals.adapters.openvla:make_policy",
+  "suite": "libero_10",
+  "runtime": {
+    "python_executable": "/opt/conda/envs/openvla/bin/python",
+    "cuda_visible_devices": "0",
+    "startup_timeout_seconds": 1200,
+    "predict_timeout_seconds": 180
+  },
+  "execution": {
+    "max_chunk_steps": 1,
+    "random_seed": 7,
+    "seed_scope": "worker_and_episode_reset"
+  },
+  "adapter_options": {
+    "repo_path": "external/openvla",
+    "repo_revision": "c8f03f48af692657d3060c19588038c7220e9af9",
+    "checkpoint": "checkpoints/openvla-libero-10",
+    "suite": "libero_10",
+    "center_crop": true,
+    "load_in_8bit": false,
+    "load_in_4bit": false
+  },
+  "checkpoint_source": {
+    "repository": "openvla/openvla-7b-finetuned-libero-10",
+    "revision": "80970322773f81baa2e22fe495d0487b93a05cfa"
+  },
+  "notes": "Edit local absolute paths. This is a runnable interface configuration, not evidence that weights were loaded. This released checkpoint does not supply LIBERO90 statistics."
+}

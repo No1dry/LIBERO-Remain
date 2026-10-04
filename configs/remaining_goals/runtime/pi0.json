@@ -1,0 +1,32 @@
+{
+  "model_id": "pi0",
+  "policy_id": "pi0_libero_user_checkpoint",
+  "policy_factory": "benchmark.remaining_goals.adapters.openpi:make_policy",
+  "suite": "libero_10",
+  "execution": {
+    "max_chunk_steps": 5,
+    "random_seed": 7,
+    "seed_scope": "NumPy PCG64 float32 flow noise, reset to same stream per episode for paired masks; differs from official default JAX RNG"
+  },
+  "runtime": {
+    "python_executable": "external/openpi/.venv/bin/python"
+  },
+  "adapter_options": {
+    "repo_path": "external/openpi",
+    "repo_revision": "215abfb217dbac7d5f1273282331b9b1866c0479",
+    "checkpoint": null,
+    "train_config": "pi0_libero",
+    "suite": "libero_10",
+    "normalization_key": "physical-intelligence/libero",
+    "random_seed": 7,
+    "num_inference_steps": 10,
+    "pytorch_device": null
+  },
+  "notes": [
+    "Requires a pi0 LIBERO checkpoint trained with the matching official pi0_libero config, including extra_delta_transform=true. Base pi0 weights are not a LIBERO baseline.",
+    "A current first-party published pi0-LIBERO checkpoint URL was not verified; fill checkpoint with an already reproduced local checkpoint and record its provenance.",
+    "Model environment is the pinned official openpi Ubuntu/Python>=3.11 environment, separate from simulation. Set runtime.python_executable and adapter_options.repo_path.",
+    "Native prediction horizon is 50; the shared runner executes at most five actions per observation.",
+    "The official LIBERO dataset combines spatial/object/goal/10 and excludes LIBERO90. Running a matching four-suite checkpoint on libero_90 requires both suite fields plus adapter_options.evaluation_track='zero_shot_extension'; it is not a published official LIBERO90 baseline. A 90-finetuned model needs its own documented checkpoint and matching training configuration. This config is not model validation evidence."
+  ]
+}

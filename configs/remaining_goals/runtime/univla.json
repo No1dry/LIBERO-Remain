@@ -1,0 +1,35 @@
+{
+  "schema_version": "remaining-goals-model-runtime-v1",
+  "model_id": "univla",
+  "policy_id": "univla-official-libero10-seed7",
+  "policy_factory": "benchmark.remaining_goals.adapters.univla:make_policy",
+  "suite": "libero_10",
+  "runtime": {
+    "python_executable": "/opt/conda/envs/univla/bin/python",
+    "cuda_visible_devices": "0",
+    "startup_timeout_seconds": 1200,
+    "predict_timeout_seconds": 180
+  },
+  "execution": {
+    "max_chunk_steps": 1,
+    "random_seed": 7,
+    "seed_scope": "worker_and_episode_reset"
+  },
+  "adapter_options": {
+    "repo_path": "external/UniVLA",
+    "repo_revision": "0ab9e9d",
+    "checkpoint": "checkpoints/univla-libero/univla-libero-10",
+    "action_decoder_path": "checkpoints/univla-libero/univla-libero-10/action_decoder.pt",
+    "suite": "libero_10",
+    "window_size": 12,
+    "center_crop": true,
+    "load_in_8bit": false,
+    "load_in_4bit": false
+  },
+  "checkpoint_source": {
+    "repository": "qwbu/univla-7b-224-sft-libero",
+    "revision": "0d1979ebd1b7ad00d6a8a02a98213a0835dc82a1",
+    "subfolder": "univla-libero-10"
+  },
+  "notes": "Edit local absolute paths. Requires the separate released action_decoder.pt. The official latent sampler remains stochastic (temperature=0.75, top_p=0.9); reset clears latent history and decoder temporal aggregation. UniVLA returns one action per query. No LIBERO90 checkpoint is implied."
+}

@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "libero-pab"
+version = "0.1.0"
+description = "Auditable partial-completion benchmarks for LIBERO robot policies"
+requires-python = ">=3.10,<3.13"
+dependencies = ["numpy==1.26.4", "PyYAML>=6.0,<7"]
+
+[project.optional-dependencies]
+test = ["pytest>=7.4,<9"]
+
+[project.scripts]
+libero-pab = "benchmark.remaining_goals.evaluation:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["benchmark*", "scripts*"]
+exclude = ["tests*"]
+namespaces = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
