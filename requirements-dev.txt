@@ -1,2 +1,4 @@
 -e .[test]
 pytest==7.4.4
+# Optional MP4 support: python -m pip install -e ".[video]"
+# Keep CPU-only development free of video/simulator/model dependencies.

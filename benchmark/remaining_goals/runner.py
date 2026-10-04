@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from collections import deque
 from copy import deepcopy
+import json
 from numbers import Integral
 from time import perf_counter
 from typing import Any
@@ -104,7 +105,7 @@ def _actions(value: Any, *, hold: bool = False) -> np.ndarray:
 
 
 def run_episode(env: Any, policy: Any, episode: dict[str, Any], *,
-                max_chunk_steps: int = 8) -> dict[str, Any]:
+                max_chunk_steps: int = 8, recorder: Any = None) -> dict[str, Any]:
     """Run H+W steps, or W for an initially fully satisfied episode.
 
     ``env.reset(episode)`` and ``env.step(action)`` return observation dicts;
@@ -121,6 +122,8 @@ def run_episode(env: Any, policy: Any, episode: dict[str, Any], *,
     Exceptions are returned as ``runtime_error`` with the partial trace.
     Initial predicate mismatch is ``invalid_initial_state``. Neither status
     may be counted as success. The runner does not close env or policy.
+    Optional recording receives copies of existing observations and never
+    controls execution. Recording errors are reported separately in ``video``.
     """
     started = perf_counter()
     result = {
@@ -131,6 +134,15 @@ def run_episode(env: Any, policy: Any, episode: dict[str, Any], *,
     }
     result.update(status="runtime_error", trace=[], n_steps=0,
                   policy_queries=0, stop_step=None, error=None)
+    video_errors = []
+
+    def capture(observation, step):
+        if recorder is not None and not video_errors:
+            try:
+                recorder.capture(deepcopy(observation), step=step)
+            except Exception as exc:
+                video_errors.append(f"capture: {type(exc).__name__}: {exc}")
+
     phase = "validate_episode"
     try:
         chunk_limit = _step_count(max_chunk_steps, "max_chunk_steps", positive=True)
@@ -149,7 +161,9 @@ def run_episode(env: Any, policy: Any, episode: dict[str, Any], *,
         action_queue: deque[np.ndarray] = deque()
 
         phase = "env_reset"
-        obs = _observation(env.reset(deepcopy(episode)))
+        raw_obs = env.reset(deepcopy(episode))
+        capture(raw_obs, 0)
+        obs = _observation(raw_obs)
         phase = "initial_goals"
         goals = _goal_values(env.goal_values(), len(initial), "goal_values")
         result["trace"].append({"step": 0, "goals": goals,
@@ -185,6 +199,7 @@ def run_episode(env: Any, policy: Any, episode: dict[str, Any], *,
             phase = "env_step"
             raw_obs = env.step(action.copy())
             result["n_steps"] = step
+            capture(raw_obs, step)
             phase = "goal_values"
             goals = _goal_values(env.goal_values(), len(initial), "goal_values")
             result["trace"].append({"step": step, "goals": goals,
@@ -196,5 +211,20 @@ def run_episode(env: Any, policy: Any, episode: dict[str, Any], *,
         result.update(status="runtime_error", error=f"{type(exc).__name__}: {exc}",
                       error_phase=phase)
     finally:
+        if recorder is not None:
+            video = {}
+            try:
+                video = recorder.close()
+                if not isinstance(video, dict):
+                    raise TypeError("video recorder close() must return a dictionary")
+                json.dumps(video, allow_nan=False)
+            except Exception as exc:
+                video = {}
+                video_errors.append(f"close: {type(exc).__name__}: {exc}")
+            if video_errors:
+                prior_error = video.get("error")
+                video.update(status="video_error", error="; ".join(
+                    ([prior_error] if isinstance(prior_error, str) and prior_error else []) + video_errors))
+            result["video"] = video
         result["elapsed_seconds"] = perf_counter() - started
     return result

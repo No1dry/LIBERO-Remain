@@ -1,8 +1,10 @@
-# Remaining Goals 六模型统一评测指南
+# LIBERO-Remain 六模型统一评测指南
 
 更新日期：2026 年 10 月 4 日。
 
 本项目研究：**当人或外部过程提前完成任意部分任务后，VLA 能否根据当前观测确定剩余目标，并保留已有成果？** 本文说明如何用同一批冻结状态、同一 rollout 和同一评分程序评测 OpenVLA、OpenVLA-OFT、π0、π0.5、GR00T N1.7 和 UniVLA。
+
+LIBERO-Remain 是 Learning_Not_to_Act 项目的评测贡献。新名称与录像功能不改变已有候选的研究身份，也不表示已重建其状态。
 
 ## 仓库包含什么
 
@@ -305,7 +307,8 @@ python scripts/remaining_libero.py evaluate run \
   --config configs/remaining_goals/local/openvla.json \
   --manifest data/remaining_goals_local/libero_10/manifest.candidates.json \
   --candidate-replay reports/remaining_goals_local/libero_10/replay_report.json \
-  --out reports/eval_openvla_libero10_pilot_001
+  --out reports/eval_openvla_libero10_pilot_001 \
+  --save-video --video-fps 20 --video-camera both --video-stride 1
 ```
 
 每次使用新的输出目录；程序拒绝覆盖旧结果。该命令验证构造/回放证据后运行全部 72 个 episode，保持候选原始 `legal=false`。正式审定的 release manifest 用同一命令，去掉 `--candidate-replay`；默认正式 loader 仍拒绝未经审定的候选。
@@ -321,7 +324,8 @@ cp configs/remaining_goals/plans/libero10.example.json configs/remaining_goals/p
 python scripts/remaining_libero.py evaluate matrix \
   --plan configs/remaining_goals/plans/libero10.local.json \
   --out reports/six_models_libero10_pilot_001 \
-  --max-workers 1
+  --max-workers 1 \
+  --save-video --video-fps 20 --video-camera both --video-stride 1
 ```
 
 这是一条命令串行评测六模型。具备六张分别可运行这些模型的 GPU 时，可在六份配置中分别设 GPU 0–5，再把 `--max-workers` 设为 6。程序检查 GPU 是否重复，逐作业保存日志和结果；任一作业失败都会留有记录并使批量命令非零退出，不用其他模型的成功掩盖它。
@@ -335,10 +339,22 @@ python scripts/remaining_libero.py evaluate matrix \
 - `run.json`：模型配置、解释器/依赖、源码与运行哈希、pilot 身份、回放证据、运行状态。
 - `manifest.json`：实际评测 episode 清单，保留原始 legal 声明。
 - `episodes/*.json`：逐步动作、目标真假、STOP 与异常，用于重算指标。
+- `videos/000000.mp4` 等：启用录像时的episode视频；对应episode JSON记录路径与录像状态。
 - `episodes.csv`：逐 episode 指标，含失败/缺失状态。
 - `summary.json`：按任务与 mask 分组的成功率、主指标和覆盖率。
 
-matrix 根目录另有 `matrix_plan.json`、`matrix_report.json` 和每模型日志。不同 suite 不合并成一个平均分。当前 rollout 不输出逐步视频；初态可视化使用已有 preview 工具，问题轨迹需另加摄像机记录后再运行。
+matrix 根目录另有 `matrix_plan.json`、`matrix_report.json` 和每模型日志。不同 suite 不合并成一个平均分。录像默认关闭，建议正式评测时使用上面的录像参数检查保持窗口与失败片段。`--video-camera` 可选 `agentview`、`wrist`、`both`；`--video-stride 1` 每控制步采集，`--video-fps 20` 设置播放帧率，增大stride但保持fps会快放。录像读取已有观测，不额外step/render、不改变策略输入或指标；episode失败时仅能保留实际采集的片段，不能补造后续行为。
+
+运行记录保存 `video_config`；启用录像时，episode的 `video.status` 区分 `saved/video_error/empty`，并记录相对路径、帧数、相机、fps、stride和各帧物理步 `frame_steps`（成功保存时包含最后一步）。关闭录像以run的 `video_config.enabled=false` 为准，episode可以没有 `video` 字段。编码错误不覆盖策略的rollout状态或评分。LIBERO图像仅在录像副本旋转180°，策略输入保持原样；toy录像不旋转。
+
+仿真环境已包含imageio及ffmpeg。使用执行toy评测的CPU解释器安装可选编码依赖（固定imageio2.34.2与imageio-ffmpeg0.5.1），再检查录像入口；无需改动模型独立GPU环境：
+
+```bash
+python -m pip install -e ".[video]"
+python -m benchmark.remaining_goals.cli demo --out reports/video_smoke --scenes 1 --save-video
+```
+
+toy视频验证接口，不证明真实相机、GPU权重推理或模型能力。初始状态预览继续使用preview工具；MP4回看也不替代无损初态NPZ、逐步trace或语义/执行可行性审查。
 
 ```bash
 python scripts/remaining_libero.py evaluate summarize \

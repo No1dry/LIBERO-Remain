@@ -1,6 +1,6 @@
-# LIBERO-PAB 协议与候选状态规范
+# LIBERO-Remain 协议与候选状态规范
 
-版本：v0.1 pilot。LIBERO-PAB 是基于 [LIBERO](https://github.com/Lifelong-Robot-Learning/LIBERO) 的独立研究工程，并非LIBERO官方基准版本。
+版本：v0.2 pilot。LIBERO-Remain 是 Learning_Not_to_Act 项目的可复用评测套件，基于 [LIBERO](https://github.com/Lifelong-Robot-Learning/LIBERO)，并非LIBERO官方基准版本。改名与录像功能更新不等于重新构造或重新验收历史状态。
 
 研究问题是：当人或外部过程提前完成任意合法部分任务后，VLA能否从当前观测识别剩余目标，并在保留已有成果的同时完成任务？本仓库实现状态构造、独立回放、统一rollout、计分和六模型接口。快速开始见 [README](../README.md)，真实模型配置见[六模型指南](remaining_goals_six_model_evaluation.md)。
 
@@ -212,7 +212,13 @@ step0是初态，后续每行是执行一次环境动作后的谓词值。C0为�
 
 每次运行输出 `run.json`、manifest审计快照、`episodes/*.json`逐步轨迹、`episodes.csv`及`summary.json`。记录绑定manifest、policy、运行配置哈希和run ID；它是内部一致性检查，不是防伪签名。
 
-run内manifest不复制状态文件，相对state路径仍属于原状态包。离线summarize不需要原状态，因此不能宣称它重新验证物理初态。当前策略rollout没有完整图像/视频；构造HOLD帧不替代VLA失败视频。
+run内manifest不复制状态文件，相对state路径仍属于原状态包。离线summarize不需要原状态，因此不能宣称它重新验证物理初态。
+
+`evaluate run`、`evaluate matrix`及低层 `benchmark.remaining_goals.cli run/demo` 支持 `--save-video --video-fps 20 --video-camera both --video-stride 1`。录像默认关闭；相机可选 `agentview`、`wrist`、`both`，stride=1记录每个控制步。MP4保存到run内 `videos/000000.mp4` 等路径，episode JSON关联录像状态；覆盖实际执行到的保持窗口和失败前片段，不补造未执行帧。
+
+运行 `video_config` 记录 `enabled/fps/camera/stride`；启用录像时，episode的 `video` 记录相对 `path`、`status`、`frames`、`fps`、`camera`、`stride`和 `frame_steps`，状态为 `saved/video_error/empty`。关闭录像以run的 `video_config.enabled=false` 为准，episode可以没有 `video` 字段。录像错误单独记录，不改变rollout状态或分数。成功保存时 `frame_steps` 对应实际物理步并保留最后一步；fps是播放帧率，stride大于1且fps不变会快放。
+
+录像只从已有观测采集，不额外推进环境或调用render，不修改策略输入、动作预算或计分。LIBERO原始RGB仅在视频副本旋转180°，toy不旋转。轻量环境用执行评测的解释器运行 `python -m pip install -e ".[video]"`，安装固定 `imageio==2.34.2` 与 `imageio-ffmpeg==0.5.1`；仿真环境已有这些依赖，无需改变模型独立环境。MP4不是无损初始NPZ或逐步数值trace的替代品，构造HOLD帧与toy录像也不代表真实VLA失败视频。
 
 默认正式loader拒绝 `legal=false`。显式 `evaluate run --candidate-replay` 可在完整通过的独立证据绑定后运行候选pilot，并保留原始声明。正式发布需另审语义、可见性、支撑与剩余执行可行性，记录实际审查者/证据，另存release manifest；没有自动晋升命令，不能手改legal冒充审核。
 

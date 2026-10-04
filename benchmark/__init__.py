@@ -1,4 +1,4 @@
-"""LIBERO-PAB: matched partial-goal states and unified policy evaluation.
+"""LIBERO-Remain: matched partial-goal states and unified policy evaluation.
 
 The remaining_goals package provides candidate construction, independent replay
 audits, observation artifacts, metrics, and isolated model adapters. The states

@@ -3,16 +3,18 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "libero-pab"
-version = "0.1.0"
+name = "libero-remain"
+version = "0.2.0"
 description = "Auditable partial-completion benchmarks for LIBERO robot policies"
 requires-python = ">=3.10,<3.13"
 dependencies = ["numpy==1.26.4", "PyYAML>=6.0,<7"]
 
 [project.optional-dependencies]
 test = ["pytest>=7.4,<9"]
+video = ["imageio==2.34.2", "imageio-ffmpeg==0.5.1"]
 
 [project.scripts]
+libero-remain = "benchmark.remaining_goals.evaluation:main"
 libero-pab = "benchmark.remaining_goals.evaluation:main"
 
 [tool.setuptools.packages.find]

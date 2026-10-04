@@ -1,4 +1,4 @@
-# 运行配置与研究元数据
+# LIBERO-Remain 运行配置与研究元数据
 
 本目录有两种用途，不能混用：
 
@@ -9,6 +9,8 @@
 | 根层六份JSON | 研究元数据模板，用于归档checkpoint、预处理、依赖和回归证据；不是evaluate运行配置 |
 
 安装与命令见[六模型指南](../../docs/remaining_goals_six_model_evaluation.md)，任务、恢复、指标见[协议](../../docs/remaining_goals_benchmark.md)。模型权重和本机环境不在仓库中，接口实现不代表权重已经运行。
+
+LIBERO-Remain 是 Learning_Not_to_Act 的评测贡献，关注部分任务已完成时的剩余目标完成与成果保留。
 
 ## 使用已有模型环境
 
@@ -76,3 +78,5 @@ factory接收完整JSON，模型具体参数建议放 `adapter_options`。返回
 模型输入限白名单传感器与原始完整指令，不读取manifest、mask、谓词或对象真值。runner管理动作队列；STOP后继续执行预先验收的hold控制。
 
 高层 `evaluate run` 从运行配置读取factory和chunk；低层 `benchmark.remaining_goals.cli run` 仍需显式传入 `--policy-factory`、`--policy-id`、`--policy-config`、`--max-chunk-steps`，不会从研究模板自动推断。候选pilot还需完整独立回放证据，不能把 `legal=false` 改成true绕过正式审查。
+
+录像通过运行命令显式启用：`--save-video --video-fps 20 --video-camera both --video-stride 1`；`evaluate run/matrix`和低层 `cli run/demo` 使用同一组选项，默认关闭。相机可选 `agentview`、`wrist`或`both`，不应把录像参数放入 `adapter_options` 冒充模型预处理。录像读取已有观测、不额外step/render，各episode JSON关联run内 `videos/*.mp4` 的录像状态。

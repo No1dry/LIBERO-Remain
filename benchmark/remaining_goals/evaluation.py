@@ -15,9 +15,10 @@ import time
 
 import numpy as np
 
-from .cli import evaluate, rescore
+from .cli import evaluate, rescore, _add_video_arguments, _video_config_from_args
 from .isolated_policy import SubprocessPolicy
 from .runner import _actions, _observation
+from .video import normalize_video_config
 
 MODELS = ("openvla", "openvla_oft", "pi0", "pi05", "groot_n1_7", "univla")
 
@@ -87,7 +88,7 @@ def check_config(config, suite=None):
             "weights_loaded": False, "policy_regression_verified": False, "errors": errors}
 
 
-def run(config_path, manifest_path, output, *, candidate_replay=None, environment_config=None):
+def run(config_path, manifest_path, output, *, candidate_replay=None, environment_config=None, video_config=None):
     config = read_json(config_path)
     manifest = read_json(manifest_path)
     suites = {episode["suite"] for episode in manifest["episodes"]}
@@ -100,7 +101,8 @@ def run(config_path, manifest_path, output, *, candidate_replay=None, environmen
                     policy_factory="benchmark.remaining_goals.isolated_policy:make_policy",
                     policy_config=config, policy_id=config["policy_id"],
                     max_chunk_steps=config["execution"]["max_chunk_steps"],
-                    environment_config=environment_config, candidate_replay=candidate_replay)
+                    environment_config=environment_config, candidate_replay=candidate_replay,
+                    video_config=normalize_video_config(video_config))
 
 
 def _relative(base, value):
@@ -108,8 +110,9 @@ def _relative(base, value):
     return path.resolve() if path.is_absolute() else (base / path).resolve()
 
 
-def matrix(plan_path, output, *, max_workers=1):
-    """Each job is a separate simulator subprocess; parallel jobs require disjoint GPUs."""
+def matrix(plan_path, output, *, max_workers=1, video_config=None):
+    """Run isolated jobs with one explicit video configuration for the matrix."""
+    video_config = normalize_video_config(video_config)
     plan_path, output = Path(plan_path).resolve(), Path(output).resolve()
     plan = read_json(plan_path)
     jobs = plan.get("jobs")
@@ -144,6 +147,9 @@ def matrix(plan_path, output, *, max_workers=1):
             gpu_sets.append(devices)
         command = [sys.executable, "-m", "benchmark.remaining_goals.evaluation", "run", "--config", str(config),
                    "--manifest", str(manifest), "--out", str(output / name)]
+        command += ["--save-video" if video_config["enabled"] else "--no-save-video",
+                    "--video-fps", str(video_config["fps"]), "--video-camera", video_config["camera"],
+                    "--video-stride", str(video_config["stride"])]
         if job.get("candidate_replay"):
             command += ["--candidate-replay", str(_relative(plan_path.parent, job["candidate_replay"]))]
         if job.get("environment_config"):
@@ -151,7 +157,8 @@ def matrix(plan_path, output, *, max_workers=1):
         prepared.append((name, command, gpu))
     output.mkdir(parents=True, exist_ok=False)
     write_json(output / "matrix_plan.json", plan)
-    report = {"kind": "six_model_evaluation_matrix", "pool_suite_scores": False, "jobs": [], "status": "running"}
+    report = {"kind": "six_model_evaluation_matrix", "pool_suite_scores": False, "jobs": [], "status": "running",
+              "video_config": video_config}
     write_json(output / "matrix_report.json", report)
     children = []
     cancelled = threading.Event()
@@ -279,12 +286,14 @@ def main(argv=None):
         if name == "run":
             command.add_argument("--candidate-replay", type=Path)
             command.add_argument("--environment-config", type=Path)
+            _add_video_arguments(command)
         else:
             command.add_argument("--episode-index", type=int, default=0)
     batch = commands.add_parser("matrix")
     batch.add_argument("--plan", type=Path, required=True)
     batch.add_argument("--out", type=Path, required=True)
     batch.add_argument("--max-workers", type=int, default=1)
+    _add_video_arguments(batch)
     score = commands.add_parser("summarize")
     score.add_argument("--run-dir", type=Path, required=True)
     args = parser.parse_args(argv)
@@ -297,10 +306,12 @@ def main(argv=None):
         return 0 if all(row["static_configuration_ready"] for row in report["models"]) else 2
     if args.command == "run":
         report = run(args.config, args.manifest, args.out, candidate_replay=args.candidate_replay,
-                     environment_config=read_json(args.environment_config) if args.environment_config else None)
+                     environment_config=read_json(args.environment_config) if args.environment_config else None,
+                     video_config=_video_config_from_args(args))
         return 0 if report.get("run_status") == "finished" and report["counts"]["completed"] == report["counts"]["expected"] else 1
     if args.command == "matrix":
-        return 0 if matrix(args.plan, args.out, max_workers=args.max_workers)["status"] == "finished" else 1
+        return 0 if matrix(args.plan, args.out, max_workers=args.max_workers,
+                           video_config=_video_config_from_args(args))["status"] == "finished" else 1
     if args.command == "probe":
         probe(args.config, args.manifest, args.out, args.episode_index)
     else:

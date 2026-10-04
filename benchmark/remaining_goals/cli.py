@@ -15,6 +15,7 @@ from pathlib import Path
 from .metrics import compute_metrics, summarize_results
 from .runner import run_episode
 from .schema import load_manifest, manifest_hash, validate_manifest
+from .video import EpisodeVideoRecorder, normalize_video_config
 
 
 def _write_json(path: Path, value):
@@ -50,7 +51,7 @@ def _config_hash(metadata: dict) -> str:
     fields = ("manifest_hash", "policy_id", "policy_factory", "policy_config",
               "environment_config", "max_chunk_steps", "harness_source_sha256")
     payload = {key: metadata[key] for key in fields}
-    for key in ("evaluation_kind", "candidate_replay_evidence", "model_runtime"):
+    for key in ("evaluation_kind", "candidate_replay_evidence", "model_runtime", "video_config"):
         if key in metadata:
             payload[key] = metadata[key]
     return hashlib.sha256(json.dumps(payload, sort_keys=True, ensure_ascii=False, allow_nan=False).encode()).hexdigest()
@@ -70,6 +71,16 @@ def _save_report(output: Path, manifest: dict, results: list[dict]) -> dict:
         # A legal declaration and completed rollout do not grant publication
         # approval, establish calibration, or validate checkpoint provenance.
         summary["release_authorized"] = False
+        if metadata.get("video_config", {}).get("enabled"):
+            videos = [result["video"] for result in results if "video" in result]
+            summary["video_summary"] = {
+                "enabled": True, "expected": len(manifest["episodes"]), "reported": len(videos),
+                "saved": sum(video.get("status") == "saved" for video in videos),
+                "video_error": sum(video.get("status") == "video_error" for video in videos),
+                "empty": sum(video.get("status") == "empty" for video in videos),
+                "missing": len(manifest["episodes"]) - len(videos),
+                "affects_metrics": False,
+            }
     _write_json(output / "summary.json", summary)
     fields = ["episode_id", "task_id", "mask", "status", "joint_success",
               "remaining_success", "preservation_success", "stable_final_success",
@@ -94,10 +105,16 @@ def _save_report(output: Path, manifest: dict, results: list[dict]) -> dict:
 
 def evaluate(manifest_path: Path, output: Path, *, policy_factory: str,
              policy_config: dict, policy_id: str, max_chunk_steps: int,
-             environment_config: dict | None = None, candidate_replay: Path | None = None) -> dict:
-    """A fresh output directory is required; never overwrite previous results."""
+             environment_config: dict | None = None, candidate_replay: Path | None = None,
+             video_config: dict | None = None) -> dict:
+    """Evaluate in a fresh directory; explicit video settings override defaults.
+
+    Video settings are independent of policy/environment configs. Recording is
+    disabled by default; recording failures do not change episode scores.
+    """
     if type(max_chunk_steps) is not int or max_chunk_steps < 1:
         raise ValueError("max_chunk_steps must be positive")
+    video_config = normalize_video_config(video_config)
     manifest_path = Path(manifest_path).resolve()
     replay_evidence = None
     if candidate_replay is None:
@@ -142,6 +159,7 @@ def evaluate(manifest_path: Path, output: Path, *, policy_factory: str,
         "python": platform.python_version(), "status": "running",
         "evaluation_kind": "candidate_pilot" if candidate_replay else "reviewed_manifest",
         "candidate_replay_evidence": replay_evidence,
+        "video_config": video_config,
         "notice": "TOY FIXTURE: not VLA/LIBERO evidence" if name == "toy" else "Real environment run; inspect coverage and errors",
     }
     metadata["run_config_sha256"] = _config_hash(metadata)
@@ -155,7 +173,23 @@ def evaluate(manifest_path: Path, output: Path, *, policy_factory: str,
         _write_json(output / "run.json", metadata)
         env = env_class(environment_config)
         for index, episode in enumerate(manifest["episodes"]):
-            result = run_episode(env, policy, episode, max_chunk_steps=max_chunk_steps)
+            recorder = None
+            recorder_error = None
+            if video_config["enabled"]:
+                try:
+                    recorder = EpisodeVideoRecorder(output / "videos" / f"{index:06d}.mp4", video_config,
+                                                    environment_name=name, episode=episode)
+                except Exception as error:
+                    # Unexpected recorder setup failures remain observable but
+                    # cannot prevent the authorized policy rollout.
+                    message = f"{type(error).__name__}: {error}"
+                    recorder_error = {"status": "video_error", "path": None, "frames": 0,
+                                      "error": message, "errors": [message], **video_config}
+            result = run_episode(env, policy, episode, max_chunk_steps=max_chunk_steps, recorder=recorder)
+            if recorder_error is not None:
+                result["video"] = recorder_error
+            if result.get("video", {}).get("path"):
+                result["video"]["path"] = (Path("videos") / result["video"]["path"]).as_posix()
             result["manifest_hash"] = metadata["manifest_hash"]
             result["policy_id"] = policy_id
             result["run_id"] = metadata["run_id"]
@@ -225,6 +259,24 @@ def rescore(directory: Path) -> dict:
     return _save_report(directory, manifest, results)
 
 
+def _add_video_arguments(parser):
+    """Shared CLI contract; flags override defaults, never model/job settings."""
+    switch = parser.add_mutually_exclusive_group()
+    switch.add_argument("--save-video", dest="save_video", action="store_true",
+                        help="save episode MP4s; recording errors do not change scores")
+    switch.add_argument("--no-save-video", dest="save_video", action="store_false",
+                        help="disable video recording (default)")
+    parser.set_defaults(save_video=False)
+    parser.add_argument("--video-fps", type=float, default=20, help="video playback FPS (default: 20)")
+    parser.add_argument("--video-camera", choices=("agentview", "wrist", "both"), default="agentview")
+    parser.add_argument("--video-stride", type=int, default=1, help="record every N control steps (default: 1)")
+
+
+def _video_config_from_args(args):
+    return normalize_video_config({"enabled": args.save_video, "fps": args.video_fps,
+                                   "camera": args.video_camera, "stride": args.video_stride})
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
@@ -232,6 +284,7 @@ def main(argv=None):
     demo.add_argument("--out", required=True, type=Path)
     demo.add_argument("--scenes", type=int, default=2)
     demo.add_argument("--mode", choices=["reactive", "idle", "destructive"], default="reactive")
+    _add_video_arguments(demo)
     validate = commands.add_parser("validate", help="validate manifest pairing and state file hashes")
     validate.add_argument("--manifest", required=True, type=Path)
     run = commands.add_parser("run", help="evaluate all frozen episodes")
@@ -243,6 +296,7 @@ def main(argv=None):
     run.add_argument("--environment-config", type=Path)
     run.add_argument("--max-chunk-steps", required=True, type=int, help="native execution horizon for this model")
     run.add_argument("--candidate-replay", type=Path, help="explicit unreviewed pilot using a matching passing replay report")
+    _add_video_arguments(run)
     report = commands.add_parser("summarize", help="recompute metrics from saved step traces")
     report.add_argument("--run-dir", required=True, type=Path)
     envinfo = commands.add_parser("libero-env-info", help="print runtime identity in the LIBERO environment")
@@ -250,10 +304,12 @@ def main(argv=None):
     args = parser.parse_args(argv)
     if args.command == "demo":
         from .toy import build_toy_manifest
+        video_config = _video_config_from_args(args)
         args.out.mkdir(parents=True, exist_ok=False)
         path = build_toy_manifest(args.out / "fixture", scenes=args.scenes)
         evaluate(path, args.out / "run", policy_factory="benchmark.remaining_goals.toy:make_policy",
-                 policy_config={"mode": args.mode}, policy_id=f"toy-{args.mode}", max_chunk_steps=1)
+                 policy_config={"mode": args.mode}, policy_id=f"toy-{args.mode}", max_chunk_steps=1,
+                 video_config=video_config)
         print(f"Toy smoke complete: {args.out / 'run' / 'summary.json'}")
     elif args.command == "validate":
         manifest = load_manifest(args.manifest, check_files=True)
@@ -263,7 +319,7 @@ def main(argv=None):
         summary = evaluate(args.manifest, args.out, policy_factory=args.policy_factory,
                  policy_config=_config(args.policy_config), policy_id=args.policy_id,
                  environment_config=_config(args.environment_config), max_chunk_steps=args.max_chunk_steps,
-                 candidate_replay=args.candidate_replay)
+                 candidate_replay=args.candidate_replay, video_config=_video_config_from_args(args))
         return 0 if summary.get("run_status") == "finished" else 1
     elif args.command == "summarize":
         rescore(args.run_dir)

@@ -1,10 +1,12 @@
-# LIBERO-PAB
+# LIBERO-Remain
 
 **Partial-completion evaluation for vision-language-action models on LIBERO.** Given the original instruction and the current observation, can a VLA complete the remaining goals while preserving what has already been achieved?
 
-LIBERO-PAB provides paired-state construction, independent simulator replay, a shared rollout and scoring interface, and adapters for OpenVLA, OpenVLA-OFT, π0, π0.5, GR00T N1.7 and UniVLA. It is an independent research project built on [LIBERO](https://github.com/Lifelong-Robot-Learning/LIBERO), not an official LIBERO release. Model weights and installed environments are not included.
+LIBERO-Remain is the evaluation contribution of the **Learning_Not_to_Act** project. Built on [LIBERO](https://github.com/Lifelong-Robot-Learning/LIBERO), it provides paired-state construction, independent simulator replay, a shared rollout and scoring interface, and adapters for OpenVLA, OpenVLA-OFT, π0, π0.5, GR00T N1.7 and UniVLA. It is not an official LIBERO release. Model weights and installed environments are not included.
 
 本项目评测：**外部过程提前完成部分任务后，VLA 能否从当前观测选择剩余目标，并保留已有成果？** 模型始终收到原始完整指令，不收到完成掩码或仿真目标真值。
+
+LIBERO-Remain 是 Learning_Not_to_Act 的可复用评测套件。仓库改名和录像功能更新不表示已重新构造历史状态；工件仍按其实际版本、环境指纹和验证记录解释。
 
 ## 当前范围
 
@@ -22,20 +24,29 @@ LIBERO-PAB provides paired-state construction, independent simulator replay, a s
 需要 Python 3.10–3.12。下列命令创建仓库内 `.venv`，安装轻量依赖，再运行已知答案的toy策略和离线重评分，不下载LIBERO资产或模型权重。
 
 ```bash
-git clone https://github.com/No1dry/LIBERO-PAB.git
-cd LIBERO-PAB
+git clone https://github.com/No1dry/LIBERO-Remain.git
+cd LIBERO-Remain
 python scripts/bootstrap_remaining_benchmark.py cpu --out reports/cpu_smoke
 ```
 
 输出位于 `reports/cpu_smoke/`。这是接口、rollout和指标的smoke测试，不是机器人任务成功率。目录已存在时换一个新的 `--out`。
 
-当前发布候选的代码测试为842 passed、1 skipped；这不包含六模型真实GPU权重推理。完整测试可另行运行：
+代码与接口测试不包含六模型真实GPU权重推理。完整测试可另行运行：
 
 ```bash
 .venv/bin/python -m pytest tests -q -ra
 ```
 
 Windows 将解释器替换为 `.venv/Scripts/python.exe`。已有NumPy/PyYAML环境可用 `cpu --skip-install --python /path/to/python --out reports/cpu_smoke_002`；此模式不安装依赖。推荐从clone的源码使用editable安装，wheel本身不包含任务配置、文档和仿真资产。
+
+在将要执行toy评测的CPU解释器环境中安装可选编码依赖并生成toy录像；模型自身的独立GPU环境不需要为此改动：
+
+```bash
+python -m pip install -e ".[video]"
+python -m benchmark.remaining_goals.cli demo --out reports/video_smoke --scenes 1 --save-video
+```
+
+首个episode录像保存为 `reports/video_smoke/run/videos/000000.mp4`。这是录像接口的smoke，不是真实机器人或六模型GPU推理；未激活环境时，将 `python` 替换为上述 `.venv` 解释器路径。
 
 ## 2. 一键初始化仿真并重建候选
 
@@ -77,7 +88,8 @@ python scripts/remaining_libero.py evaluate run \
   --config configs/remaining_goals/local/openvla.json \
   --manifest data/remaining_goals_local/libero_10/manifest.candidates.json \
   --candidate-replay reports/remaining_goals_local/libero_10/replay_report.json \
-  --out reports/openvla_pilot
+  --out reports/openvla_pilot \
+  --save-video --video-fps 20 --video-camera both --video-stride 1
 ```
 
 `check`只做静态检查；`probe`做一次真实模型推理但不推进仿真；`run --candidate-replay`是明确标记的候选pilot。解释partial结果前，还需保存官方原接口00与本协议00回归。
@@ -88,10 +100,13 @@ python scripts/remaining_libero.py evaluate run \
 cp configs/remaining_goals/plans/libero10.example.json configs/remaining_goals/plans/libero10.local.json
 python scripts/remaining_libero.py evaluate matrix \
   --plan configs/remaining_goals/plans/libero10.local.json \
-  --out reports/six_model_pilot --max-workers 1
+  --out reports/six_model_pilot --max-workers 1 \
+  --save-video --video-fps 20 --video-camera both --video-stride 1
 ```
 
 扩展轨需要独立配置和结果。没有保证六个模型都有官方LIBERO-90权重；OpenPI使用同一四套微调权重时必须显式标记 `zero_shot_extension`，不能冒称90训练基线。
+
+录像默认关闭，建议评测时开启以检查保持窗口和失败片段。`--video-camera` 可选 `agentview`、`wrist`、`both`；`--video-stride 1` 记录每个控制步。`--video-fps` 是播放帧率，增大stride但保持fps会快放；`frame_steps`记录各帧实际物理步。各run的 `videos/000000.mp4` 等文件与episode JSON中的 `video` 状态关联；编码失败单独记为 `video_error`，不改变rollout结果。录像读取已有观测，不增加物理step或render，不改变策略输入与评分；仿真环境已包含imageio和ffmpeg，轻量CPU环境使用上述 `[video]` extra。
 
 ## 文档与数据
 
@@ -99,6 +114,6 @@ python scripts/remaining_libero.py evaluate matrix \
 - [六模型安装、权重来源与统一命令](docs/remaining_goals_six_model_evaluation.md)
 - [运行配置与研究元数据的区别](configs/remaining_goals/README.md)
 - [候选数据、可选证据包与重建](data/README.md)
-- [Releases](https://github.com/No1dry/LIBERO-PAB/releases)：如有发布附件，以该版本实际文件清单为准；clone不自动下载附件。
+- [Releases](https://github.com/No1dry/LIBERO-Remain/releases)：v0.2.0-pilot 使用 `libero-remain-v0.2.0-pilot.zip` 命名；以该版本实际附件清单为准，clone不自动下载附件。v0.1.0-pilot历史版本保留。
 
 源码、外部模型、LIBERO及其资产可能采用不同许可。请遵守对应上游许可与模型卡；本README不替第三方授予许可，也不把模型权重视为本仓库的一部分。
