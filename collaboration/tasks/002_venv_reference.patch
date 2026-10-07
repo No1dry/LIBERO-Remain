@@ -1,0 +1,96 @@
+diff --git a/benchmark/remaining_goals/isolated_policy.py b/benchmark/remaining_goals/isolated_policy.py
+index 55bf339..10feb6f 100644
+--- a/benchmark/remaining_goals/isolated_policy.py
++++ b/benchmark/remaining_goals/isolated_policy.py
+@@ -15,7 +15,9 @@ from .runner import _observation
+ class SubprocessPolicy:
+     def __init__(self, config):
+         runtime = config["runtime"]
+-        executable = Path(runtime["python_executable"]).expanduser().resolve()
++        # Preserve venv/bin/python symlinks: resolving them would launch the
++        # base interpreter and discard the worker environment's dependencies.
++        executable = Path(os.path.abspath(Path(runtime["python_executable"]).expanduser()))
+         if not executable.is_file():
+             raise ValueError(f"model Python does not exist: {executable}")
+         self.timeout = float(runtime.get("predict_timeout_seconds", 180))
+diff --git a/scripts/remaining_libero.py b/scripts/remaining_libero.py
+index 460c695..459065d 100644
+--- a/scripts/remaining_libero.py
++++ b/scripts/remaining_libero.py
+@@ -46,7 +46,11 @@ def launch_configuration(command: str, arguments: list[str], *, root: Path = ROO
+         python = root / python
+     if not config.is_absolute():
+         config = root / config
+-    python, config = python.resolve(), config.resolve()
++    # Do not call Path.resolve() on a venv interpreter. On POSIX, venv/bin/python
++    # is normally a symlink to the base executable; resolving it bypasses the
++    # venv's site-packages and makes an installed LIBERO runtime disappear.
++    python = Path(os.path.abspath(python))
++    config = config.resolve()
+     if not python.is_file():
+         raise ValueError(f"runtime interpreter is missing: {python}")
+     if not (config / "config.yaml").is_file():
+diff --git a/tests/test_remaining_launcher.py b/tests/test_remaining_launcher.py
+index 0f20816..0bf5852 100644
+--- a/tests/test_remaining_launcher.py
++++ b/tests/test_remaining_launcher.py
+@@ -50,6 +50,27 @@ def test_linux_egl_sets_pyopengl_for_child_only(runtime, monkeypatch):
+     assert "PYOPENGL_PLATFORM" not in os.environ
+ 
+ 
++def test_launcher_preserves_venv_python_symlink(tmp_path):
++    directory = tmp_path / ".runtime" / "remaining_libero"
++    directory.mkdir(parents=True)
++    base = directory / "base-python"
++    base.write_bytes(b"placeholder")
++    venv = directory / "venv" / "bin"
++    venv.mkdir(parents=True)
++    python = venv / "python"
++    python.symlink_to(base)
++    config = directory / "libero_config"
++    config.mkdir()
++    (config / "config.yaml").write_text("{}", encoding="utf-8")
++    (directory / "runtime.json").write_text(json.dumps({
++        "python": str(python), "libero_config_path": str(config), "mujoco_gl": "egl",
++    }), encoding="utf-8")
++
++    command, _ = launcher.launch_configuration("doctor", [], root=tmp_path, platform_name="linux")
++    assert command[0] == str(python)
++    assert command[0] != str(base)
++
++
+ def test_missing_runtime_gives_setup_instruction(tmp_path):
+     with pytest.raises(ValueError, match="setup_remaining_libero.py"):
+         launcher.launch_configuration("doctor", [], root=tmp_path)
+diff --git a/tests/test_remaining_policy_transport.py b/tests/test_remaining_policy_transport.py
+index 92bd986..fa4db43 100644
+--- a/tests/test_remaining_policy_transport.py
++++ b/tests/test_remaining_policy_transport.py
+@@ -68,6 +68,26 @@ def test_real_worker_process_round_trip_and_close():
+     policy.close()
+ 
+ 
++def test_worker_preserves_selected_python_symlink(monkeypatch, tmp_path):
++    from benchmark.remaining_goals import isolated_policy
++    selected = tmp_path / "venv" / "bin" / "python"
++    selected.parent.mkdir(parents=True)
++    selected.symlink_to(sys.executable)
++    actual_popen = isolated_policy.subprocess.Popen
++    captured = []
++
++    def popen(args, **kwargs):
++        captured.append(args[0])
++        return actual_popen(args, **kwargs)
++
++    monkeypatch.setattr(isolated_policy.subprocess, "Popen", popen)
++    config = toy_worker_config()
++    config["runtime"]["python_executable"] = str(selected)
++    policy = SubprocessPolicy(config)
++    policy.close()
++    assert captured == [str(selected)]
++
++
+ def test_worker_factory_failure_cleans_up():
+     with pytest.raises(RuntimeError, match="worker failed"):
+         SubprocessPolicy(toy_worker_config("invalid"))
+
