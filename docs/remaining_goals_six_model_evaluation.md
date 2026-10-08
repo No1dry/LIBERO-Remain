@@ -334,6 +334,8 @@ python scripts/remaining_libero.py evaluate matrix \
 
 ### 5 结果与离线重评分
 
+新增默认 `report.md`：主表为 Joint Success Rate / 人工 UIR，未标注显示 N/A；诊断表单列 remaining/preservation success、首次满足步和 expected/completed/invalid/runtime_error/missing。`completed` 只表示 rollout 完整。原始 JSON 和旧指标不删除。使用 `evaluate uir-template` 与 `evaluate report --out 新目录` 可以在不改写原 run 的情况下添加人工 UIR，见[标注和派生报告指南](remaining_goals_uir.md)。下述 `summarize` 仍保留历史原地重算行为。
+
 每个运行目录包含：
 
 - `run.json`：模型配置、解释器/依赖、源码与运行哈希、pilot 身份、回放证据、运行状态。

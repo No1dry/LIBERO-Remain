@@ -183,6 +183,8 @@ python scripts/remaining_libero.py replay \
 
 ## 8. 指标与统计分母
 
+默认展示主表为 Joint Success Rate 与人工 Unnecessary Intervention Rate（UIR）；未标注显示 N/A。诊断表单列 remaining/preservation success、首次满足步及完整/异常/缺失数量。以下原指标定义和详细 JSON 全部保留。UIR 是独立人工标注结果，不修改这些分数；标注规范、身份校验、宏平均和只读派生命令见[人工 UIR 指南](remaining_goals_uir.md)。
+
 step0是初态，后续每行是执行一次环境动作后的谓词值。C0为初始已完成目标，U0为初始未完成目标。所有deadline含H，所有窗口端点均包含。
 
 | 字段 | 非终态定义 |

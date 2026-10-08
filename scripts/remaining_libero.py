@@ -40,13 +40,16 @@ def launch_configuration(command: str, arguments: list[str], *, root: Path = ROO
     for key in ("python", "libero_config_path", "mujoco_gl"):
         if not isinstance(runtime.get(key), str) or not runtime[key].strip():
             raise ValueError(f"runtime.json is missing {key!r}")
-    python = Path(runtime["python"])
+    python = Path(runtime["python"]).expanduser()
     config = Path(runtime["libero_config_path"])
     if not python.is_absolute():
         python = root / python
     if not config.is_absolute():
         config = root / config
-    python, config = python.resolve(), config.resolve()
+    # A venv executable can be a symlink to the base Python. Keep that selected
+    # path so Python discovers the venv's pyvenv.cfg and installed packages.
+    python = Path(os.path.abspath(python))
+    config = config.resolve()
     if not python.is_file():
         raise ValueError(f"runtime interpreter is missing: {python}")
     if not (config / "config.yaml").is_file():

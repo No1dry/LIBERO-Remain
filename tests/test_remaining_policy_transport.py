@@ -1,11 +1,14 @@
 """Transport integration; these tests never load a VLA or claim simulator success."""
 import io
 import json
+import os
 from pathlib import Path
 import struct
 import sys
 import time
 import random
+import subprocess
+import venv
 from types import SimpleNamespace
 
 import numpy as np
@@ -66,6 +69,122 @@ def test_real_worker_process_round_trip_and_close():
         policy.close()
     assert policy.process.poll() is not None
     policy.close()
+
+
+@pytest.mark.parametrize("path_kind", ["absolute", "relative", "home"])
+def test_worker_keeps_selected_interpreter_path_and_child_environment(tmp_path, monkeypatch, path_kind):
+    from benchmark.remaining_goals import isolated_policy
+    selected = tmp_path / "model venv" / "bin" / "python"
+    selected.parent.mkdir(parents=True)
+    selected.write_bytes(b"not executable: spawn is deliberately intercepted")
+    original_resolve = Path.resolve
+    def guarded_resolve(path, *args, **kwargs):
+        assert path != selected, "the worker interpreter must not be resolved"
+        return original_resolve(path, *args, **kwargs)
+    monkeypatch.setattr(Path, "resolve", guarded_resolve)
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("USERPROFILE", str(tmp_path))
+    monkeypatch.setenv("PYTHONHOME", "unrelated-parent-python")
+    monkeypatch.setenv("PYTHONPATH", "unrelated-parent-imports")
+    monkeypatch.setenv("CUDA_VISIBLE_DEVICES", "parent-device")
+    monkeypatch.setenv("LIBERO_CONFIG_PATH", "shared-libero-config")
+    before = dict(os.environ)
+    value = str(selected)
+    if path_kind == "relative":
+        value = str(selected.relative_to(tmp_path))
+    elif path_kind == "home":
+        value = "~/" + selected.relative_to(tmp_path).as_posix()
+    config = toy_worker_config()
+    config["runtime"].update(python_executable=value, cuda_visible_devices="worker-device")
+    captured = []
+    def intercept(command, **kwargs):
+        captured.append((command, kwargs))
+        raise OSError("test-only spawn failure")
+    monkeypatch.setattr(isolated_policy.subprocess, "Popen", intercept)
+    with pytest.raises(OSError, match="test-only spawn failure"):
+        SubprocessPolicy(config)
+    command, kwargs = captured[0]
+    assert command == [str(selected), "-m", "benchmark.remaining_goals.policy_worker"]
+    assert kwargs.get("shell", False) is False
+    child = kwargs["env"]
+    assert "PYTHONHOME" not in child
+    assert child["PYTHONPATH"] == str(Path(isolated_policy.__file__).resolve().parents[2])
+    assert child["CUDA_VISIBLE_DEVICES"] == "worker-device"
+    assert child["LIBERO_CONFIG_PATH"] == "shared-libero-config"
+    assert child["PYTHONHASHSEED"] == "42"
+    assert dict(os.environ) == before
+
+
+def test_worker_preserves_real_selected_python_symlink(tmp_path, monkeypatch):
+    from benchmark.remaining_goals import isolated_policy
+    selected = tmp_path / "model venv" / "bin" / Path(sys.executable).name
+    selected.parent.mkdir(parents=True)
+    try:
+        selected.symlink_to(sys.executable)
+    except (OSError, NotImplementedError) as error:
+        pytest.skip(f"interpreter symlink creation is unavailable: {type(error).__name__}: {error}")
+    actual_popen = isolated_policy.subprocess.Popen
+    launched = []
+    def capture(command, **kwargs):
+        launched.append(command[0])
+        return actual_popen(command, **kwargs)
+    monkeypatch.setattr(isolated_policy.subprocess, "Popen", capture)
+    config = toy_worker_config()
+    config["runtime"]["python_executable"] = str(selected)
+    policy = SubprocessPolicy(config)
+    try:
+        policy.reset()
+        assert np.asarray(policy.predict({"images": {"front": np.zeros((8, 16, 3), dtype=np.uint8)}}, "test")).shape == (7,)
+    finally:
+        policy.close()
+    assert launched == [str(selected)]
+
+
+class _VenvMarkerPolicy:
+    def __init__(self, config):
+        import importlib
+        marker = importlib.import_module("remaining_worker_venv_marker")
+        self.metadata = {"marker": marker.VALUE, "prefix": sys.prefix}
+
+    def reset(self):
+        pass
+
+    def predict(self, observation, instruction):
+        return np.zeros(7)
+
+
+def make_venv_marker_policy(config):
+    return _VenvMarkerPolicy(config)
+
+
+@pytest.mark.skipif(os.name == "nt", reason="POSIX venv symlink/site-packages integration; Windows uses portable path guards")
+def test_worker_symlink_uses_selected_venv_site_packages(tmp_path):
+    selected_env = tmp_path / "selected model venv"
+    venv.EnvBuilder(with_pip=False, system_site_packages=False, symlinks=True).create(selected_env)
+    selected = selected_env / "bin" / "python"
+    if not selected.is_symlink():
+        pytest.skip("this Python venv implementation did not create an interpreter symlink")
+    result = subprocess.run([str(selected), "-c", "import sysconfig; print(sysconfig.get_path('purelib'))"],
+                            check=True, capture_output=True, text=True)
+    site_packages = Path(result.stdout.strip())
+    assert site_packages.is_relative_to(selected_env)
+    site_packages.mkdir(parents=True, exist_ok=True)
+    # Reuse only the current test dependency directories without network/pip.
+    # Nested venvs do not reliably inherit their immediate parent's packages.
+    dependencies = sorted({str(Path(module.__file__).parent.parent) for module in (np, pytest)})
+    (site_packages / "test_dependencies.pth").write_text("\n".join(dependencies) + "\n", encoding="utf-8")
+    (site_packages / "remaining_worker_venv_marker.py").write_text("VALUE = 'selected-venv-only'\n", encoding="utf-8")
+    config = toy_worker_config()
+    config["runtime"]["python_executable"] = str(selected)
+    config["policy_factory"] = "tests.test_remaining_policy_transport:make_venv_marker_policy"
+    policy = SubprocessPolicy(config)
+    try:
+        assert policy.provenance["policy_metadata"] == {"marker": "selected-venv-only", "prefix": str(selected_env)}
+        policy.reset()
+        np.testing.assert_array_equal(policy.predict({"state": np.zeros(1)}, "test"), np.zeros(7))
+    finally:
+        policy.close()
 
 
 def test_worker_factory_failure_cleans_up():

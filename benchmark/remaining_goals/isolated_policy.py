@@ -15,7 +15,9 @@ from .runner import _observation
 class SubprocessPolicy:
     def __init__(self, config):
         runtime = config["runtime"]
-        executable = Path(runtime["python_executable"]).expanduser().resolve()
+        # Preserve venv/bin/python symlinks; resolving one selects the base
+        # interpreter and loses the model environment's installed packages.
+        executable = Path(os.path.abspath(Path(runtime["python_executable"]).expanduser()))
         if not executable.is_file():
             raise ValueError(f"model Python does not exist: {executable}")
         self.timeout = float(runtime.get("predict_timeout_seconds", 180))

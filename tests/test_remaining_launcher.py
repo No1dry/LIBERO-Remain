@@ -2,6 +2,7 @@
 
 import json
 import os
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -48,6 +49,48 @@ def test_linux_egl_sets_pyopengl_for_child_only(runtime, monkeypatch):
     assert command[2] == "benchmark.remaining_goals.doctor"
     assert environment["PYOPENGL_PLATFORM"] == "egl"
     assert "PYOPENGL_PLATFORM" not in os.environ
+
+
+@pytest.mark.parametrize("path_kind", ["absolute", "relative", "home"])
+def test_interpreter_path_is_absolutized_without_resolving_symlinks(runtime, monkeypatch, path_kind):
+    # This guard runs even on Windows without symlink creation privileges.
+    # Calling resolve() on the selected executable would reproduce the defect.
+    selected = runtime.python
+    original_resolve = Path.resolve
+    resolved_config = []
+    def guarded_resolve(path, *args, **kwargs):
+        assert path != selected, "the selected interpreter must not be resolved"
+        if path == runtime.config:
+            resolved_config.append(path)
+        return original_resolve(path, *args, **kwargs)
+    monkeypatch.setattr(Path, "resolve", guarded_resolve)
+    if path_kind == "relative":
+        runtime.lock["python"] = str(selected.relative_to(runtime.root))
+    elif path_kind == "home":
+        monkeypatch.setenv("HOME", str(runtime.root))
+        monkeypatch.setenv("USERPROFILE", str(runtime.root))
+        runtime.lock["python"] = "~/" + selected.relative_to(runtime.root).as_posix()
+    runtime.path.write_text(json.dumps(runtime.lock), encoding="utf-8")
+    command, environment = launcher.launch_configuration("doctor", ["--out", "path with spaces.json"],
+                                                         root=runtime.root)
+    assert command[0] == str(selected)
+    assert command[-1] == "path with spaces.json"
+    assert environment["LIBERO_CONFIG_PATH"] == str(runtime.config)
+    assert resolved_config == [runtime.config]
+
+
+def test_launcher_preserves_real_interpreter_symlink(runtime):
+    selected = runtime.python.parent / "venv with spaces" / "bin" / "python"
+    selected.parent.mkdir(parents=True)
+    try:
+        selected.symlink_to(runtime.python)
+    except (OSError, NotImplementedError) as error:
+        pytest.skip(f"interpreter symlink creation is unavailable: {type(error).__name__}: {error}")
+    runtime.lock["python"] = str(selected.relative_to(runtime.root))
+    runtime.path.write_text(json.dumps(runtime.lock), encoding="utf-8")
+    command, _ = launcher.launch_configuration("doctor", [], root=runtime.root, platform_name="linux")
+    assert selected.is_symlink()
+    assert command[0] == str(selected) and command[0] != str(selected.resolve())
 
 
 def test_missing_runtime_gives_setup_instruction(tmp_path):
