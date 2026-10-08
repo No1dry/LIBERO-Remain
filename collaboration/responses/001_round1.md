@@ -5,7 +5,7 @@
 - 任务：[001_metrics_and_uir.md](../tasks/001_metrics_and_uir.md)。
 - 基准提交：`467b6d9070cf30c86774f7099ba6ee104e76bc45`。
 - 实现提交：[46d935b1b8e8109bbc840a2e4347ed520cdd4df7](https://github.com/No1dry/LIBERO-Remain/commit/46d935b1b8e8109bbc840a2e4347ed520cdd4df7)。该提交同时实现任务 002；任务 001 的文件范围列于下文。
-- 分支：`x/stage01-metrics-uir-venv`。PR：创建后在此补充；不推送或合并 main。
+- 分支：`x/stage01-metrics-uir-venv`。PR：[#1](https://github.com/No1dry/LIBERO-Remain/pull/1)，open、未合并；未推送或合并 main。
 
 ## 修改内容
 

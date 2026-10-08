@@ -4,7 +4,7 @@
 
 - 任务：[002_venv_interpreter.md](../tasks/002_venv_interpreter.md)。
 - 基线：`main` 的 `467b6d9`；工作分支：`x/stage01-metrics-uir-venv`。
-- 实现提交：[46d935b1b8e8109bbc840a2e4347ed520cdd4df7](https://github.com/No1dry/LIBERO-Remain/commit/46d935b1b8e8109bbc840a2e4347ed520cdd4df7)。同一提交包含任务 001，各自文件范围见两份 response。PR 创建后补充链接。
+- 实现提交：[46d935b1b8e8109bbc840a2e4347ed520cdd4df7](https://github.com/No1dry/LIBERO-Remain/commit/46d935b1b8e8109bbc840a2e4347ed520cdd4df7)。同一提交包含任务 001，各自文件范围见两份 response。PR：[#1](https://github.com/No1dry/LIBERO-Remain/pull/1)，open、未合并。
 - 本轮不 merge、不运行 GPU 实验，不将历史 smoke 数字作为本次测试结果。
 
 ## 实现与参考补丁的差异

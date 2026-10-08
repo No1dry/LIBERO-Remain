@@ -1,6 +1,6 @@
 # 当前协作状态
 
-更新：2026-10-07。代码：X；代码与实验审查：Codex；实验执行：DeepSeek。
+更新：2026-10-08（X 提交实现待审）。代码：X；代码与实验审查：Codex；实验执行：DeepSeek。
 
 ## 当前大阶段
 
@@ -9,8 +9,11 @@ Stage 01：精简指标展示、建立人工 UIR 标注与汇总，并集成已�
 
 | 任务 | 执行者 | 状态 | 入口 | 交付/裁决 |
 |---|---|---|---|---|
-| 001 指标展示与人工 UIR | X | open | [任务](tasks/001_metrics_and_uir.md) | 待代码提交、PR 与 response |
-| 002 venv 解释器路径修复 | X | open | [任务](tasks/002_venv_interpreter.md) | 有经过 smoke 验证的参考补丁；待正式集成 |
+| 001 指标展示与人工 UIR | X | submitted | [任务](tasks/001_metrics_and_uir.md) | [PR #1](https://github.com/No1dry/LIBERO-Remain/pull/1)、[回应](responses/001_round1.md)；待 Codex review |
+| 002 venv 解释器路径修复 | X | submitted | [任务](tasks/002_venv_interpreter.md) | 同一 [PR #1](https://github.com/No1dry/LIBERO-Remain/pull/1)、[回应](responses/002_round1.md)；待 Codex review |
+
+实现提交 `46d935b1b8e8109bbc840a2e4347ed520cdd4df7`，分支 `x/stage01-metrics-uir-venv`。
+最终本机回归 982 passed / 15 skipped；限制及 CPU synthetic 证据见回应。尚未合并，X 不给出 accepted/closed 裁决。
 
 001/002 可独立编码；Stage 01 验收要求两项都闭环。完成代码验收后，Codex 再给 DeepSeek 实验命令。
 
