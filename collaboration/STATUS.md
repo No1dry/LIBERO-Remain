@@ -38,7 +38,7 @@ Stage01的[关闭总结](../docs/stage_summaries/stage_01_metrics_uir.md)与本�
 00正式5+5已于北京时间19:03:44完成，10/10、错误/缺失0，official5/5、Remain5/5；逐条复算/NPZ/视频解码通过。UIR未标注，不从成功率推断克制。旧4090未启动本批GPU作业。
 Stage03状态准备完成，528.73秒/exit0：5组20状态构造及40次150-step回放全部通过，本地独立证据校验通过。冻结旧已审代码6e29f；完整archive、本地full_evidence、真实OFT准备RGB预览已保存。
 最新[审查2](reviews/stage03_preflight_2.md)撤销初始可观察性停跑条件。保留001，允许合理观察/试探；005已独立验收并在原场景运行，主模型输入无mask/剩余提示。
-Stage03主15条于北京时间10月10日00:25:22完成（639.72秒）：0错误/缺失，JSR10=2/5、01=5/5、11=5/5；15段视频/实际step0/query证据核验通过。初始成果均保持，10的3条为预算内剩余任务未完成（其中source2晚至663步），不提前归因不会跳过；UIR未标注=N/A。固定10条隔离oracle诊断另目录运行中，driver3683999，不混主成绩。下一步由Codex核验诊断/视频/标注，X合并PR #3登记；Stage03尚未完结，不扩大实验。
+Stage03主15条与隔离诊断10条全部完成，25/25、错误/missing0；trace/实际NPZ/query身份/25段视频解码独立核验通过。[执行总结](../docs/stage_summaries/stage_03_subset_pilot_execution.md)：主JSR10=2/5、01=5/5、11=5/5；诊断10=2/5、01=5/5，两批10成功均源0/3，初始成果均保持。不能仅以低分归因没识别进度，oracle未改变预算内失败集合也非性能上界/不可达证明。UIR未审核=N/A，下一步Codex核对代表录像/标注、用户协助争议；X合并PR #3登记。GPU执行结束，不扩大实验，Stage03科学阶段仍待UIR/行为裁决。
 新发现worker版本dict错误选择parent的shadowed distribution，已给X任务004。独立有效版本快照与episode.runtime确认实际加载版本正确；当前批原始记录不重写，报告此警告，不借修复换模型/协议。
 既有四视频的人工UIR语义校准仍由Codex/用户负责。
 
