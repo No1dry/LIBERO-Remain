@@ -110,6 +110,7 @@ python scripts/remaining_libero.py evaluate matrix \
 
 ## 文档与数据
 
+- 默认 `report.md` 主表展示 Joint Success Rate / UIR；人工 UIR 未标注时为 N/A。用 `evaluate uir-template` 创建独立模板，`evaluate report --out 新目录` 生成只读派生报告，详见[人工 UIR 与报告指南](docs/remaining_goals_uir.md)。原指标及详细 JSON 保留。
 - [完整协议、状态构造与计分](docs/remaining_goals_benchmark.md)
 - [六模型安装、权重来源与统一命令](docs/remaining_goals_six_model_evaluation.md)
 - [运行配置与研究元数据的区别](configs/remaining_goals/README.md)

@@ -15,7 +15,8 @@ import time
 
 import numpy as np
 
-from .cli import evaluate, rescore, _add_video_arguments, _video_config_from_args
+from .cli import (evaluate, rescore, _add_video_arguments, _video_config_from_args,
+                  _add_reporting_arguments, _reporting_command)
 from .isolated_policy import SubprocessPolicy
 from .runner import _actions, _observation
 from .video import normalize_video_config
@@ -296,7 +297,10 @@ def main(argv=None):
     _add_video_arguments(batch)
     score = commands.add_parser("summarize")
     score.add_argument("--run-dir", type=Path, required=True)
+    _add_reporting_arguments(commands)
     args = parser.parse_args(argv)
+    if args.command in ("uir-template", "report"):
+        return _reporting_command(args)
     if args.command == "check":
         report = {"models": [check_config(read_json(path)) for path in args.config]}
         if args.out:
@@ -308,6 +312,7 @@ def main(argv=None):
         report = run(args.config, args.manifest, args.out, candidate_replay=args.candidate_replay,
                      environment_config=read_json(args.environment_config) if args.environment_config else None,
                      video_config=_video_config_from_args(args))
+        print((args.out / "report.md").read_text(encoding="utf-8"))
         return 0 if report.get("run_status") == "finished" and report["counts"]["completed"] == report["counts"]["expected"] else 1
     if args.command == "matrix":
         return 0 if matrix(args.plan, args.out, max_workers=args.max_workers,
@@ -316,6 +321,7 @@ def main(argv=None):
         probe(args.config, args.manifest, args.out, args.episode_index)
     else:
         rescore(args.run_dir)
+        print((args.run_dir / "report.md").read_text(encoding="utf-8"))
     return 0
 
 

@@ -13,6 +13,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from .metrics import compute_metrics, summarize_results
+from .reporting import build_display, render_report
 from .runner import run_episode
 from .schema import load_manifest, manifest_hash, validate_manifest
 from .video import EpisodeVideoRecorder, normalize_video_config
@@ -57,15 +58,14 @@ def _config_hash(metadata: dict) -> str:
     return hashlib.sha256(json.dumps(payload, sort_keys=True, ensure_ascii=False, allow_nan=False).encode()).hexdigest()
 
 
-def _save_report(output: Path, manifest: dict, results: list[dict]) -> dict:
+def _summarize_run(manifest: dict, results: list[dict], metadata: dict | None = None) -> dict:
+    """Return the original report schema without writing experiment files."""
     summary = summarize_results(manifest["episodes"], results)
     summary["manifest_hash"] = manifest_hash(manifest)
     summary["environment"] = manifest["environment"]
     summary["is_toy_fixture"] = manifest["environment"]["name"] == "toy"
     summary["physical_validity"] = "not assessed by this scorer"
-    run_metadata = output / "run.json"
-    if run_metadata.is_file():
-        metadata = json.loads(run_metadata.read_text(encoding="utf-8"))
+    if metadata is not None:
         summary["evaluation_kind"] = metadata.get("evaluation_kind", "reviewed_manifest")
         summary["run_status"] = metadata.get("status")
         # A legal declaration and completed rollout do not grant publication
@@ -81,6 +81,13 @@ def _save_report(output: Path, manifest: dict, results: list[dict]) -> dict:
                 "missing": len(manifest["episodes"]) - len(videos),
                 "affects_metrics": False,
             }
+    return summary
+
+
+def _save_report(output: Path, manifest: dict, results: list[dict]) -> dict:
+    run_metadata = output / "run.json"
+    metadata = json.loads(run_metadata.read_text(encoding="utf-8")) if run_metadata.is_file() else None
+    summary = _summarize_run(manifest, results, metadata)
     _write_json(output / "summary.json", summary)
     fields = ["episode_id", "task_id", "mask", "status", "joint_success",
               "remaining_success", "preservation_success", "stable_final_success",
@@ -100,6 +107,8 @@ def _save_report(output: Path, manifest: dict, results: list[dict]) -> dict:
             if result["status"] != "completed":
                 row["n_steps"] = result.get("n_steps")
             writer.writerow({key: row.get(key) for key in fields})
+    display = build_display(manifest, results, summary)
+    (output / "report.md").write_text(render_report(display), encoding="utf-8")
     return summary
 
 
@@ -226,8 +235,8 @@ def evaluate(manifest_path: Path, output: Path, *, policy_factory: str,
     return json.loads((output / "summary.json").read_text(encoding="utf-8"))
 
 
-def rescore(directory: Path) -> dict:
-    """Recompute from saved traces, including any absent expected episodes."""
+def read_run(directory: Path) -> tuple[dict, dict, list[dict]]:
+    """Read and validate saved identities without changing any experiment file."""
     directory = Path(directory)
     metadata = json.loads((directory / "run.json").read_text(encoding="utf-8"))
     if metadata.get("evaluation_kind") == "candidate_pilot":
@@ -256,7 +265,124 @@ def rescore(directory: Path) -> dict:
         for field in ("task_id", "suite", "task_name", "instruction", "seed", "state_sha256"):
             if result.get(field) != episode[field]:
                 raise ValueError(f"episode metadata mismatch: {field}")
-    return _save_report(directory, manifest, results)
+    if len({episode["suite"] for episode in manifest["episodes"]}) != 1:
+        raise ValueError("one run must use exactly one suite; do not pool suites")
+    summarize_results(manifest["episodes"], results)
+    return metadata, manifest, results
+
+
+def rescore(directory: Path) -> dict:
+    """Legacy API: recompute summary/CSV in place; UIR uses a separate read-only path."""
+    _, manifest, results = read_run(directory)
+    return _save_report(Path(directory), manifest, results)
+
+
+def _new_external_output(run_dir: Path, output: Path) -> Path:
+    output = Path(output).expanduser().resolve()
+    if output.is_relative_to(Path(run_dir).resolve()):
+        raise ValueError("annotation/derived output must be outside the source run directory")
+    if output.exists():
+        raise FileExistsError(output)
+    return output
+
+
+def annotation_template(run_dir: Path, output: Path, *, reviewer: str = "") -> dict:
+    from .uir import make_annotation_template
+    metadata, manifest, results = read_run(run_dir)
+    template = make_annotation_template(metadata, manifest, results, reviewer=reviewer)
+    output = _new_external_output(run_dir, output)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    with output.open("x", encoding="utf-8") as file:
+        file.write(json.dumps(template, ensure_ascii=False, indent=2, allow_nan=False) + "\n")
+    return template
+
+
+def _video_evidence_hashes(run_dir: Path, normalized_annotations: list[dict]) -> dict:
+    """Bind existing, contained videos; never load code or use external URLs."""
+    directory = Path(run_dir).resolve()
+    hashes = {}
+    for annotation in normalized_annotations:
+        for evidence in annotation["evidence"]:
+            name = evidence["video_path"]
+            path = (directory / name).resolve()
+            if not path.is_relative_to(directory) or not path.is_file():
+                raise ValueError(f"video evidence must be an existing file inside its run: {name}")
+            if name not in hashes:
+                digest = hashlib.sha256()
+                with path.open("rb") as video:
+                    for block in iter(lambda: video.read(1024 * 1024), b""):
+                        digest.update(block)
+                hashes[name] = digest.hexdigest()
+    return hashes
+
+
+def _read_annotations(raw: bytes) -> dict:
+    def unique_pairs(pairs):
+        value = {}
+        for key, item in pairs:
+            if key in value:
+                raise ValueError(f"duplicate annotation JSON key: {key}")
+            value[key] = item
+        return value
+
+    def invalid_constant(value):
+        raise ValueError(f"annotation JSON requires finite values: {value}")
+
+    return json.loads(raw.decode("utf-8-sig"), object_pairs_hook=unique_pairs, parse_constant=invalid_constant)
+
+
+def derived_report(run_dir: Path, output: Path, *, annotations_path: Path | None = None) -> dict:
+    """Create a new read-only derivation, preserving even the old summary bytes."""
+    from .uir import summarize_annotations
+    directory = Path(run_dir).resolve()
+    metadata, manifest, results = read_run(directory)
+    summary = _summarize_run(manifest, results, metadata)
+    uir = None
+    if annotations_path is not None:
+        raw = Path(annotations_path).read_bytes()
+        annotations = _read_annotations(raw)
+        uir = summarize_annotations(metadata, manifest, results, annotations)
+        uir["annotation_file_sha256"] = hashlib.sha256(raw).hexdigest()
+        uir["video_evidence_sha256"] = _video_evidence_hashes(directory, uir["by_episode"])
+    display = build_display(manifest, results, summary, uir=uir)
+    source_paths = [directory / "run.json", directory / "manifest.json", *sorted((directory / "episodes").glob("*.json"))]
+    provenance = {path.relative_to(directory).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest()
+                  for path in source_paths}
+    report = {"schema_version": "remaining-goals-derived-report-v1",
+              "run_id": metadata["run_id"], "manifest_hash": metadata["manifest_hash"],
+              "source_file_sha256": provenance, "harness_source_sha256": _source_hash(),
+              "legacy_metrics_unchanged": True, "summary": summary, "uir": uir, "display": display}
+    output = _new_external_output(directory, output)
+    output.mkdir(parents=True, exist_ok=False)
+    _write_json(output / "report.json", report)
+    _write_json(output / "summary.json", summary)
+    if uir is not None:
+        _write_json(output / "uir.json", uir)
+        (output / "annotations.json").write_bytes(raw)
+    (output / "report.md").write_text(render_report(display), encoding="utf-8")
+    return report
+
+
+def _add_reporting_arguments(commands):
+    template = commands.add_parser("uir-template", help="write a new external manual-UIR annotation template")
+    template.add_argument("--run-dir", required=True, type=Path)
+    template.add_argument("--out", required=True, type=Path)
+    template.add_argument("--reviewer", default="")
+    report = commands.add_parser("report", help="read-only derived report; optional manual UIR; never rewrites the source run")
+    report.add_argument("--run-dir", required=True, type=Path)
+    report.add_argument("--out", required=True, type=Path)
+    report.add_argument("--annotations", type=Path)
+
+
+def _reporting_command(args):
+    if args.command == "uir-template":
+        annotation_template(args.run_dir, args.out, reviewer=args.reviewer)
+        print(f"Unreviewed annotation template: {args.out}")
+    else:
+        report = derived_report(args.run_dir, args.out, annotations_path=args.annotations)
+        print(render_report(report["display"]))
+        print(f"New derived report: {args.out / 'report.json'}")
+    return 0
 
 
 def _add_video_arguments(parser):
@@ -301,7 +427,10 @@ def main(argv=None):
     report.add_argument("--run-dir", required=True, type=Path)
     envinfo = commands.add_parser("libero-env-info", help="print runtime identity in the LIBERO environment")
     envinfo.add_argument("--control-freq", default=20, type=int)
+    _add_reporting_arguments(commands)
     args = parser.parse_args(argv)
+    if args.command in ("uir-template", "report"):
+        return _reporting_command(args)
     if args.command == "demo":
         from .toy import build_toy_manifest
         video_config = _video_config_from_args(args)
@@ -310,6 +439,7 @@ def main(argv=None):
         evaluate(path, args.out / "run", policy_factory="benchmark.remaining_goals.toy:make_policy",
                  policy_config={"mode": args.mode}, policy_id=f"toy-{args.mode}", max_chunk_steps=1,
                  video_config=video_config)
+        print((args.out / "run" / "report.md").read_text(encoding="utf-8"))
         print(f"Toy smoke complete: {args.out / 'run' / 'summary.json'}")
     elif args.command == "validate":
         manifest = load_manifest(args.manifest, check_files=True)
@@ -320,9 +450,11 @@ def main(argv=None):
                  policy_config=_config(args.policy_config), policy_id=args.policy_id,
                  environment_config=_config(args.environment_config), max_chunk_steps=args.max_chunk_steps,
                  candidate_replay=args.candidate_replay, video_config=_video_config_from_args(args))
+        print((args.out / "report.md").read_text(encoding="utf-8"))
         return 0 if summary.get("run_status") == "finished" else 1
     elif args.command == "summarize":
         rescore(args.run_dir)
+        print((args.run_dir / "report.md").read_text(encoding="utf-8"))
         print(f"Rescored: {args.run_dir / 'summary.json'}")
     else:
         from .libero_env import environment_identity
