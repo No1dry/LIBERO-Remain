@@ -16,6 +16,7 @@ Stage01 closed：PR #1已合并，Codex已核验main与既有归档一致；最�
 | 003 官方/Remain 00 回归入口 | X | accepted | [任务](tasks/003_normal00_regression_entry.md) | [PR #2](https://github.com/No1dry/LIBERO-Remain/pull/2)、[回应](responses/003_round1.md)、[Codex review](reviews/003_round1.md) |
 | 004 layered环境有效版本记录 | X | open | [任务](tasks/004_effective_runtime_provenance.md) | P2元数据；不改当前冻结实验 |
 | 005 显式subset pilot与隔离执行诊断 | X | open | [任务](tasks/005_subset_pilot_selection.md) | 仅CPU/fake；原指标不改；Codex审后执行 |
+| 006 完成状态观测证据闸门 | X | open | [任务](tasks/006_subset_observability_gate.md) | 先诊断/方案；不改camera/crop、不跑GPU |
 
 Stage 01 main 合并 SHA：`fea75fc170b5c3047433316566dc52528c5caf2a`，见[合并登记](responses/stage01_merge_record.md)。
 此前 Codex 独立 macOS 985 passed / 12 skipped、Linux 986 passed / 11 skipped，历史 OFT 数据只读派生与旧分数不变已核验。
@@ -31,7 +32,8 @@ Stage01的[关闭总结](../docs/stage_summaries/stage_01_metrics_uir.md)与本�
 交接盘点见[交接记录](../docs/stage_summaries/handoff_2026-10-09.md)：已知服务器目录未发现正在运行的本阶段作业或新的正式00回归结果；此前只有旧smoke与无模型预检。运行进度以新 `execute_logs/stage02_normal00/` 和原始run记录为准。
 用户随后指定新主机端口30369与 `/HUBU-AI096/zp/ICML`。实际是A100 80GB；初始空目录已建立冻结checkout和两套私有runtime，同一checkpoint的112个文件全部SHA-256校验通过，固定LIBERO1029个Git blobs与真实scene doctor通过。旧OFT tracked patch hash也一致。新机Python3.10.21，旧机3.10.20；simulation torch复用2.4.1+cu121而非旧CPU2.2.0，关键MuJoCo/robosuite版本保持并记录差异。
 00正式5+5已于北京时间19:03:44完成，10/10、错误/缺失0，official5/5、Remain5/5；逐条复算/NPZ/视频解码通过。UIR未标注，不从成功率推断克制。旧4090未启动本批GPU作业。
-Stage03状态准备于北京时间20:34:59启动，wrapper PID3667932，冻结旧已审代码6e29f；`data/stage03_basket_candidates_001`、`reports/stage03_basket_replay_001`、`execute_logs/stage03_partial/` 保存进度。技术稳定不自动认证剩余可执行性；暂未新调用VLA。
+Stage03状态准备完成，528.73秒/exit0：5组20状态构造及40次150-step回放全部通过，本地独立证据校验通过。冻结旧已审代码6e29f；完整archive、本地full_evidence、真实OFT准备RGB预览已保存。
+前置[审查1](reviews/stage03_preflight_1.md)：篮中完成物体初始视角遮挡/边缘裁剪导致可辨认证据不足，任务006先提供可观察性或非破坏观察证据；剩余执行正例也待补。不是宣称不可能观察。005/006审查及状态闸门满足前，不启动新VLA，不能把mask真值当作模型可获知的信息。
 新发现worker版本dict错误选择parent的shadowed distribution，已给X任务004。独立有效版本快照与episode.runtime确认实际加载版本正确；当前批原始记录不重写，报告此警告，不借修复换模型/协议。
 既有四视频的人工UIR语义校准仍由Codex/用户负责。
 
