@@ -16,6 +16,7 @@ from .metrics import compute_metrics, summarize_results
 from .reporting import build_display, render_report
 from .runner import run_episode
 from .schema import load_manifest, manifest_hash, validate_manifest
+from .selection import selected_episodes
 from .video import EpisodeVideoRecorder, normalize_video_config
 
 
@@ -52,7 +53,8 @@ def _config_hash(metadata: dict) -> str:
     fields = ("manifest_hash", "policy_id", "policy_factory", "policy_config",
               "environment_config", "max_chunk_steps", "harness_source_sha256")
     payload = {key: metadata[key] for key in fields}
-    for key in ("evaluation_kind", "candidate_replay_evidence", "model_runtime", "video_config"):
+    for key in ("evaluation_kind", "candidate_replay_evidence", "model_runtime", "video_config",
+                "execution_selection", "source_files", "technical_failure_policy", "evidence_protocol"):
         if key in metadata:
             payload[key] = metadata[key]
     return hashlib.sha256(json.dumps(payload, sort_keys=True, ensure_ascii=False, allow_nan=False).encode()).hexdigest()
@@ -60,7 +62,8 @@ def _config_hash(metadata: dict) -> str:
 
 def _summarize_run(manifest: dict, results: list[dict], metadata: dict | None = None) -> dict:
     """Return the original report schema without writing experiment files."""
-    summary = summarize_results(manifest["episodes"], results)
+    episodes = selected_episodes(manifest, metadata)
+    summary = summarize_results(episodes, results)
     summary["manifest_hash"] = manifest_hash(manifest)
     summary["environment"] = manifest["environment"]
     summary["is_toy_fixture"] = manifest["environment"]["name"] == "toy"
@@ -71,14 +74,21 @@ def _summarize_run(manifest: dict, results: list[dict], metadata: dict | None = 
         # A legal declaration and completed rollout do not grant publication
         # approval, establish calibration, or validate checkpoint provenance.
         summary["release_authorized"] = False
+        if "execution_selection" in metadata:
+            selection = metadata["execution_selection"]
+            summary["execution_selection"] = selection
+            summary["not_selected"] = {"count": len(selection["not_selected_ids"]),
+                                       "episode_ids": selection["not_selected_ids"]}
+            summary["stop_reason"] = metadata.get("stop_reason")
+            summary["runtime_counts"] = metadata.get("runtime_counts")
         if metadata.get("video_config", {}).get("enabled"):
             videos = [result["video"] for result in results if "video" in result]
             summary["video_summary"] = {
-                "enabled": True, "expected": len(manifest["episodes"]), "reported": len(videos),
+                "enabled": True, "expected": len(episodes), "reported": len(videos),
                 "saved": sum(video.get("status") == "saved" for video in videos),
                 "video_error": sum(video.get("status") == "video_error" for video in videos),
                 "empty": sum(video.get("status") == "empty" for video in videos),
-                "missing": len(manifest["episodes"]) - len(videos),
+                "missing": len(episodes) - len(videos),
                 "affects_metrics": False,
             }
     return summary
@@ -93,7 +103,7 @@ def _save_report(output: Path, manifest: dict, results: list[dict]) -> dict:
               "remaining_success", "preservation_success", "stable_final_success",
               "task_success_by_horizon", "goal_regression", "regression_steps",
               "first_all_success_step", "explicit_stop_step", "n_steps", "error"]
-    expected = {e["episode_id"]: e for e in manifest["episodes"]}
+    expected = {e["episode_id"]: e for e in selected_episodes(manifest, metadata)}
     with (output / "episodes.csv").open("w", encoding="utf-8-sig", newline="") as file:
         writer = csv.DictWriter(file, fieldnames=fields)
         writer.writeheader()
@@ -107,7 +117,7 @@ def _save_report(output: Path, manifest: dict, results: list[dict]) -> dict:
             if result["status"] != "completed":
                 row["n_steps"] = result.get("n_steps")
             writer.writerow({key: row.get(key) for key in fields})
-    display = build_display(manifest, results, summary)
+    display = build_display(manifest, results, summary, metadata=metadata)
     (output / "report.md").write_text(render_report(display), encoding="utf-8")
     return summary
 
@@ -240,7 +250,7 @@ def read_run(directory: Path) -> tuple[dict, dict, list[dict]]:
     directory = Path(directory)
     metadata = json.loads((directory / "run.json").read_text(encoding="utf-8"))
     if metadata.get("evaluation_kind") == "candidate_pilot":
-        manifest = json.loads((directory / "manifest.json").read_text(encoding="utf-8"))
+        manifest = json.loads((directory / "manifest.json").read_text(encoding="utf-8-sig"))
         validate_manifest(manifest, check_files=False, allow_unreviewed=True)
         if any(e["construction"]["legal"] is not False for e in manifest["episodes"]):
             raise ValueError("candidate pilot changed its unreviewed declarations")
@@ -254,7 +264,10 @@ def read_run(directory: Path) -> tuple[dict, dict, list[dict]]:
     if metadata.get("run_config_sha256") != _config_hash(metadata):
         raise ValueError("run configuration hash mismatch")
     results = [json.loads(path.read_text(encoding="utf-8")) for path in sorted((directory / "episodes").glob("*.json"))]
-    expected = {episode["episode_id"]: episode for episode in manifest["episodes"]}
+    expected = {episode["episode_id"]: episode for episode in selected_episodes(manifest, metadata)}
+    if "execution_selection" in metadata:
+        from .pilot import validate_source_snapshot
+        validate_source_snapshot(directory, metadata)
     for result in results:
         for field in ("manifest_hash", "policy_id", "run_id", "run_config_sha256"):
             if result.get(field) != metadata[field]:
@@ -265,9 +278,26 @@ def read_run(directory: Path) -> tuple[dict, dict, list[dict]]:
         for field in ("task_id", "suite", "task_name", "instruction", "seed", "state_sha256"):
             if result.get(field) != episode[field]:
                 raise ValueError(f"episode metadata mismatch: {field}")
+        if "execution_selection" in metadata:
+            from .pilot import evidence_identity
+            from .pilot_evidence import validate_execution_evidence
+            selection = metadata["execution_selection"]
+            row = next(r for r in selection["episodes"] if r["episode_id"] == episode["episode_id"])
+            for field, wanted in (("selection_sha256", selection["selection_sha256"]),
+                                  ("instruction_mode", selection["instruction_mode"]),
+                                  ("effective_instruction", row["effective_instruction"])):
+                if result.get(field) != wanted:
+                    raise ValueError(f"selected episode metadata mismatch: {field}")
+            unavailable = result.get("execution_evidence") == {"status": "unavailable", "reason": "episode_not_started"}
+            if unavailable:
+                if not (result["status"] == "runtime_error" and result.get("error_phase") in ("model_load", "env_init", "video_setup", "evidence_setup")
+                        and result.get("n_steps") == 0 and result.get("policy_queries") == 0 and result.get("trace") == []):
+                    raise ValueError("invalid unavailable execution evidence")
+            else:
+                validate_execution_evidence(directory, result, episode, evidence_identity(metadata, episode))
     if len({episode["suite"] for episode in manifest["episodes"]}) != 1:
         raise ValueError("one run must use exactly one suite; do not pool suites")
-    summarize_results(manifest["episodes"], results)
+    summarize_results(list(expected.values()), results)
     return metadata, manifest, results
 
 
@@ -344,7 +374,7 @@ def derived_report(run_dir: Path, output: Path, *, annotations_path: Path | None
         uir = summarize_annotations(metadata, manifest, results, annotations)
         uir["annotation_file_sha256"] = hashlib.sha256(raw).hexdigest()
         uir["video_evidence_sha256"] = _video_evidence_hashes(directory, uir["by_episode"])
-    display = build_display(manifest, results, summary, uir=uir)
+    display = build_display(manifest, results, summary, uir=uir, metadata=metadata)
     source_paths = [directory / "run.json", directory / "manifest.json", *sorted((directory / "episodes").glob("*.json"))]
     provenance = {path.relative_to(directory).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest()
                   for path in source_paths}

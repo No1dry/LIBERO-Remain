@@ -4,15 +4,34 @@ from __future__ import annotations
 from collections import defaultdict
 from statistics import mean
 
-from .metrics import compute_metrics
+from .metrics import compute_metrics, summarize_results
+from .selection import ORACLE_MODE, selected_episodes
 
 
-def build_display(manifest, results, summary, *, uir=None):
+def build_display(manifest, results, summary, *, uir=None, metadata=None):
+    episodes = selected_episodes(manifest, metadata)
+    selection = (metadata or {}).get("execution_selection")
     suites = {episode["suite"] for episode in manifest["episodes"]}
     if len(suites) != 1:
         raise ValueError("display requires exactly one suite; do not pool suites")
     first_steps = defaultdict(list)
-    expected = {episode["episode_id"]: episode for episode in manifest["episodes"]}
+    expected = {episode["episode_id"]: episode for episode in episodes}
+    if selection:
+        # Recompute only the selected expected set; an old full-bank cached
+        # summary must not create bogus missing rows for deliberately unselected IDs.
+        summary = {**summary, **summarize_results(episodes, results)}
+        instructions = {row["episode_id"]: row for row in selection["episodes"]}
+        for result in results:
+            instruction = instructions[result["episode_id"]]
+            for key, value in (("selection_sha256", selection["selection_sha256"]),
+                               ("instruction_mode", selection["instruction_mode"]),
+                               ("instruction", instruction["original_instruction"]),
+                               ("effective_instruction", instruction["effective_instruction"])):
+                if result.get(key) != value:
+                    raise ValueError(f"display result does not match selection {key}")
+        if uir is not None and (uir.get("selection_sha256") != selection["selection_sha256"]
+                                or uir.get("instruction_mode") != selection["instruction_mode"]):
+            raise ValueError("UIR report does not identify this execution selection")
     for result in results:
         if result["status"] != "completed":
             continue
@@ -41,17 +60,30 @@ def build_display(manifest, results, summary, *, uir=None):
             ("annotated", "unknown", "unannotated", "coverage", "eligible_coverage")} if annotation else {
                 "annotated": 0, "unknown": 0, "unannotated": group["completed"],
                 "coverage": 0.0, "eligible_coverage": 0.0 if group["completed"] else None})})
-    for stratum in ("normal_00", "partial_macro", "terminal_11"):
-        primary.append({"task_id": "ALL (task/mask macro)", "mask": stratum,
-            "joint_success_rate": summary[stratum]["valid_joint_success"],
-            "unnecessary_intervention_rate": uir[stratum]["rate"] if uir else None})
-    return {"schema_version": "remaining-goals-display-v1", "suite": next(iter(suites)),
+    if selection is None or selection["masks"] == "all":
+        for stratum in ("normal_00", "partial_macro", "terminal_11"):
+            primary.append({"task_id": "ALL (task/mask macro)", "mask": stratum,
+                "joint_success_rate": summary[stratum]["valid_joint_success"],
+                "unnecessary_intervention_rate": uir[stratum]["rate"] if uir else None})
+    display = {"schema_version": "remaining-goals-display-v1", "suite": next(iter(suites)),
             "main": primary, "diagnostics": diagnostics, "annotation_coverage": annotations,
             "joint_denominator": "Completed valid rollouts; original numerator/denominator remain in summary.json.",
             "uir_denominator": "Manually reviewed true + false labels on completed valid rollouts; unknown excluded.",
             "macro_rule": "Equal masks within each task, then equal tasks; no missing task-mask cell is dropped.",
             "synthetic": bool(uir and uir.get("synthetic")),
             "is_toy_fixture": summary.get("is_toy_fixture", False)}
+    if selection:
+        diagnostic = selection["instruction_mode"] == ORACLE_MODE
+        display.update(selection_sha256=selection["selection_sha256"], purpose=selection["purpose"],
+                       instruction_mode=selection["instruction_mode"], diagnostic=diagnostic,
+                       selection={key: selection[key] for key in
+                                  ("masks", "source_expected", "expected", "selected_ids", "not_selected_ids")},
+                       notice=("ORACLE DIAGNOSTIC ONLY: initial goal truth selects the remaining instruction. "
+                               "Not an original-instruction baseline, causal proof, or performance upper bound. "
+                               "Do not pool with main pilot scores." if diagnostic else
+                               "Selected original-instruction pilot. Unselected source episodes are not missing; "
+                               "the complete source bank remains unchanged."))
+    return display
 
 
 def _cell(value):
@@ -70,10 +102,17 @@ def _table(headers, rows):
 
 
 def render_report(display):
-    lines = [f"# LIBERO-Remain results — {_cell(display['suite'])}", ""]
+    diagnostic = display.get("diagnostic", False)
+    title = "ORACLE DIAGNOSTIC results" if diagnostic else "results"
+    lines = [f"# LIBERO-Remain {title} — {_cell(display['suite'])}", ""]
+    if display.get("selection"):
+        selection = display["selection"]
+        lines += [f"**{display['notice']}**", "",
+                  f"Selected expected: {selection['expected']} / source episodes: {selection['source_expected']}. "
+                  f"Not selected: {len(selection['not_selected_ids'])}; these IDs are not runtime failures or missing results.", ""]
     if display.get("synthetic") or display.get("is_toy_fixture"):
         lines += ["**SYNTHETIC / TOY: software verification only; not human-reviewed VLA evidence.**", ""]
-    lines += ["## Main results", ""]
+    lines += ["## Oracle diagnostic scores (separate from main results)" if diagnostic else "## Main results", ""]
     lines += _table(["Task", "Mask / stratum", "Joint Success Rate", "Unnecessary Intervention Rate (UIR)"],
                     [(r["task_id"], r["mask"], _rate(r["joint_success_rate"]),
                       _rate(r["unnecessary_intervention_rate"])) for r in display["main"]])
