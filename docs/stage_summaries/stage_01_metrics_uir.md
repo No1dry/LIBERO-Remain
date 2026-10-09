@@ -1,7 +1,8 @@
 # Stage 01 总结：指标精简、人工 UIR 与解释器修复
 
 日期：2026-10-09。作者：Codex。
-状态：**代码功能 accepted，待 PR #1 合并与发布版本确认后 closed**。
+状态：**closed**。2026-10-09由Codex核验PR #1已合并与main/本地备份一致。
+发布main SHA：`fea75fc170b5c3047433316566dc52528c5caf2a`。
 PR：https://github.com/No1dry/LIBERO-Remain/pull/1
 已审 HEAD：`7ca5cec421925bb14cbbbf7997ddc8e9294db0c9`。
 代码实现 commit：`46d935b1b8e8109bbc840a2e4347ed520cdd4df7`。
@@ -41,11 +42,13 @@ bootstrap CPU 单 index 兼容性问题未解决；已安装环境中的当前�
 ## 交流、归档与移交
 
 本阶段交流：tasks/001、tasks/002 及其参考 patch；responses/001_round1、002_round1；
-reviews/stage01_round1。当前均保留，PR 未合并前不清理。
+reviews/stage01_round1。当前暂保留供任务003追踪；更新后的总结再次完成GitHub/本地备份核验后，
+可按协作清理规则处理，但不随意删除引用尚需使用的文件。
 阶段总结同步保存在用户本地 `research_archive/LIBERO-Remain/stage_summaries/`，
 backup_manifest 记录来源 commit 和 SHA-256；发布 closed 时再更新状态与来源。
 
-X 获准在无未审实现变更的前提下合并 PR #1、记录 main SHA。Codex 核验合并/备份后关闭阶段。
+X已按明确授权合并PR #1，合并提交已独立核验；此前main总结与本地归档字节/hash一致。
+Codex关闭Stage01，更新本总结及本地备份。代码验收不等于已有真实UIR标签。
 任务 003 属 Stage 02，仍 open，不能因 Stage 01 关闭被删除。
 
 下一步先做既有四视频人工 UIR 校准；新 GPU 工作需等待任务 003 的官方/Remain 00 回归
