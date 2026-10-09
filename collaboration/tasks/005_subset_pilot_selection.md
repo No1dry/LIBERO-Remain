@@ -18,11 +18,21 @@
 4. 提供不加载模型/不创建仿真的dry-plan，输出源/replay身份、task/index/mask/IDs、原指令、有效指令、预算、模型配置及准确expected数量。来源0..4不是“前5个模型会成功的来源”。
 5. 10/01沿用H520/W150，策略670步；11沿用W150，不真值early-stop、不改变动作/归一化/RNG。每episode重置seed7与队列沿用已有协议；模型load/reset次数如实声明。
 
+## A2. 必须落实的技术暂停、实际step0和决策时点证据
+
+Codex核对X的独立回应后纳入本任务硬验收，不留作执行者“盯日志”的约定：
+
+1. 显式pilot技术故障暂停。模型加载/初始化/运行接口错误、初态不匹配/恢复错误、录像错误或缺失、实际step0保存/验证失败等发生后，落盘已有/部分证据、停止后续所选case、登记准确停止原因并关闭资源。原expected15（诊断10）不缩小；未尝试项保留missing，出错与policy任务失败分开。完整技术执行但success=False继续，不筛样本。旧默认all继续行为保持兼容，pilot暂停策略预先声明并纳入运行身份；不能只靠exit0判断。
+2. 保存本次实际env.reset返回、runner白名单整理后用于首次predict的step0 typed NPZ，绑定实际episode/选择/模式和观测hash。不能以构造阶段NPZ冒充；不为存证额外reset/render/step，不修改返回观测或模型输入，不放入目标真值。源构造观测和此次实际起点分别标记；错误时仍保留可用起点/partial证据。
+3. 记录真实policy query的决策观测步、query序号、实际动作块长度/执行区间或等效可核验映射，首次query对齐观测0，后续按真实队列耗尽位置，不假设所有模型固定8步。错误/STOP/最后截断chunk正确保留。不为记录增加predict/render/step或改变chunk/RNG。可保存观测hash辅助绑定，不要求保存所有最终encoder tensors/全部query NPZ。
+4. 模型真实输入按既有OFT预处理/crop与实际proprio/指令解释；录像仅辅助，不冒称未裁剪全幅就是模型所见。新反馈出现在chunk中间时，下一query之前的预排动作不能直接被称为“拒绝利用反馈”。事件时点是诊断证据，不增加主metric。
+
 ## B. 明确隔离的oracle-remaining-initial诊断
 
 用途仅是同一状态的剩余执行可行性正证据，不是主模型分数或新方法成绩。
 
 - 显式选择诊断模式；只对10/01运行，5×2=expected10；不对11虚构剩余指令。原模式默认原完整指令，禁止从mask/predicate为原模式增删指令。
+- 源episode的官方instruction和完整goal specs保持不变，仍用于恢复/身份/评分。只在显式诊断的policy调用边界传固定effective_instruction，并绑定两者；不能通过改源episode instruction绕过环境或read_run/标注身份。
 - 诊断仅按初始mask选未完成goal的catalog language；本批单剩余目标。完整原始指令、有效指令、mask来源、诊断purpose/mode/hash显式保存，不能改源manifest以掩盖真值使用。
 - 与原模式使用完全相同state、恢复、goal specs/预算/保持/评分与checkpoint，仅诊断的有效指令不同。任务完整goal/preservation评估不删已完成goal；适配器不接收额外真值传感器。
 - 与主结果分独立输出/用途；诊断JSR不混入主JSR/UIR，派生报告显著标明oracle-conditioned diagnostic。joint成功提供正证据；失败仅未证实，不声称物理不可达。
@@ -33,12 +43,14 @@
 - 主表10/01/11各一行，JSR/UIR两列；00能力控制另存旧报告，不添加第三个主分数或将00/11并入partial macro。
 - UIR template/report的身份和expected分母必须绑定实际执行选择；未标注=N/A，unknown/覆盖率完整，不把未选00列为UIR缺失。
 - 信息获取必要性纳入人工rubric：看桌面、找篮子、移动腕部视角、合理无破坏试抓及空抓反馈不自动记UIR。不得实现“初图目标不可见即invalid”或“尝试次数超阈值自动UIR”等过滤/计分；合理探查和持续无效重做由完整证据判断，疑义unknown。
+- UIR事件必须绑定当时已满足的目标（或整体完成）、操作对象/目标及缺乏任务/合理信息获取必要性的证据。对尚未完成目标反复抓取失败属于执行失败，不因重复/无进展直接记UIR；评估器真值不能替代策略当时的实际信息和query机会。无法确认对象、状态、必要性或审核覆盖保留unknown。
 - 旧10项原分数/trace保留，主指标语义不变。reason/evidence可以记“外部已完成目标重做/整体完成后多余操作/必要检查或收尾”，不得自动从动作、闭爪、predicate、接触或没STOP赋UIR布尔值。
 - 不改写历史raw、旧summary、旧UIR标签；只读派生到新目录。旧默认all与既有测试/模板/报告不回归。
 
 ## CPU/fake验收要求
 
 至少覆盖：源仍完整校验；15和10准确IDs/分母；00未选不调用；mask宽度/重复/未知拒绝；selector/源/replay/hash篡改拒绝；实际所选error/missing保留；primary原指令严格不变且无真值泄漏；诊断指令准确且单独标注；11没有虚构oracle输入；670/150与seed/queue不变；derived-report/uir-template/read_run/rescore兼容；源/旧报告全字节不变；新输出不覆盖。
+补充必测：runtime/invalid-reset/video/actual-step0错误会暂停且后续不调用、expected不缩小/missing准确；success=False完整case仍继续；实际reset观测区别构造参考且typed NPZ/hash正确；捕获没有额外reset/render/step/predict和输入变异/真值泄漏；query步及chunk截断/STOP/异常对齐；oracle只在policy调用边界改有效指令；默认all旧行为/旧raw字节兼容。UIR仍人工，不新增未完成目标失败自动标签。
 如果同时提交004修复，单独commit与测试说明，由Codex分别验收。不要扩成未请求的model/evaluator重构。
 
 ## 交付

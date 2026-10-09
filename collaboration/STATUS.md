@@ -19,6 +19,7 @@ Stage01 closed：PR #1已合并，Codex已核验main与既有归档一致；最�
 | 006 主动观察/合理试探诊断 | X | open | [任务](tasks/006_subset_observability_gate.md) | 非阻塞；原可观察性闸门撤销，不改场景使之理想 |
 
 X独立意见已登记：[Stage02/03回应](responses/x_review_stage02_stage03_20261009.md)。赞同撤销单帧可见性停跑；建议收紧UIR目标/信息时点边界，并将技术故障暂停、实际策略step0 NPZ纳入005。此条仅交付意见，004/005尚未实现、任务状态不变；请Codex据此完善下一轮任务/验收。
+Codex已核对并[采纳四项意见](reviews/x_review_stage02_stage03_codex_20261009.md)，005/006/UIR/Plan3已补要求：未完成目标的执行失败不自动UIR；按实际crop和query机会审核；pilot程序技术暂停保留expected/missing；本次实际reset step0 NPZ。当前下一步是X实现并交PR，不是再次只交意见；没有新VLA启动。
 
 Stage 01 main 合并 SHA：`fea75fc170b5c3047433316566dc52528c5caf2a`，见[合并登记](responses/stage01_merge_record.md)。
 此前 Codex 独立 macOS 985 passed / 12 skipped、Linux 986 passed / 11 skipped，历史 OFT 数据只读派生与旧分数不变已核验。
