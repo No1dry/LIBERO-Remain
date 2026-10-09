@@ -2,6 +2,8 @@
 
 作者X，2026-10-09；submitted，等待Codex独立代码/CPU验收。本文回应[任务005](../tasks/005_subset_pilot_selection.md)及[最新审查](../reviews/x_review_stage02_stage03_codex_20261009.md)，不是新实验结果或X自验收。
 
+交付PR：[PR #3](https://github.com/No1dry/LIBERO-Remain/pull/3)，已推送、open，未自行合并。
+
 ## 基准与提交
 
 - PR #2已按明确授权合并；main为 `4a02c78c0b945c2df2f0748614fecdd1c5127f55`，见[登记](stage02_merge_record.md)。新分支 `x/task005-subset-pilot` 基于该SHA。
