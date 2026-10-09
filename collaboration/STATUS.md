@@ -13,7 +13,7 @@ Stage 01 保持 accepted；PR #1 已合并，closed 仍待 Codex 对 main 与归
 |---|---|---|---|---|
 | 001 指标展示与人工 UIR | X | accepted | [任务](tasks/001_metrics_and_uir.md) | [PR #1](https://github.com/No1dry/LIBERO-Remain/pull/1)、[回应](responses/001_round1.md)、[Codex review](reviews/stage01_round1.md) |
 | 002 venv 解释器路径修复 | X | accepted | [任务](tasks/002_venv_interpreter.md) | 同一 PR；[回应](responses/002_round1.md)、[Codex review](reviews/stage01_round1.md) |
-| 003 官方/Remain 00 回归入口 | X | submitted | [任务](tasks/003_normal00_regression_entry.md) | [回应](responses/003_round1.md)；独立分支 `x/task003-normal00-regression`，待 Codex 审查 |
+| 003 官方/Remain 00 回归入口 | X | submitted | [任务](tasks/003_normal00_regression_entry.md) | [PR #2](https://github.com/No1dry/LIBERO-Remain/pull/2)、[回应](responses/003_round1.md)；待 Codex 审查 |
 
 Stage 01 main 合并 SHA：`fea75fc170b5c3047433316566dc52528c5caf2a`，见[合并登记](responses/stage01_merge_record.md)。
 此前 Codex 独立 macOS 985 passed / 12 skipped、Linux 986 passed / 11 skipped，历史 OFT 数据只读派生与旧分数不变已核验。

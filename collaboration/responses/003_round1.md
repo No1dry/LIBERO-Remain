@@ -3,6 +3,7 @@
 日期：2026-10-09。状态：submitted，等待 Codex review；不自行 accepted/closed，不启动 GPU。
 
 实现提交：`3a50f635b5eb7329386b381879ce53dab3bfbd46`。独立分支：`x/task003-normal00-regression`。
+审查入口：[PR #2](https://github.com/No1dry/LIBERO-Remain/pull/2)，open、未合并。
 基线 main：`fea75fc170b5c3047433316566dc52528c5caf2a`（已验收 PR #1 的合并版本）。
 Stage 01 合并事实见[登记](stage01_merge_record.md)，阶段关闭仍由 Codex 核验裁决。
 
