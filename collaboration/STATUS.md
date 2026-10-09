@@ -2,7 +2,7 @@
 
 更新：2026-10-09（用户确认执行职责移交并推进实验）。代码：X；研究决策、代码审查、实验执行与结果审查：Codex。后续不再使用 DeepSeek。
 
-当前交付：[PR #3](https://github.com/No1dry/LIBERO-Remain/pull/3)，004/005代码与006文档已推送，待Codex审查；不是已合并或已启动实验。
+当前交付：[PR #3](https://github.com/No1dry/LIBERO-Remain/pull/3)经Codex[独立审查](reviews/005_round1.md)accepted：macOS1231 passed/12 skipped、Linux1243 passed。X可合并登记；实验已冻结04508dc，不随分支移动。
 
 ## 当前大阶段
 
@@ -16,9 +16,9 @@ Stage01 closed：PR #1已合并，Codex已核验main与既有归档一致；最�
 | 001 指标展示与人工 UIR | X | closed | [任务](tasks/001_metrics_and_uir.md) | PR #1已合并；功能验收完成 |
 | 002 venv 解释器路径修复 | X | closed | [任务](tasks/002_venv_interpreter.md) | 同上；阶段总结/本地归档已核验 |
 | 003 官方/Remain 00 回归入口 | X | accepted | [任务](tasks/003_normal00_regression_entry.md) | [PR #2](https://github.com/No1dry/LIBERO-Remain/pull/2)、[回应](responses/003_round1.md)、[Codex review](reviews/003_round1.md) |
-| 004 layered环境有效版本记录 | X | submitted | [任务](tasks/004_effective_runtime_provenance.md) | 独立提交7318c4b；[回应](responses/004_round1.md)；旧raw不改 |
-| 005 显式subset pilot与隔离执行诊断 | X | submitted | [任务](tasks/005_subset_pilot_selection.md) | 实现7c47c12；[交付](responses/005_round1.md)、[命令](../docs/remaining_goals_subset_pilot.md)；待Codex验收 |
-| 006 主动观察/合理试探诊断 | X | submitted | [任务](tasks/006_subset_observability_gate.md) | [非阻塞诊断文档](responses/006_round1.md)；不改001/camera/crop |
+| 004 layered环境有效版本记录 | X | accepted | [任务](tasks/004_effective_runtime_provenance.md) | 独立提交7318c4b；Codex测试/审查通过；旧raw不改 |
+| 005 显式subset pilot与隔离执行诊断 | X | accepted | [任务](tasks/005_subset_pilot_selection.md) | 实现7c47c12；冻结04508dc；主15已完成、诊断10进行中 |
+| 006 主动观察/合理试探诊断 | X | accepted（文档） | [任务](tasks/006_subset_observability_gate.md) | 非阻塞规则认可；不改001/camera/crop、不等理想初帧 |
 
 X此前[独立意见](responses/x_review_stage02_stage03_20261009.md)已被Codex[采纳](reviews/x_review_stage02_stage03_codex_20261009.md)。现已交付004/005实现与006文档：固定选择/分母、技术暂停、实际reset step0、真实query/chunk记录、独立oracle与UIR边界均落实。最终CPU回归1228 passed/15 skipped（70.13s）。下一步是Codex独立审查新PR并冻结实验HEAD；X不自行accepted/merge，不启动新VLA。
 
@@ -37,7 +37,8 @@ Stage01的[关闭总结](../docs/stage_summaries/stage_01_metrics_uir.md)与本�
 用户随后指定新主机端口30369与 `/HUBU-AI096/zp/ICML`。实际是A100 80GB；初始空目录已建立冻结checkout和两套私有runtime，同一checkpoint的112个文件全部SHA-256校验通过，固定LIBERO1029个Git blobs与真实scene doctor通过。旧OFT tracked patch hash也一致。新机Python3.10.21，旧机3.10.20；simulation torch复用2.4.1+cu121而非旧CPU2.2.0，关键MuJoCo/robosuite版本保持并记录差异。
 00正式5+5已于北京时间19:03:44完成，10/10、错误/缺失0，official5/5、Remain5/5；逐条复算/NPZ/视频解码通过。UIR未标注，不从成功率推断克制。旧4090未启动本批GPU作业。
 Stage03状态准备完成，528.73秒/exit0：5组20状态构造及40次150-step回放全部通过，本地独立证据校验通过。冻结旧已审代码6e29f；完整archive、本地full_evidence、真实OFT准备RGB预览已保存。
-最新[审查2](reviews/stage03_preflight_2.md)撤销[审查1](reviews/stage03_preflight_1.md)的可观察性停跑条件。保留当前001，允许看桌面、查篮子、合理空抓/非破坏试探及反馈调整；006仅诊断，不要求X把场景变容易。005已交付，当前待Codex验收后冻结运行，尚未启动新VLA；不将mask真值喂给主模型。
+最新[审查2](reviews/stage03_preflight_2.md)撤销初始可观察性停跑条件。保留001，允许合理观察/试探；005已独立验收并在原场景运行，主模型输入无mask/剩余提示。
+Stage03主15条于北京时间10月10日00:25:22完成（639.72秒）：0错误/缺失，JSR10=2/5、01=5/5、11=5/5；15段视频/实际step0/query证据核验通过。初始成果均保持，10的3条为预算内剩余任务未完成（其中source2晚至663步），不提前归因不会跳过；UIR未标注=N/A。固定10条隔离oracle诊断另目录运行中，driver3683999，不混主成绩。下一步由Codex核验诊断/视频/标注，X合并PR #3登记；Stage03尚未完结，不扩大实验。
 新发现worker版本dict错误选择parent的shadowed distribution，已给X任务004。独立有效版本快照与episode.runtime确认实际加载版本正确；当前批原始记录不重写，报告此警告，不借修复换模型/协议。
 既有四视频的人工UIR语义校准仍由Codex/用户负责。
 
