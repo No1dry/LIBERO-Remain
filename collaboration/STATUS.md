@@ -27,7 +27,8 @@ X测试1092 passed/15 skipped；Codex独立macOS1095 passed/12 skipped、Linux10
 Stage01的[关闭总结](../docs/stage_summaries/stage_01_metrics_uir.md)与本地备份同步更新。
 下一步Codex按[实验说明](../docs/experiment_plans/stage02_normal00_first_batch.md)执行，X完成PR #2合并登记。冻结后不随分支更新；任何新增实现须重新审查。
 交接盘点见[交接记录](../docs/stage_summaries/handoff_2026-10-09.md)：已知服务器目录未发现正在运行的本阶段作业或新的正式00回归结果；此前只有旧smoke与无模型预检。运行进度以新 `execute_logs/stage02_normal00/` 和原始run记录为准。
-用户随后指定新主机端口30369与 `/HUBU-AI096/zp/ICML`。实际是A100 80GB，新项目目录为空；Codex已在新机建立冻结checkout，正在迁移旧模型/源码并配置独立runtime。旧4090未启动本批GPU作业；新机环境与资产验证、两条smoke通过之前，不运行正式10条。
+用户随后指定新主机端口30369与 `/HUBU-AI096/zp/ICML`。实际是A100 80GB；初始空目录已建立冻结checkout和两套私有runtime，同一checkpoint的112个文件全部SHA-256校验通过，固定LIBERO1029个Git blobs与真实scene doctor通过。旧OFT tracked patch hash也一致。新机Python3.10.21，旧机3.10.20；simulation torch复用2.4.1+cu121而非旧CPU2.2.0，关键MuJoCo/robosuite版本保持并记录差异。
+Codex于2026-10-09 10:39:35 UTC启动index0双协议技术smoke（wrapper PID3652955），目前不宣称新的模型分数；新机两条smoke通过之前不运行正式10条。旧4090未启动本批GPU作业。
 既有四视频的人工UIR语义校准仍由Codex/用户负责。
 
 ## 已关闭阶段
