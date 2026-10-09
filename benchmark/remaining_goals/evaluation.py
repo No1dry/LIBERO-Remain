@@ -111,6 +111,34 @@ def _relative(base, value):
     return path.resolve() if path.is_absolute() else (base / path).resolve()
 
 
+def pilot(config_path, manifest_path, output, *, masks, instruction_mode="original",
+          dry=False, candidate_replay=None, environment_config=None, video_config=None):
+    """Plan or execute an explicit subset without altering the complete source bank."""
+    from .pilot import dry_plan, evaluate_subset
+    config = read_json(config_path)
+    manifest = read_json(manifest_path)
+    suites = {e["suite"] for e in manifest["episodes"]}
+    if len(suites) != 1:
+        raise ValueError("one pilot must use exactly one suite")
+    checked = check_config(config, next(iter(suites)))
+    if not dry and checked["errors"]:
+        raise ValueError("configuration is not ready:\n" + "\n".join(checked["errors"]))
+    kwargs = dict(policy_config=config, policy_id=config["policy_id"],
+                  max_chunk_steps=config["execution"]["max_chunk_steps"], masks=masks,
+                  instruction_mode=instruction_mode, candidate_replay=candidate_replay,
+                  environment_config=environment_config, video_config=video_config)
+    if dry:
+        report = dry_plan(manifest_path, **kwargs)
+        report["configuration_readiness"] = checked
+        output = Path(output)
+        output.parent.mkdir(parents=True, exist_ok=True)
+        with output.open("x", encoding="utf-8") as file:
+            file.write(json.dumps(report, ensure_ascii=False, indent=2, allow_nan=False) + "\n")
+        return report
+    return evaluate_subset(manifest_path, output,
+                           policy_factory="benchmark.remaining_goals.isolated_policy:make_policy", **kwargs)
+
+
 def matrix(plan_path, output, *, max_workers=1, video_config=None):
     """Run isolated jobs with one explicit video configuration for the matrix."""
     video_config = normalize_video_config(video_config)
@@ -290,6 +318,16 @@ def main(argv=None):
             _add_video_arguments(command)
         else:
             command.add_argument("--episode-index", type=int, default=0)
+    subset = commands.add_parser("pilot", help="explicit subset with technical fail-fast and execution evidence")
+    subset.add_argument("--config", type=Path, required=True)
+    subset.add_argument("--manifest", type=Path, required=True)
+    subset.add_argument("--out", type=Path, required=True)
+    subset.add_argument("--masks", nargs="+", required=True)
+    subset.add_argument("--instruction-mode", choices=("original", "oracle-remaining-initial"), default="original")
+    subset.add_argument("--dry-plan", action="store_true", help="write a new JSON plan; no model or simulator")
+    subset.add_argument("--candidate-replay", type=Path)
+    subset.add_argument("--environment-config", type=Path)
+    _add_video_arguments(subset)
     batch = commands.add_parser("matrix")
     batch.add_argument("--plan", type=Path, required=True)
     batch.add_argument("--out", type=Path, required=True)
@@ -312,6 +350,17 @@ def main(argv=None):
         report = run(args.config, args.manifest, args.out, candidate_replay=args.candidate_replay,
                      environment_config=read_json(args.environment_config) if args.environment_config else None,
                      video_config=_video_config_from_args(args))
+        print((args.out / "report.md").read_text(encoding="utf-8"))
+        return 0 if report.get("run_status") == "finished" and report["counts"]["completed"] == report["counts"]["expected"] else 1
+    if args.command == "pilot":
+        report = pilot(args.config, args.manifest, args.out, masks=args.masks,
+                       instruction_mode=args.instruction_mode, dry=args.dry_plan,
+                       candidate_replay=args.candidate_replay,
+                       environment_config=read_json(args.environment_config) if args.environment_config else None,
+                       video_config=_video_config_from_args(args))
+        if args.dry_plan:
+            print(f"Dry plan: expected={report['expected']}, weights_loaded=false; {args.out}")
+            return 0
         print((args.out / "report.md").read_text(encoding="utf-8"))
         return 0 if report.get("run_status") == "finished" and report["counts"]["completed"] == report["counts"]["expected"] else 1
     if args.command == "matrix":

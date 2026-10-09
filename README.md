@@ -4,7 +4,7 @@
 
 LIBERO-Remain is the evaluation contribution of the **Learning_Not_to_Act** project. Built on [LIBERO](https://github.com/Lifelong-Robot-Learning/LIBERO), it provides paired-state construction, independent simulator replay, a shared rollout and scoring interface, and adapters for OpenVLA, OpenVLA-OFT, π0, π0.5, GR00T N1.7 and UniVLA. It is not an official LIBERO release. Model weights and installed environments are not included.
 
-本项目评测：**外部过程提前完成部分任务后，VLA 能否从当前观测选择剩余目标，并保留已有成果？** 模型始终收到原始完整指令，不收到完成掩码或仿真目标真值。
+本项目评测：**外部过程提前完成部分任务后，VLA 能否从当前观测选择剩余目标，并保留已有成果？** 主评测模型收到原始完整指令，不收到完成掩码或仿真目标真值。显式 `oracle-remaining-initial` 仅用于隔离执行诊断，单独报告。
 
 LIBERO-Remain 是 Learning_Not_to_Act 的可复用评测套件。仓库改名和录像功能更新不表示已重新构造历史状态；工件仍按其实际版本、环境指纹和验证记录解释。
 
@@ -93,6 +93,8 @@ python scripts/remaining_libero.py evaluate run \
 ```
 
 `check`只做静态检查；`probe`做一次真实模型推理但不推进仿真；`run --candidate-replay`是明确标记的候选pilot。解释partial结果前，还需保存官方原接口00与本协议00回归。
+
+仅执行完整bank中的10/01/11时，使用新增 `evaluate pilot --masks 10 01 11`；完整源仍接受原校验，未选00明确列为not_selected。该入口提供无模型dry-plan、技术故障暂停、实际step0 typed NPZ和query/chunk记录。Stage03固定15条主pilot与10条隔离诊断的命令、输出及UIR边界见[子集pilot指南](docs/remaining_goals_subset_pilot.md)。新增代码须经Codex验收后冻结运行，CPU测试不代表VLA结果。
 
 填好全部六份local配置后，可用一条matrix命令串行运行：
 
