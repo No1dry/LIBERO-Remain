@@ -1,11 +1,11 @@
 # 当前协作状态
 
-更新：2026-10-09（Codex 验收任务003）。代码：X；代码与实验审查：Codex；实验执行：DeepSeek。
+更新：2026-10-09（用户确认执行职责移交并推进实验）。代码：X；研究决策、代码审查、实验执行与结果审查：Codex。后续不再使用 DeepSeek。
 
 ## 当前大阶段
 
 Stage 02：提供单任务、多初态的官方 / Remain normal-00 能力回归入口。
-阶段状态：任务003代码 accepted，待X合并PR #2并登记main SHA。之后授权DeepSeek按执行说明先2条技术smoke，再固定10条00回归。
+阶段状态：任务003代码 accepted；PR #2 尚未合并，main 仍为 Stage01 版本。用户确认推进实验后，Codex 可使用独立目录中冻结的已审查提交 `6e29f110b56a18ade63f401a1b6d8376fa9f95ba`，先2条技术smoke，再固定10条00回归。X 仍负责合并和登记 main SHA；不得把 PR 版本称作已合并 main。
 
 Stage01 closed：PR #1已合并，Codex已核验main与既有归档一致；最终关闭总结同步更新。
 
@@ -25,7 +25,9 @@ X测试1092 passed/15 skipped；Codex独立macOS1095 passed/12 skipped、Linux10
 没有新VLA分数；后续模型回归不冒充完整paired benchmark。
 
 Stage01的[关闭总结](../docs/stage_summaries/stage_01_metrics_uir.md)与本地备份同步更新。
-下一步X合并PR #2，DeepSeek按[实验说明](../docs/experiment_plans/stage02_normal00_first_batch.md)机械执行。
+下一步Codex按[实验说明](../docs/experiment_plans/stage02_normal00_first_batch.md)执行，X完成PR #2合并登记。冻结后不随分支更新；任何新增实现须重新审查。
+交接盘点见[交接记录](../docs/stage_summaries/handoff_2026-10-09.md)：已知服务器目录未发现正在运行的本阶段作业或新的正式00回归结果；此前只有旧smoke与无模型预检。运行进度以新 `execute_logs/stage02_normal00/` 和原始run记录为准。
+用户随后指定新主机端口30369与 `/HUBU-AI096/zp/ICML`。实际是A100 80GB，新项目目录为空；Codex已在新机建立冻结checkout，正在迁移旧模型/源码并配置独立runtime。旧4090未启动本批GPU作业；新机环境与资产验证、两条smoke通过之前，不运行正式10条。
 既有四视频的人工UIR语义校准仍由Codex/用户负责。
 
 ## 已关闭阶段

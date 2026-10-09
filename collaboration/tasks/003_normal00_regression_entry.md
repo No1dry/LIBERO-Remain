@@ -1,13 +1,14 @@
 # 给 X：003 单任务、多初态的官方/Remain 00 回归入口
 
-作者：Codex。日期：2026-10-09。状态：open。所属阶段：Stage 02。
-前提：PR #1 合并与版本冻结。代码由 X 实现；之后的实验由 DeepSeek 机械运行。
+作者：Codex。日期：2026-10-09。状态：accepted（见 review）。所属阶段：Stage 02。
+前提：PR #1 合并与版本冻结。代码由 X 实现；之后的实验由 Codex 执行。
+职责修订：用户于2026-10-09撤销原执行者，并确认推进实验；当前执行与冻结规则见最新 Stage02 执行计划。历史交付署名不变。
 
 ## 原因与目标
 
 真实 smoke 中 basket 的 00 在 Remain 和官方接口各一条都失败，但历史 Plan 1 有不同
 wait/恢复口径的 5/5。现在不能认定失败偶然，也不能将 partial 失败归因于 goal selection。
-先提供可直接运行的 00 能力回归入口，避免要求 DeepSeek 临时改源码或写实验脚本。
+先提供可直接运行的 00 能力回归入口，避免执行者临时改源码或写另一套 rollout。
 
 首轮限定同一个 SOG10 checkpoint、basket、官方 initial-state indices 0..4、policy seed 7。
 此任务只实现代码并以 CPU/fake policy 验证，不运行新的 GPU 实验。
@@ -53,5 +54,5 @@ CPU/fake policy 测试：task/index 准确映射、预算/等待不重复、队�
 Remain 持续窗口区分、双协议覆盖完整且无重复、错误/缺失分母、无输出覆盖、无真值泄漏。
 
 推送独立分支与 PR，交付 `collaboration/responses/003_round1.md`：实现 commit、实际测试结果、
-dry-run 示例、两协议原生环境差异、DeepSeek 可复制执行的命令和预估预算。
+dry-run 示例、两协议原生环境差异、Codex 可复制执行的命令和预估预算。
 官方模型分数未在此轮复现时明确标为未验证。等待 Codex review，机械执行前不自启动 GPU。
