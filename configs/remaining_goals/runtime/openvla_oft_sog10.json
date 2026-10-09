@@ -1,0 +1,28 @@
+{
+  "schema_version": "remaining-goals-model-runtime-v1",
+  "model_id": "openvla_oft",
+  "policy_id": "openvla-oft-official-sog10-libero10-seed7",
+  "policy_factory": "benchmark.remaining_goals.adapters.openvla_oft:make_policy",
+  "suite": "libero_10",
+  "runtime": {
+    "python_executable": "/opt/conda/envs/openvla-oft/bin/python",
+    "cuda_visible_devices": "0",
+    "startup_timeout_seconds": 1200,
+    "predict_timeout_seconds": 180
+  },
+  "execution": {"max_chunk_steps": 8, "random_seed": 7, "seed_scope": "worker_and_episode_reset"},
+  "adapter_options": {
+    "repo_path": "external/openvla-oft",
+    "repo_revision": "e4287e94541f459edc4feabc4e181f537cd569a8",
+    "checkpoint": "checkpoints/openvla-oft-sog10",
+    "suite": "libero_10",
+    "center_crop": true,
+    "load_in_8bit": false,
+    "load_in_4bit": false
+  },
+  "checkpoint_source": {
+    "repository": "moojink/openvla-7b-oft-finetuned-libero-spatial-object-goal-10",
+    "revision": "638918f3d1c2e43a39a8a20772bdb8b91835e4b7"
+  },
+  "notes": "Normal-00 capability regression: use the same pinned SOG10 snapshot as the reviewed smoke. Edit absolute local paths in a copied config. Official cases use model Python with its existing native LIBERO configuration; Remain cases use the installed simulator interpreter. No checkpoint-byte identity is implied by this declaration. Each isolated case resets policy RNG to 7."
+}
