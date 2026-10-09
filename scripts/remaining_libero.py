@@ -21,6 +21,7 @@ MODULES = {
     "doctor": "benchmark.remaining_goals.doctor",
     "replay": "benchmark.remaining_goals.replay_candidates",
     "evaluate": "benchmark.remaining_goals.evaluation",
+    "regression": "benchmark.remaining_goals.regression",
     "metrics": "benchmark.remaining_goals.cli",
 }
 
