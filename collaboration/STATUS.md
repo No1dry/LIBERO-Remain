@@ -1,51 +1,43 @@
 # 当前协作状态
 
-更新：2026-10-09（用户确认执行职责移交并推进实验）。代码：X；研究决策、代码审查、实验执行与结果审查：Codex。后续不再使用 DeepSeek。
+更新：2026-10-12。当前权责以本页和[README](README.md)为准；历史记录保留，不把旧执行者署名改掉。
 
-## 当前大阶段
+## 当前分工与审查方式
 
-Stage03 / Plan3：外部部分完成后的主动观察/合理试探、剩余目标重判，主实验10/01/11，主表仅JSR↑/UIR↓。5组20状态/40回放通过；005验收及基本语义/物理/身份核对后执行固定15条探索性主pilot。初始遮挡不是停跑/筛状态理由，006非阻塞；最多10条oracle执行诊断另列，不强求对照成功才能测原模型。
-Stage02的00能力实验验收完成：[总结](../docs/stage_summaries/stage_02_normal00_capability.md)。003代码accepted，PR #2仍待X合并并登记main SHA，不称已合并main；旧00实验冻结6e29f不再pull/重跑。
+用户启动、运行、监督全部实验；X实现代码和CPU/fake软件测试；Codex详细需求、建议式审查、验收后上传服务器与完整可复制命令，用户交回结果后审查归档。Codex/X不启动真实仿真、数据恢复、特征抽取、训练或模型eval。
 
-Stage01 closed：PR #1已合并，Codex已核验main与既有归档一致；最终关闭总结同步更新。
+只有明确错误、关键已约定功能缺失、真值／数据泄漏、危险控制或证据错误才阻塞；其他意见作为non-blocking建议。需求一次写完整，不因偏好反复返修。
 
-| 任务 | 执行者 | 状态 | 入口 | 交付/裁决 |
-|---|---|---|---|---|
-| 001 指标展示与人工 UIR | X | closed | [任务](tasks/001_metrics_and_uir.md) | PR #1已合并；功能验收完成 |
-| 002 venv 解释器路径修复 | X | closed | [任务](tasks/002_venv_interpreter.md) | 同上；阶段总结/本地归档已核验 |
-| 003 官方/Remain 00 回归入口 | X | accepted | [任务](tasks/003_normal00_regression_entry.md) | [PR #2](https://github.com/No1dry/LIBERO-Remain/pull/2)、[回应](responses/003_round1.md)、[Codex review](reviews/003_round1.md) |
-| 004 layered环境有效版本记录 | X | open | [任务](tasks/004_effective_runtime_provenance.md) | P2元数据；不改当前冻结实验 |
-| 005 显式subset pilot与隔离执行诊断 | X | open | [任务](tasks/005_subset_pilot_selection.md) | 仅CPU/fake；原指标不改；Codex审后执行 |
-| 006 主动观察/合理试探诊断 | X | open | [任务](tasks/006_subset_observability_gate.md) | 非阻塞；原可观察性闸门撤销，不改场景使之理想 |
+## 当前阶段
 
-X独立意见已登记：[Stage02/03回应](responses/x_review_stage02_stage03_20261009.md)。赞同撤销单帧可见性停跑；建议收紧UIR目标/信息时点边界，并将技术故障暂停、实际策略step0 NPZ纳入005。此条仅交付意见，004/005尚未实现、任务状态不变；请Codex据此完善下一轮任务/验收。
-Codex已核对并[采纳四项意见](reviews/x_review_stage02_stage03_codex_20261009.md)，005/006/UIR/Plan3已补要求：未完成目标的执行失败不自动UIR；按实际crop和query机会审核；pilot程序技术暂停保留expected/missing；本次实际reset step0 NPZ。当前下一步是X实现并交PR，不是再次只交意见；没有新VLA启动。
+Stage04 / [Plan4](../docs/experiment_plans/stage04_finish_protocol.md)：统一FINISH接口＋普通停止校准基线，目的是明确benchmark结束点、控制未学停止的干扰，不是把基线分数做低或靠FINISH救分。007开放，尚无新实现／训练／成绩。
 
-Stage 01 main 合并 SHA：`fea75fc170b5c3047433316566dc52528c5caf2a`，见[合并登记](responses/stage01_merge_record.md)。
-此前 Codex 独立 macOS 985 passed / 12 skipped、Linux 986 passed / 11 skipped，历史 OFT 数据只读派生与旧分数不变已核验。
-X 按明确验收授权合并，未自行宣告阶段 closed。
+默认设计：冻结OFT动作网络，只训练小finish head；普通00数据分组训练／校准／独立测试，当前外部10/01/11留作测试；active与shadow分开，新协议H520/W150所有mask一致，FINISH后或超时后做真实物理保持，无GT许可停车。原始无FINISH模型仅历史参考，新主指标不把不支持写成0%。
 
-任务 003 实现提交 `3a50f635b5eb7329386b381879ce53dab3bfbd46`。
-X测试1092 passed/15 skipped；Codex独立macOS1095 passed/12 skipped、Linux1096 passed/11 skipped。
-两个无模型的真实环境检查通过：official准确初态/10wait；Remain80settle/150audit/正式恢复逐位一致。
-代码验收时没有新VLA分数；后续模型回归不冒充完整paired benchmark。
+Stage03的固定15条主pilot＋10条oracle诊断已完成；旧JSR主10=40%（2/5）、01=100%（5/5）、11=100%（5/5）；UIR未标注=N/A。指标／行为科学审查尚未closed，Plan4不改历史raw或分数。[已提交执行总结](https://github.com/No1dry/LIBERO-Remain/blob/4b5145173b979f268625bf154800f14df7194d14/docs/stage_summaries/stage_03_subset_pilot_execution.md)。
 
-Stage01的[关闭总结](../docs/stage_summaries/stage_01_metrics_uir.md)与本地备份同步更新。
-下一步Codex按[Plan3](../docs/experiment_plans/stage03_subset_pilot.md)执行准备与审查；X完成PR #2合并登记、004/005实现。任何新增实现必须独立审查，不在运行目录临时修补。
-交接盘点见[交接记录](../docs/stage_summaries/handoff_2026-10-09.md)：已知服务器目录未发现正在运行的本阶段作业或新的正式00回归结果；此前只有旧smoke与无模型预检。运行进度以新 `execute_logs/stage02_normal00/` 和原始run记录为准。
-用户随后指定新主机端口30369与 `/HUBU-AI096/zp/ICML`。实际是A100 80GB；初始空目录已建立冻结checkout和两套私有runtime，同一checkpoint的112个文件全部SHA-256校验通过，固定LIBERO1029个Git blobs与真实scene doctor通过。旧OFT tracked patch hash也一致。新机Python3.10.21，旧机3.10.20；simulation torch复用2.4.1+cu121而非旧CPU2.2.0，关键MuJoCo/robosuite版本保持并记录差异。
-00正式5+5已于北京时间19:03:44完成，10/10、错误/缺失0，official5/5、Remain5/5；逐条复算/NPZ/视频解码通过。UIR未标注，不从成功率推断克制。旧4090未启动本批GPU作业。
-Stage03状态准备完成，528.73秒/exit0：5组20状态构造及40次150-step回放全部通过，本地独立证据校验通过。冻结旧已审代码6e29f；完整archive、本地full_evidence、真实OFT准备RGB预览已保存。
-最新[审查2](reviews/stage03_preflight_2.md)撤销[审查1](reviews/stage03_preflight_1.md)的可观察性停跑条件。保留当前001，允许看桌面、查篮子、合理空抓/非破坏试探及反馈调整；006仅诊断，不要求X把场景变容易。当前仍待005代码交付，尚未启动新VLA；不将mask真值喂给主模型。
-新发现worker版本dict错误选择parent的shadowed distribution，已给X任务004。独立有效版本快照与episode.runtime确认实际加载版本正确；当前批原始记录不重写，报告此警告，不借修复换模型/协议。
-既有四视频的人工UIR语义校准仍由Codex/用户负责。
+## 任务
 
-## 已关闭阶段
+| 任务 | 状态 | 交付／裁决 |
+|---|---|---|
+| 001 指标与人工UIR | closed | PR #1已合并；交流仍保留供后续追踪 |
+| 002 venv路径修复 | closed | 同上；阶段总结与本地备份已核验 |
+| 003 正常00回归入口 | accepted，PR #2已合并 | main合并SHA 4a02c78c0b945c2df2f0748614fecdd1c5127f55；不在本轮伪造closed |
+| 004 runtime有效版本 | accepted，PR #3待合并 | 已审独立实现7318c4b；旧raw不改 |
+| 005 subset pilot | accepted，PR #3待合并 | 已审实现7c47c12；实验冻结04508dc |
+| 006 观察／试探规则 | accepted（文档），未科学闭环 | 不改001/camera/crop；旧初帧可见性闸门撤销 |
+| [007 FINISH协议与停止校准](tasks/007_finish_protocol_and_stop_calibration.md) | open | X独立实现／CPU-fake测试；Codex部署与命令；用户实验 |
 
-- Stage 00：[首次真实 OpenVLA-OFT 接入 smoke 总结](../docs/stage_summaries/stage_00_oft_smoke.md)。
-  关闭范围是接入与可复算 smoke；不表示完整 benchmark 验收或模型能力结论成立。
+[PR #3](https://github.com/No1dry/LIBERO-Remain/pull/3)已由Codex验收（macOS1231 passed/12 skipped；Linux1243 passed），当前HEAD4b5145173b979f268625bf154800f14df7194d14，仍open。[验收记录](https://github.com/No1dry/LIBERO-Remain/blob/a3376c26576789d36ee11c39b2abe6e09e74cbe0/collaboration/reviews/005_round1.md)。X按既有授权合并登记；Codex不代合并。007从包含该实现和最新规则的main开新分支，不追加进PR #3。新增未审实现仍需独立检查。
 
-## 清理
+## 当前下一步
 
-001/002已closed，本轮仍保留交流供当前PR追踪；003仅accepted，不清理。README、STATUS与阶段总结长期保留。
-每周检查；阶段完成时额外清理。只有阶段总结已推送、本地备份校验一致，才可删除已闭环交流。
+X读取007与Plan4，交独立PR、实际CPU/fake结果、入口／dry-plan和完整候选runbook。Codex审查后上传冻结版本并补齐机器路径／SHA，用户逐步启动。阶段能力检查不自动变成代码返修。
+
+本轮角色交接和协议决策长期记录于[2026-10-12总结](../docs/stage_summaries/handoff_2026-10-12_finish_protocol.md)，本地同步备份。旧正常00与Stage03证据、模型、runtime和状态不覆盖；无新实验在本轮被启动。
+
+## 清理与历史
+
+Stage00接入范围closed，Stage01代码范围closed；Stage02正常00实验验收完成，但003状态仍以上表为准。Stage03仍待科学裁决，007新阶段开放。用户最新规则覆盖历史计划的未来职责，不改原DeepSeek/Codex已执行记录。
+
+001/002暂保留；其他任务非closed或仍供未合并代码追踪，均不删除。协议、STATUS、阶段总结、源码与原始数据长期保留。每周仅归档清理，不自动合并／部署／启动作业；备份来源commit和SHA一致才允许清理。本次不删除交流。
