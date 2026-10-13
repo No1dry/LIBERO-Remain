@@ -32,6 +32,8 @@ Stage03的固定15条主pilot＋10条oracle诊断已完成；旧JSR主10=40%（2
 
 ## 当前下一步
 
+X已完成[007需求审阅](responses/007_scope_review_20261013.md)：整体赞同Plan4，集中登记停止能力假通过、来源映射、safe hold和新协议证据等实现边界；这不是007代码交付，本轮未实现、合并或启动实验，任务仍open。
+
 X读取007与Plan4，交独立PR、实际CPU/fake结果、入口／dry-plan和完整候选runbook。Codex审查后上传冻结版本并补齐机器路径／SHA，用户逐步启动。阶段能力检查不自动变成代码返修。
 
 本轮角色交接和协议决策长期记录于[2026-10-12总结](../docs/stage_summaries/handoff_2026-10-12_finish_protocol.md)，本地同步备份。旧正常00与Stage03证据、模型、runtime和状态不覆盖；无新实验在本轮被启动。
