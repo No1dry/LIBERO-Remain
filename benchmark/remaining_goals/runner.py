@@ -105,7 +105,7 @@ def _actions(value: Any, *, hold: bool = False) -> np.ndarray:
 
 
 def run_episode(env: Any, policy: Any, episode: dict[str, Any], *,
-                max_chunk_steps: int = 8, recorder: Any = None) -> dict[str, Any]:
+                max_chunk_steps: int = 8, recorder: Any = None, evidence: Any = None) -> dict[str, Any]:
     """Run H+W steps, or W for an initially fully satisfied episode.
 
     ``env.reset(episode)`` and ``env.step(action)`` return observation dicts;
@@ -124,6 +124,9 @@ def run_episode(env: Any, policy: Any, episode: dict[str, Any], *,
     may be counted as success. The runner does not close env or policy.
     Optional recording receives copies of existing observations and never
     controls execution. Recording errors are reported separately in ``video``.
+    Optional execution evidence records the actual whitelisted reset and query
+    inputs without additional environment/policy calls. Evidence failures are
+    technical runtime errors; omitting evidence preserves the legacy schema.
     """
     started = perf_counter()
     result = {
@@ -159,11 +162,17 @@ def run_episode(env: Any, policy: Any, episode: dict[str, Any], *,
         total = retention if all(initial) else horizon + retention
         result["scheduled_steps"] = total
         action_queue: deque[np.ndarray] = deque()
+        if evidence is not None:
+            phase = "evidence_begin"
+            evidence.begin_episode(deepcopy(episode), max_chunk_steps=chunk_limit, scheduled_steps=total)
 
         phase = "env_reset"
         raw_obs = env.reset(deepcopy(episode))
         capture(raw_obs, 0)
         obs = _observation(raw_obs)
+        if evidence is not None:
+            phase = "evidence_initial_observation"
+            evidence.capture_initial(deepcopy(obs))
         phase = "initial_goals"
         goals = _goal_values(env.goal_values(), len(initial), "goal_values")
         result["trace"].append({"step": 0, "goals": goals,
@@ -178,15 +187,26 @@ def run_episode(env: Any, policy: Any, episode: dict[str, Any], *,
         stopped = False
         for step in range(1, total + 1):
             if not stopped and not action_queue:
+                if evidence is not None:
+                    phase = "evidence_query_input"
+                    evidence.prepare_query(deepcopy(obs), obs_step=result["n_steps"],
+                                           sequence=result["policy_queries"] + 1)
                 phase = "policy_predict"
                 result["policy_queries"] += 1
                 prediction = policy.predict(obs, instruction)
                 if prediction is None:
                     stopped = True
                     result["stop_step"] = result["n_steps"]
-                else:
+                if evidence is not None:
+                    phase = "evidence_query_return"
+                    evidence.query_returned(deepcopy(prediction))
+                if prediction is not None:
                     phase = "validate_action"
-                    action_queue.extend(_actions(prediction)[:chunk_limit])
+                    actions = _actions(prediction)
+                    action_queue.extend(actions[:chunk_limit])
+                    if evidence is not None:
+                        phase = "evidence_accepted_chunk"
+                        evidence.accept_actions(actions.copy(), chunk_limit=chunk_limit)
             if stopped:
                 phase = "hold_action"
                 hold = getattr(env, "hold_action", None)
@@ -200,6 +220,9 @@ def run_episode(env: Any, policy: Any, episode: dict[str, Any], *,
             raw_obs = env.step(action.copy())
             result["n_steps"] = step
             capture(raw_obs, step)
+            if evidence is not None:
+                phase = "evidence_executed_action"
+                evidence.action_executed(step, action.copy(), stopped=stopped)
             phase = "goal_values"
             goals = _goal_values(env.goal_values(), len(initial), "goal_values")
             result["trace"].append({"step": step, "goals": goals,
@@ -226,5 +249,16 @@ def run_episode(env: Any, policy: Any, episode: dict[str, Any], *,
                 video.update(status="video_error", error="; ".join(
                     ([prior_error] if isinstance(prior_error, str) and prior_error else []) + video_errors))
             result["video"] = video
+        if evidence is not None:
+            try:
+                result["execution_evidence"] = evidence.finish(deepcopy(result))
+            except Exception as exc:
+                previous = {key: result.get(key) for key in ("status", "error", "error_phase")}
+                result.update(status="runtime_error", error=f"{type(exc).__name__}: {exc}",
+                              error_phase="evidence_finalize", prior_execution_status=previous)
+                try:
+                    result["execution_evidence"] = evidence.failure_reference(exc)
+                except Exception:
+                    result["execution_evidence"] = {"status": "evidence_error", "error": str(exc)}
         result["elapsed_seconds"] = perf_counter() - started
     return result

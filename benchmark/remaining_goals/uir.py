@@ -16,6 +16,7 @@ from statistics import mean
 
 from .metrics import summarize_results
 from .schema import manifest_hash
+from .selection import selected_episodes
 
 
 SCHEMA_VERSION = "remaining-goals-uir-annotations-v1"
@@ -62,7 +63,7 @@ def _context(metadata, manifest, results):
         raise ValueError("run metadata manifest_hash differs from the supplied manifest")
     if "content_hash" in manifest and manifest["content_hash"] != expected_hash:
         raise ValueError("manifest content_hash mismatch")
-    episodes = manifest.get("episodes")
+    episodes = selected_episodes(manifest, metadata)
     # Reuse the unchanged scorer's complete trace, mask, task and status checks.
     summarize_results(episodes, results)
     if not episodes:
@@ -71,6 +72,8 @@ def _context(metadata, manifest, results):
     if len(suites) != 1:
         raise ValueError("UIR requires one suite; summarize LIBERO-10 and LIBERO-90 separately")
     expected = {episode["episode_id"]: episode for episode in episodes}
+    selection = metadata.get("execution_selection")
+    instructions = {row["episode_id"]: row for row in selection["episodes"]} if selection else {}
     found, video_paths = {}, {}
     for result in results:
         identifier = result["episode_id"]
@@ -82,6 +85,12 @@ def _context(metadata, manifest, results):
                             (episode, "task_name"), (episode, "instruction"), (episode, "seed")):
             if key in source and result.get(key) != source[key]:
                 raise ValueError(f"result {identifier} does not match {key}")
+        if selection:
+            for key, value in (("selection_sha256", selection["selection_sha256"]),
+                               ("instruction_mode", selection["instruction_mode"]),
+                               ("effective_instruction", instructions[identifier]["effective_instruction"])):
+                if result.get(key) != value:
+                    raise ValueError(f"result {identifier} does not match selection {key}")
         final_step = episode["retention_steps"] + (0 if all(episode["initial_mask"]) else episode["horizon"])
         actual_steps = _integer(result.get("n_steps"), "result.n_steps")
         if actual_steps > final_step or (result["status"] == "completed" and actual_steps != final_step):
@@ -94,6 +103,15 @@ def _context(metadata, manifest, results):
             video_paths[movie_path] = identifier
         found[identifier] = result
     return run_id, expected_hash, next(iter(suites)), expected, found
+
+
+def _selection_fields(metadata):
+    """Expose selection identity without weakening the original run binding."""
+    selection = metadata.get("execution_selection")
+    if selection is None:
+        return {}
+    return {key: deepcopy(selection[key]) for key in
+            ("selection_sha256", "instruction_mode", "purpose", "source_expected", "not_selected_ids")}
 
 
 def _video_evidence(episode, result, evidence, *, require_full):
@@ -170,6 +188,7 @@ def make_annotation_template(metadata, manifest, results, *, reviewer="") -> dic
                         "video_path": movie.get("path"), "video_status": movie.get("status", "missing")},
         })
     return {"schema_version": SCHEMA_VERSION, "run_id": run_id, "manifest_hash": digest,
+            **_selection_fields(metadata),
             "synthetic": manifest.get("environment", {}).get("name") == "toy",
             "notice": "Human review required. Boolean labels require complete recorded physical-step coverage; unknown remains null.",
             "annotations": rows}
@@ -225,6 +244,9 @@ def summarize_annotations(metadata, manifest, results, annotations) -> dict:
         raise ValueError("unsupported UIR annotation schema_version")
     if annotations.get("run_id") != run_id or annotations.get("manifest_hash") != digest:
         raise ValueError("annotation run_id/manifest_hash do not identify this run")
+    for key, value in _selection_fields(metadata).items():
+        if _canonical_hash(annotations.get(key)) != _canonical_hash(value):
+            raise ValueError(f"annotation {key} does not identify this execution selection")
     synthetic = annotations.get("synthetic", False)
     if type(synthetic) is not bool:
         raise ValueError("annotation.synthetic must be boolean")
@@ -281,6 +303,7 @@ def summarize_annotations(metadata, manifest, results, annotations) -> dict:
               for (task, mask, stratum), values in sorted(grouped.items())]
     report = {"schema_version": "remaining-goals-uir-summary-v1", "annotation_schema_version": SCHEMA_VERSION,
               "run_id": run_id, "manifest_hash": digest, "suite": suite, "synthetic": synthetic,
+              **_selection_fields(metadata),
               "annotation_sha256": canonical_hash,
               "annotation_hash_scope": "canonical JSON of the full annotation object (UTF-8, sorted keys, compact separators); not source file bytes",
               "definition": "Human judgment of unnecessary task operations on goals already satisfied at that time; no automatic action-based detection",

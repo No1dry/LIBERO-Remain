@@ -8,6 +8,7 @@ import os
 from pathlib import Path
 import platform
 import random
+import re
 import subprocess
 import sys
 import traceback
@@ -15,6 +16,45 @@ import traceback
 import numpy as np
 
 from .policy_transport import read_frame, write_frame
+
+
+def _package_metadata():
+    """Resolve versions with the interpreter's metadata lookup, not inventory order.
+
+    A layered environment can expose several distributions with equivalent names.
+    Enumeration discovers those names and supplies diagnostics only. The same
+    first-match resolver as ``importlib.metadata.version(name)`` determines the
+    effective metadata version; neither candidate order nor version sorting does.
+    This does not import packages or identify bytes of already imported modules.
+    """
+    candidates = {}
+    for distribution in importlib.metadata.distributions():
+        name = distribution.metadata.get("Name")
+        if not name:
+            continue
+        normalized = re.sub(r"[-_.]+", "-", name).lower()
+        candidates.setdefault(normalized, []).append(
+            {"name": name, "version": distribution.version})
+
+    # Sorting names stabilizes the output, without choosing a distribution.
+    # A resolver error must propagate: an enumerated candidate is not a fallback.
+    packages = {name: importlib.metadata.version(name) for name in sorted(candidates)}
+    duplicates = {
+        name: sorted(candidates[name], key=lambda item: (item["name"], item["version"] or ""))
+        for name in sorted(candidates) if len(candidates[name]) > 1
+    }
+    resolution = {
+        "resolver": "importlib.metadata.version",
+        "name_normalization": "lowercase; collapse runs of '-', '_', and '.' to '-'",
+        "scope": (
+            "First-match distribution metadata visible to this interpreter. "
+            "This may differ from module.__version__; it does not establish the "
+            "identity or bytes of already imported modules."
+        ),
+        "duplicate_distributions": duplicates,
+        "duplicate_order": "Sorted for stable diagnostics only; not import precedence.",
+    }
+    return packages, resolution
 
 
 def provenance(config, policy=None):
@@ -40,9 +80,10 @@ def provenance(config, policy=None):
             return str(value)
         raise TypeError(f"unsupported policy metadata: {type(value).__name__}")
     metadata = json.loads(json.dumps(metadata, default=json_default, allow_nan=False))
+    packages, package_resolution = _package_metadata()
     return {"python": sys.executable, "python_version": platform.python_version(),
-            "packages": dict(sorted((d.metadata["Name"], d.version) for d in importlib.metadata.distributions()
-                                    if d.metadata.get("Name"))), "model_source": source,
+            "packages": packages, "package_metadata_resolution": package_resolution,
+            "model_source": source,
             "checkpoint": config.get("adapter_options", {}).get("checkpoint"),
             "checkpoint_bytes_verified": False,
             "policy_metadata": metadata,
