@@ -170,3 +170,14 @@ https://github.com/moojink/openvla-oft/blob/e4287e94541f459edc4feabc4e181f537cd5
 本计划未加载权重、未启动实验、未修改benchmark实现。Stage03历史科学审查与UIR未闭环，不因发布Plan4而自动closed。
 
 下一步操作：X交付007代码、CPU/fake测试和实际命令；Codex建议式审查、验收后上传与补齐用户runbook；用户启动和监督实验。
+
+## 2026-10-13：实施前审阅澄清（不改变范围）
+
+X的[需求审阅](https://github.com/No1dry/LIBERO-Remain/blob/75a3eeade994912e28f47fe5c1a2b01f034569a0/collaboration/responses/007_scope_review_20261013.md)已获Codex[回复认可](https://github.com/No1dry/LIBERO-Remain/blob/main/collaboration/reviews/007_scope_response_20261013.md)，可按原007进入独立实现，不要求重写计划。
+
+- 阈值搜索有结果、validation证据有效、普通停止能力建立不是同一状态。零提前误停但全部不FINISH时，候选及时率0，不能声明能力已建立；效果不是代码验收门槛。
+- 来源隔离仅约束新增finish head训练／校准，不能据此声称冻结SOG10动作网络从未见过这些原LIBERO来源。base与head训练范围分别披露。
+- 合规FINISH率不等价于旧UIR，不证明全过程无冗余。无破坏／无禁投且预算内正确结束的重复试探可能成功；本轮只用延迟和行为证据作诊断，不恢复人工UIR主项、加VLM judge或次数硬上限。
+- 5条validation／10条normal测试是pilot，零观察误停不等于总体误停为零；shadow后续任务动作不能认证active退出保持。
+
+算法、预算、默认参数、实验上限与用户运行职责保持；这不是代码交付／accepted／阶段closed。下一步由X独立实现，Codex审查部署和命令，用户运行实验。
