@@ -1,10 +1,10 @@
 # 当前协作状态
 
-更新：2026-10-13。当前权责以本页和[README](README.md)为准；历史记录保留，不把旧执行者署名改掉。
+更新：2026-10-14。当前权责以本页和[README](README.md)为准；历史记录保留，不把旧执行者署名改掉。
 
 ## 当前分工与审查方式
 
-用户启动、运行、监督全部实验；X实现代码和CPU/fake软件测试；Codex详细需求、建议式审查、验收后上传服务器与完整可复制命令，用户交回结果后审查归档。Codex/X不启动真实仿真、数据恢复、特征抽取、训练或模型eval。
+用户只负责确认并亲自启动真实实验；X实现代码和CPU/fake软件测试；Codex承担非实验数据／文件准备、详细需求、建议式审查、校验部署、完整启动命令及读取结果后的审查归档。Codex/X不自主启动真实仿真、数据恢复、物理标签、特征抽取、训练或模型eval。
 
 只有明确错误、关键已约定功能缺失、真值／数据泄漏、危险控制或证据错误才阻塞；其他意见作为non-blocking建议。需求一次写完整，不因偏好反复返修。
 
@@ -34,9 +34,11 @@ Stage03的固定15条主pilot＋10条oracle诊断已完成；旧JSR主10=40%（2
 
 X的007需求意见此前已采纳，现已交[首轮实现与CPU/fake证据](https://github.com/No1dry/LIBERO-Remain/blob/38e6a449d4e769b842e10c5b393fc2b26a5cfa2b/collaboration/responses/007_round1.md)。Codex[软件审查accepted](reviews/007_round1.md)，无需本轮返修；已将固定源码上传新目录 `/HUBU-AI096/zp/ICML/LIBERO-Remain-stage04-finish-38e6a44`，194个源码文件及10个冻结部署文件核验一致。配置／session／新结果根为 `/HUBU-AI096/zp/ICML/stage04_finish_38e6a44`。
 
-用户按[完整服务器命令](../docs/experiment_plans/stage04_server_runbook_2026-10-13.md)，先运行basket_s000_11真实4步hold／release预检，再自行补齐官方basket HDF5和来源audit，交回报告。现有init/BDDL/source001/replay/模型/runtime已核；旧datasets目录空，核对范围未找到该HDF5。数据映射不足要保存insufficient，不猜demo编号；不是软件返修门槛。
+Codex已按用户2026-10-14委托完成固定官方basket HDF5下载与SHA核验：50条演示／14700个123维saved state／50个有效XML。纯文件检查发现50条演示均不能与现有50个official init完整精确匹配；init_state属性也只是首saved state，匹配仍0/50。当前默认来源分组不满足训练前提，file-only报告insufficient不是模型失败。详见[准备记录](../docs/stage_summaries/stage04_data_preparation_2026-10-14.md)。
 
-本次没有真实仿真／restore／feature／头训练／parity／校准／eval。默认30rollout预算尚未消耗；之后由用户逐阶段启动并交Codex审查。runtime JSON逐命令SHA冻结，不阶段间改center_crop。普通停止能力、unknown覆盖与科研解释仍待真实证据，不拿软件通过当stop-capable。
+用户无需下载／填路径，先按命令启动已有basket_s000_11的4步真实hold／release预检；这不依赖HDF来源映射。当前不运行真实HDF audit／feature／训练／后续eval，Codex先查真实采集证据或提出需用户确认的来源设计修订，不用最近邻、demo编号或虚构manual confirmation救通过。不因资产前提不足要求X返修；007软件accepted保持，runtime/source_map/split未变。
+
+截至2026-10-14仅完成下载和CPU纯文件检查，没有真实仿真／restore／hold标签／feature／头训练／parity／校准／eval。默认30rollout预算尚未消耗；之后由用户逐阶段启动并交Codex审查。runtime JSON逐命令SHA冻结，不阶段间改center_crop。普通停止能力、unknown覆盖与科研解释仍待真实证据，不拿软件通过当stop-capable。
 
 [软件验收与部署长期记录](../docs/stage_summaries/stage04_software_acceptance_deployment_2026-10-13.md)提交GitHub并按README本地备份核验。旧阶段raw、视频、模型、patch与已有脏工作区保留。
 
