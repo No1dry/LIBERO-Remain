@@ -1,5 +1,8 @@
 """Fake model/control tests only; no MuJoCo imports, creation or restoration."""
 from copy import deepcopy
+import ast
+import hashlib
+from pathlib import Path
 from types import SimpleNamespace
 
 import numpy as np
@@ -10,7 +13,37 @@ from benchmark.remaining_goals.finish.data import state_sha256
 
 
 class Panda:
-    pass
+    __module__ = "robosuite.models.robots.manipulators.panda_robot"
+
+
+def grounded_panda_from_pinned_source():
+    """Execute only the pinned class declaration against a non-physics base.
+
+    No upstream imports run. This retains the real namespace, direct base,
+    constructor XML, default gripper and properties instead of renaming Panda.
+    """
+    source = (Path(__file__).parent / "fixtures/finish_libero/on_the_ground_panda.py.txt").read_text(encoding="utf-8")
+    assert hashlib.sha256(source.encode()).hexdigest() == "7d580aeee632e164f327cf6b1951861bec40cf814cdbe92bcfc469a93e1f9fa8"
+    declarations = [node for node in ast.parse(source).body if isinstance(node, ast.ClassDef)]
+    assert len(declarations) == 1 and declarations[0].name == "OnTheGroundPanda"
+    assert [node.id for node in declarations[0].bases] == ["ManipulatorModel"]
+
+    class ManipulatorModel:
+        def __init__(self, xml, idn):
+            self.xml, self.idn = xml, idn
+
+        def set_joint_attribute(self, **kwargs):
+            self.joint_attribute = kwargs
+
+    namespace = {"__name__": "libero.libero.envs.robots.on_the_ground_panda",
+                 "np": np, "ManipulatorModel": ManipulatorModel,
+                 "xml_path_completion": lambda path: path}
+    exec(compile(ast.Module(body=declarations, type_ignores=[]), "pinned_OnTheGroundPanda", "exec"), namespace)
+    model = namespace["OnTheGroundPanda"](idn=0)
+    assert model.xml == "robots/panda/robot.xml" and model.default_gripper == "PandaGripper"
+    assert model.default_controller_config == "default_panda" and model.arm_type == "single"
+    assert not isinstance(model, Panda)
+    return model
 
 
 class PandaGripper:
@@ -135,6 +168,73 @@ def raw_observation(env):
             "robot0_eye_in_hand_image": np.ones((4, 5, 3), np.uint8),
             "robot0_eef_pos": env.sim.value[1:4].copy(), "robot0_eef_quat": np.array([0., 0, 0, 1]),
             "robot0_gripper_qpos": np.array([.04, -.04]), "robot0_joint_pos": np.zeros(7), "robot0_joint_vel": np.zeros(7)}
+
+
+def test_pinned_living_room_robot_passes_full_basket_hold_contract():
+    env = Native()
+    env.robots[0].robot_model = grounded_panda_from_pinned_source()
+    env.gripper.current_action = np.array([.3, -.7])
+    contract = module.BasketContract(env)
+    truth = contract.evaluator_state()
+    assert truth["goals"] == [False, False] and truth["released"] is True
+    # Latching/holding must neither ask goal truth nor release a partial grip.
+    env.env._eval_predicate = lambda *args: pytest.fail("hold must not read truth")
+    saved = env.sim.value.copy()
+    identity = contract.hold.begin()
+    assert identity["robot_model_type"] == "libero.libero.envs.robots.on_the_ground_panda.OnTheGroundPanda"
+    assert identity["gripper_type"].endswith(".PandaGripper") and identity["gripper_command"] == 0
+    np.testing.assert_array_equal(env.sim.value, saved)
+    for _ in range(4):
+        action = contract.hold.action()
+        np.testing.assert_array_equal(action, np.zeros(7))
+        env.step(action)
+    np.testing.assert_array_equal(env.gripper.current_action, [.3, -.7])
+    assert env.steps == 4
+
+
+@pytest.mark.parametrize("module_name,class_name", [
+    ("other.robots", "Panda"),
+    ("other.robots", "OnTheGroundPanda"),
+    ("libero.libero.envs.robots.on_the_ground_panda", "CustomPanda"),
+    ("robosuite.models.robots.manipulators.panda_robot", "NotPanda"),
+    ("robosuite.models.robots.manipulators.ur5e_robot", "UR5e"),
+])
+def test_unrecognized_robot_implementation_is_rejected(module_name, class_name):
+    env = Native()
+    env.robots[0].robot_model = type(class_name, (), {"__module__": module_name})()
+    with pytest.raises(RuntimeError, match="unsupported FINISH robot model") as error:
+        module.PandaPoseHold(env)
+    assert f"{module_name}.{class_name}" in str(error.value)
+    assert env.steps == env.controller.updates == env.controller.sets == 0
+
+
+@pytest.mark.parametrize("fault", ["type", "dof", "speed", "shape", "nan", "range"])
+def test_grounded_panda_does_not_relax_gripper_contract(fault):
+    env = Native()
+    env.robots[0].robot_model = grounded_panda_from_pinned_source()
+    if fault == "type":
+        env.robots[0].gripper = SimpleNamespace(dof=1, speed=.01, current_action=np.zeros(2))
+    elif fault in {"dof", "speed"}:
+        setattr(env.gripper, fault, 2 if fault == "dof" else .02)
+    else:
+        env.gripper.current_action = {"shape": np.zeros(1), "nan": np.array([np.nan, 0]),
+                                      "range": np.array([1.01, 0])}[fault]
+    with pytest.raises((RuntimeError, ValueError)):
+        module.PandaPoseHold(env)
+    assert env.steps == env.controller.updates == env.controller.sets == 0
+
+
+@pytest.mark.parametrize("field,value", [("name", "JOINT_POSITION"), ("impedance_mode", "variable"),
+    ("control_dim", 3), ("use_delta", False), ("use_ori", False), ("position_limits", np.zeros(3)),
+    ("orientation_limits", np.zeros(3)), ("interpolator_pos", object()), ("interpolator_ori", object()),
+    ("input_max", -np.ones(6)), ("output_max", -np.ones(6)), ("input_min", np.full(6, np.nan))])
+def test_grounded_panda_does_not_relax_osc_contract(field, value):
+    env = Native()
+    env.robots[0].robot_model = grounded_panda_from_pinned_source()
+    setattr(env.controller, field, value)
+    with pytest.raises((RuntimeError, ValueError)):
+        module.PandaPoseHold(env)
+    assert env.steps == env.controller.updates == env.controller.sets == 0
 
 
 @pytest.mark.parametrize("target", [[1., -1.], [0., 0.], [-1., 1.], [.3, -.7]])

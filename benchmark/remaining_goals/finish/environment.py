@@ -28,6 +28,20 @@ TARGETS = ("alphabet_soup_1", "tomato_sauce_1")
 REGION = "basket_1_contain_region"
 CONTAINER = "basket_1"
 CLEARANCE = 0.002  # engineering geometry margin, not a learned/test-tuned threshold
+# LIBERO 8f1084's living-room domain maps Panda to OnTheGroundPanda. The
+# latter inherits ManipulatorModel directly, while using Panda XML/gripper;
+# isinstance(Panda) would therefore reject the fixed basket task as well.
+# Keep exact qualified implementations, not substring matching or arbitrary
+# subclasses, and independently enforce the unchanged physical contract below.
+SUPPORTED_ROBOT_MODELS = frozenset({
+    "robosuite.models.robots.manipulators.panda_robot.Panda",
+    "libero.libero.envs.robots.on_the_ground_panda.OnTheGroundPanda",
+})
+
+
+def _qualified_type(value):
+    cls = type(value)
+    return f"{cls.__module__}.{cls.__qualname__}"
 
 
 def _state(env):
@@ -72,10 +86,16 @@ def _robot_contract(env):
         raise RuntimeError("FINISH hold supports exactly one Panda robot")
     robot = robots[0]
     gripper, controller = getattr(robot, "gripper", None), getattr(robot, "controller", None)
-    if (getattr(getattr(robot, "robot_model", None), "__class__", type(None)).__name__ != "Panda"
-            or type(gripper).__name__ != "PandaGripper" or getattr(gripper, "dof", None) != 1
+    robot_type = _qualified_type(getattr(robot, "robot_model", None))
+    if robot_type not in SUPPORTED_ROBOT_MODELS:
+        raise RuntimeError(f"unsupported FINISH robot model: actual={robot_type}; "
+                           f"supported={sorted(SUPPORTED_ROBOT_MODELS)}")
+    if (type(gripper).__name__ != "PandaGripper" or getattr(gripper, "dof", None) != 1
             or getattr(gripper, "speed", None) != .01):
-        raise RuntimeError("unsupported Panda/gripper incremental-action contract")
+        raise RuntimeError("unsupported Panda/gripper incremental-action contract: "
+                           f"actual={_qualified_type(gripper)}, dof={getattr(gripper, 'dof', None)!r}, "
+                           f"speed={getattr(gripper, 'speed', None)!r}; "
+                           "required=PandaGripper, dof=1, speed=0.01")
     current = _finite(gripper.current_action, (2,), "Panda current_action")
     if np.any(np.abs(current) > 1):
         raise RuntimeError("Panda current_action is outside its contract")
@@ -127,6 +147,8 @@ class PandaPoseHold:
         _restore_quaternion_roundoff(self.env, before, phase="FINISH hold goal latch")
         _require_exact_state(before, _state(self.env), "FINISH hold goal latch")
         return {"version": HOLD_VERSION, "controller": "OSC_POSE", "impedance": "fixed", "frame": "world",
+                "robot_model_type": _qualified_type(self.env.robots[0].robot_model),
+                "gripper_type": _qualified_type(self.gripper),
                 "reference_position": self.reference_pos.tolist(), "reference_orientation": self.reference_ori.tolist(),
                 "gripper_command": 0.0, "gripper_current_action": self.gripper_target.tolist(),
                 "input_min": self.limits["input_min"].tolist(), "input_max": self.limits["input_max"].tolist(),
