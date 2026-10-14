@@ -2,6 +2,8 @@
 
 2026-10-13，Codex。007软件交付accepted；Stage04真实实验尚未运行、未closed。
 
+**最新真实预检裁决（2026-10-14，优先于下文历史待办）**：用户已启动第3节，结果technical_error／退出2／trace=[]／model_calls=0。官方basket的OnTheGroundPanda被当前严格Panda类名检查误拒绝；[007_round2](../../collaboration/reviews/007_round2.md)已要求X修一个明确P1错误。**当前不要再启动38版第3节或任何受影响真实FINISH阶段，也不要覆盖／删除第一次失败。**待X交新SHA、Codex审查部署新目录后，再给同一11的新out／日志命令。以下“11可启动”描述是此前准备阶段的历史状态，已由本最新裁决覆盖。兼容性修复不自动解决HDF来源映射问题。[结果记录](../stage_summaries/stage04_preflight_failure_2026-10-14.md)。
+
 **2026-10-14准备更新（优先于下文历史待办）**：用户已把非实验准备交给Codex，固定官方HDF5现已下载并核SHA，用户无需执行第4节。纯文件检查的50条HDF演示与50个official init无法建立精确来源对应，init_state属性也未补出映射；当前默认分组尚不具备训练前提。**暂不执行第5节真实audit及后续feature／训练／评测**，先由Codex处理来源证据或提出设计修订供用户确认；不要修改空source map、借test或猜demo编号。第3节已有11物理preflight仍可由用户启动。完整证据见[2026-10-14准备记录](../stage_summaries/stage04_data_preparation_2026-10-14.md)。原命令作为已审软件入口保留，不代表当前全部允许执行。
 所有命令由用户启动、运行和监督，Codex不后台启动或代跑。下面各节不是自动串行脚本：每一阶段检查产物后，再手动执行下一节。
 
