@@ -2,6 +2,8 @@
 
 2026-10-14，Codex。已审冻结head=`4f76f4917a9174fc5b80ef83e3cf21eaf053c98d`，对应X实现a7dda8d。修复OnTheGroundPanda类型误拒绝，全部夹爪／OSC／FINISH控制语义不放宽。
 
+**完成更新：用户已运行下述命令，source0_11的四步真实预检通过（5/5时刻目标/释放已知真、unknown0、model0），报告与日志已归档。不要再次运行或覆盖原out。**结果和范围见[真实预检记录](../stage_summaries/stage04_r2_preflight_pass_2026-10-14.md)。用户随后批准Plan4两来源域方案A，后续先由X按[008](../../collaboration/tasks/008_finish_data_source_domains.md)实现数据审计/身份接口；旧4f审计不能直接运行新合同。当前无训练/feature/评测启动命令。
+
 新源码：`/HUBU-AI096/zp/ICML/LIBERO-Remain-stage04-finish-4f76f49`。
 新配置／session／结果／日志根：`/HUBU-AI096/zp/ICML/stage04_finish_4f76f49`。
 
