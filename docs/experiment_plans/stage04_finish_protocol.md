@@ -1,7 +1,7 @@
 # Plan 4：统一FINISH接口与停止校准基线
 
-日期：2026-10-12。阶段：Stage04，协议与代码准备。状态：已获用户认可进入下一步；尚无新实现、新训练或新成绩。  
-分工：用户启动、运行、监督所有实验；X实现代码与CPU/fake软件测试；Codex制定需求、建议式审查、验收后上传服务器并提供完整运行命令，用户交回结果后再审查。
+初版：2026-10-12；修订：2026-10-14。阶段：Stage04。007软件已验收并部署4f76f49，用户source0_11四步真实预检通过；尚无head训练或新模型成绩。用户已明确批准两个来源域方案A，由008实施数据身份／审计改动后再启动真实audit。  
+分工：用户确认并启动真实实验；X实现代码与CPU/fake测试；Codex研究需求、非实验数据／文件准备、建议式审查、校验部署、完整命令及结果审查。
 
 ## 1. 为什么做这一步
 
@@ -13,18 +13,18 @@
 
 ## 2. 本次权责（覆盖旧计划中的未来职责）
 
-- 用户：执行真实数据审计／仿真恢复与回放、特征抽取、head训练、校准、模型一致性检查、eval；启动／暂停／监督服务器作业并保管执行日志。
+- 用户：确认并亲自启动真实数据审计／恢复、特征、训练、校准、parity和eval，决定继续或暂停；命令自动记录日志与原始产物。
 - X：修改benchmark与模型适配代码，CPU/fake单元测试，GitHub提交与交付说明；不启动真实模型或实验。
-- Codex：研究设计、详细需求、静态与CPU/fake审查、验收与文档归档；部署经审版本，核对传输身份，交付完整可复制命令；不启动、后台排队或监督真实实验。
+- Codex：研究设计、详细需求、非实验下载／文件与来源清单准备、静态/CPU-fake审查、部署与完整命令、读取结果后归档；不自主启动、追加或重跑真实实验，不自动创建后台监控。
 - 软件单元测试不等于科研实验；CPU/fake测试可以由X与Codex做，但加载真实VLA、真实仿真、真实数据训练由用户运行。
 - 审查只以明确错误、协议违反、危险控制、证据／身份错误和关键已约定功能缺失作为阻塞。命名、风格、可合理替代的工程设计、额外功能或未经验证的性能建议不作为返修理由。一次集中列出问题，避免逐轮增加需求。
 - 训练质量或正常停止能力未建立是科研结果，不自动等于X代码错误。需由用户决定数据／训练调整，而不是无限返修代码。
 
 ## 3. 代码基准、范围与不变项
 
-已审Stage03实现：04508dc0b0c48bf10e33c69ed3d3e830df793aaf。PR #3当前公开HEAD为4b5145173b979f268625bf154800f14df7194d14（后续为审查／执行文档），仍待X按既有授权合并登记。
+Stage03实验冻结04508dc，PR #3已由X合并为869f409。007/PR #4软件修复的已审head为4f76f4917a9174fc5b80ef83e3cf21eaf053c98d，部署已核；OnTheGroundPanda误拒绝已修复，用户同一11四步预检已通过，旧38失败保留。
 
-007不追加进PR #3：X先处理既有PR #3合并／登记，再从包含该实现和本轮协作规则的最新main开独立分支。若新代码未合并，先说明基准，不暗中漏掉005或混入其他改动。Codex不会代为合并代码。 合并文档冲突时保留2026-10-12新版README／STATUS、007与Plan4，不用旧分支文字覆盖新分工；仅解决文档冲突不要求重审未变的实现。
+008是用户批准A后的新需求，不是007返修。X先按既有accepted授权合并保持已审实现的PR #4并登记merge，再从含该实现与最新规则的main开独立008 PR；Codex不代合并实现。仅文档冲突保留最新分工、裁决和计划，不覆盖旧raw。
 
 本轮只做LIBERO-10 basket、当前SOG10 OFT及小型finish head，不扩任务／模型，不端到端微调VLA，不加剩余目标提示、router、记忆或VLM裁判。
 
@@ -95,22 +95,30 @@ S_i=true需同时满足：
 
 可在正常轨迹中出现自然中间partial状态；禁止把外部编辑的10/01/11测试变体拿来训练或校准，再声称泛化。特征只含原合法观测和原指令；标签／分组／时间仅存metadata。
 
-### 分组划分（先audit，再冻结）
+### 两个来源域划分（2026-10-14用户已批准A，替代初版统一source-index前提）
 
-若官方50来源与示范的映射可证实，首轮建议：
+公开HDF的演示与official init逐一物理来源映射未证明。用户明确选择复用公开普通演示、将head轨迹域与评测init域分开；不通过demo编号、最近邻或假provenance建立旧映射。
 
-| 用途 | 来源index |
+| 域／用途 | 固定组 |
 |---|---|
-| 停止head训练 | 5..34 |
-| checkpoint／阈值validation | 35..39 |
-| 独立正常00停止能力测试 | 40..49 |
-| 当前Remain pilot测试 | 0..4，全部edited variants保留测试 |
+| HDF head_train | demo_5..demo_34，30条完整trajectory |
+| HDF head_validation | demo_35..demo_39，5条完整trajectory；用于val BCE与32不同输入parity |
+| HDF head_unused | demo_0..4及demo_40..49，15条不参与head，保持原规模不按成绩替换 |
+| official init normal_calibration | init35..39，5条普通00 shadow，冻结阈值 |
+| official init normal_test | init40..49，10条独立普通00 active |
+| official init Remain | init0..4及这些来源全部编辑变体保留评测，主15条10/01/11 |
 
-这是待实际data-audit确认的划分，不宣称当前服务器已具备全部数据或已证明映射。按trajectory／source整组分割，禁止随机帧拆分；用来源和状态／数据hash检查同源变体泄漏。不存在可靠映射、数量不足或类覆盖不足时，X提供audit结果和确定性替代分组建议，经确认后再由用户训练；不能偷偷补index或拿测试样本替代。
+HDF编号只选择文件中实际group名字，不代表采集seed或eval init_index。来源键需domain+实际文件SHA+group/index；两个域相同数值不等于同源。head_validation与normal_calibration不得再共用一个歧义validation/source_index身份。
+
+保留轨迹级train/validation互斥、重复state/observation跨组检查、不直接用编辑测试输入训练头；source/domain/label/time仍只metadata。HDF正负类、actual XML、layout与真实K4物理标签审计不能省略。组不存在／标签不足等仍insufficient，不自动重选或采新rollout。
+
+明确限制：无法证明新增head训练示范与official eval的物理祖源完全独立，不能以不同namespace冒充严格同源holdout；冻结SOG10未见该来源同样未证明。此pilot主张是显式轨迹分组＋不直接使用编辑评测样本，原更强来源隔离主张收窄。若将来需要严格源级泛化，另审批可追溯采集，不在当前预算自动增加。
+
+008统一audit/cache/head/calibration/job/parity身份消费者，旧统一source语义仅保留历史读取，不能隐式与新合同混用；具体验收见[008任务](../../collaboration/tasks/008_finish_data_source_domains.md)。这只改数据身份/分组，不改模型、标签、停止控制、指标或H/W。
 
 ## 7. 校准与普通停止能力检查
 
-validation仅使用35..39或经确认的独立normal-validation分组。建议先由用户运行5条shadow正常00，将真实query得分与GT安全完成时点对齐。
+阈值校准仅使用official init域的normal_calibration=35..39，用户运行5条shadow普通00；它与HDF域head_validation=demo35..39是两个明确不同的组。head epoch只按HDF head_validation BCE选，不能用normal_test或Remain挑epoch/阈值。
 
 阈值候选0.05..0.95（步长0.05）及0.99；先要求validation未完成阶段观察到的提前FINISH为0，再最大化完成后24控制步内的正确FINISH比例，同分优先更高阈值。24步是3个query周期的首轮校准尺度，必须显式声明，不从测试结果倒推。若无法建立正常停止能力，输出能力未建立，不用高分类accuracy冒充；科研调整由用户决定，不自动返修X。
 
@@ -126,18 +134,18 @@ validation仅使用35..39或经确认的独立normal-validation分组。建议�
 2. 真实data-audit与标签生成；缺来源或标签证据不足先报告。
 3. 特征导出及head训练（首轮单head、最多50 epochs）。
 4. validation shadow正常00：拟5条；校准阈值并冻结artifact。
-5. 真实模型shadow一致性检查：固定32个独立validation观测输入，核对原动作与新增只读分支动作。
+5. 真实模型shadow一致性检查：固定32个不同的HDF head_validation合法观测输入，核对原动作与新增只读分支动作。
 6. 独立正常00 active：拟10条，能力检查。
 7. 当前001固定0..4的10／01／11 active主pilot：15条，不挑失败来源。
 8. 用户需要更强配对证据时，可再运行同15条shadow诊断；默认不自动追加。
 
-默认模型rollout上限30条（5+10+15），最坏30×670=20100物理控制步；可选配对shadow另15条。特征抽取／真实一致性前向不是这30条rollout，数量、模型load次数和预算须单独在dry-plan披露。数据不足时不自动采集新VLA轨迹或下载大资源。
+默认模型rollout上限30条（5+10+15），最坏30×670=20100物理控制步；可选配对shadow另15条。特征抽取／真实一致性前向不是这30条rollout，数量、模型load次数和预算须单独在dry-plan披露。数据不足时不自动采集新VLA轨迹。官方HDF已由Codex下载核SHA；本方案不新增VLA采集rollout，标签/特征/parity费用仍另计。
 
 正常00测试需要新来源状态与配置，X提供准备命令和准确源身份；现有001测试bank及旧实验不改。不能把正式基线的不支持接口或数据缺失算成重判定失败。任何主成绩发布先验证停止能力、数据划分与真值隔离，不以主测试低分为门槛。
 
 ## 9. X交付和建议式审查
 
-GitHub任务：collaboration/tasks/007_finish_protocol_and_stop_calibration.md。X在独立PR一次性交付接口／代码、CPU测试、配置、完整命令和未完成项。核心验收只针对已约定功能和明确错误；扩展任务、VLM裁判、额外图表和性能优化不在本次范围。
+GitHub任务：007实现已软件accepted；当前数据域新需求为collaboration/tasks/008_finish_data_source_domains.md。X在独立PR一次性交付接口／代码、CPU测试、配置、完整命令和未完成项。核心验收只针对已约定功能和明确错误；扩展任务、VLM裁判、额外图表和性能优化不在本次范围。
 
 需有：独立版本读写／复算、active与shadow分离、deadline／hold证据、无GT门控、参数冻结／原动作一致性、分组与标签可追溯、旧路径兼容、CPU负面测试。实际模型、head效果和真实hold的结果由用户运行后审查，不能以fake测试证明。
 
@@ -147,7 +155,7 @@ Codex验收后上传冻结源码到新的服务器目录，不覆盖旧checkout�
 
 Codex交用户本地runbook，逐步给出实际存在的入口、准确python／cwd／参数／输入／新输出路径、日志重定向、退出码与检查方式。依赖安装／真实预检若需要，也给用户命令，不代跑。
 
-当前007尚无代码，不能把拟议CLI写成已经可运行的命令。X先交可验证CLI和候选命令；验收部署后Codex补齐最终SHA与机器路径。不得给“运行eval”或只有占位符的伪完整命令，不自动nohup／tmux／scheduler提交。
+007的13个CLI已实现，但现有4f代码仍采用旧统一source审计，不能作为两域合同运行。008先交修改后的可验证CLI、身份版本与候选命令；验收部署后Codex补齐最终SHA与机器路径。不得给“运行eval”或只有占位符的伪完整命令，不自动nohup／tmux／scheduler提交。
 
 ## 11. 结果解释边界
 
@@ -167,7 +175,7 @@ https://github.com/iSEE-Laboratory/RehearseVLA
 OFT输入中的EOS是每次动作响应序列边界，不是任务级FINISH：
 https://github.com/moojink/openvla-oft/blob/e4287e94541f459edc4feabc4e181f537cd569a8/prismatic/extern/hf/modeling_prismatic.py
 
-本计划未加载权重、未启动实验、未修改benchmark实现。Stage03历史科学审查与UIR未闭环，不因发布Plan4而自动closed。
+本计划修订没有加载VLA/训练或修改benchmark实现；用户已有一次旧38技术错误和一次新版4f单11四步预检通过，不混作模型成绩。Stage03科学审查/UIR仍未闭环，Stage04/007/008不因修订自动closed。
 
 下一步操作：X交付007代码、CPU/fake测试和实际命令；Codex建议式审查、验收后上传与补齐用户runbook；用户启动和监督实验。
 
@@ -181,3 +189,9 @@ X的[需求审阅](https://github.com/No1dry/LIBERO-Remain/blob/75a3eeade994912e
 - 5条validation／10条normal测试是pilot，零观察误停不等于总体误停为零；shadow后续任务动作不能认证active退出保持。
 
 算法、预算、默认参数、实验上限与用户运行职责保持；这不是代码交付／accepted／阶段closed。下一步由X独立实现，Codex审查部署和命令，用户运行实验。
+
+## 2026-10-14：用户确认与当前下一步
+
+用户通过明确回复批准A：两个来源域、复用已下载数据，且承认物理祖源独立性未证明。本节和两域分组取代历史007 E节／本计划初版的统一source映射先决条件，其他FINISH/训练/metric合同不变。原初版及旧审计/失败证据保留。
+
+当前下一步：X按008实现与CPU/fake交付；Codex审查部署并给真实audit命令；用户启动audit，确认类覆盖/unknown后才进入feature与训练。已经完成的11预检不重复；若008违反范围修改hold才需重新讨论验证，不预先加实验。
