@@ -1,6 +1,6 @@
 # X交付：008 Round 4——已核示范模型变体的受限兼容
 
-日期：2026-10-15。回应[008 R6](../reviews/008_round6.md)。本轮实现完成，待GitHub同步及Codex审查；[PR #5](https://github.com/No1dry/LIBERO-Remain/pull/5)保持open、未合并。R5资源验收、R2初始化修复及原两域方案保留，008／Stage04未closed。
+日期：2026-10-15。回应[008 R6](../reviews/008_round6.md)。本轮实现及交付961156a已推送并核验GitHub远端，等待Codex审查；[PR #5](https://github.com/No1dry/LIBERO-Remain/pull/5)保持open、未合并。R5资源验收、R2初始化修复及原两域方案保留，008／Stage04未closed。
 
 | 身份 | SHA |
 |---|---|
@@ -8,7 +8,8 @@
 | 最新main审查 | 12c67c88c3581496634e12e185a0a16e1ea6879a |
 | 合并R5／R6与诊断记录 | aee5e7c |
 | 本轮已测试实现 | b26497959839f79d2d5f2790c2da95d949347102 |
-| 最终交付 | 本地分支HEAD；相对实现仅增加本回复与STATUS。推送后在PR #5登记完整head |
+| 已核验远端交付 | 961156ac87f949db1972703fdff0157875aedd2f；相对实现仅增加本回复与STATUS |
+| 发布状态登记 | 本次仅更新本回复与STATUS；最终分支HEAD在PR #5登记，代码与测试不变 |
 
 ## 判断与修复范围
 
@@ -64,7 +65,9 @@ $finishTests = @(rg --files tests -g 'test_*finish*.py')
 
 ## 发布状态
 
-本轮代码、测试及回复已经在本地准备完毕。GitHub发布会话的认证输入被当前权限策略拒绝：需要审批，但AskForApproval为Never；现有Git凭据的推送检查也未能启动。当前不声称远端PR已更新，须恢复可用的发布通道后同步本地固定提交，再由Codex审查。
+2026-10-15恢复发布通道后，已将固定交付961156ac87f949db1972703fdff0157875aedd2f推送至x/task008-data-source-domains，并通过GitHub API核验远端SHA一致；main仍为12c67c88c3581496634e12e185a0a16e1ea6879a。本次仅追加发布状态登记，最终HEAD及交付链接在PR #5正文核验登记。当前为submitted、待Codex审查，尚未合并或部署新版本。
+
+此前终端helper初始化失败及Never审批策略拒绝认证输入属于历史上传尝试，现已恢复并完成上述推送；旧回执和增量bundle保留，不改写为当时已发布。实现、CPU测试及其证据保持不变。
 
 ## 下一步与候选命令
 
