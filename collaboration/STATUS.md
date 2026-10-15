@@ -10,7 +10,7 @@
 
 ## 当前阶段
 
-Stage04 / [Plan4](../docs/experiment_plans/stage04_finish_protocol.md)：统一FINISH接口与普通停止校准基线，用于定义结束点、控制未学停止的干扰，不人为压低基线或靠FINISH救分。007已合并；008 R7模型兼容与用户真实1313帧audit已accepted。用户首次04_features已加载OFT，但因7/8维证据校验错误失败、无完整cache，待[R8最小修复](reviews/008_round8.md)。此前审计和1261帧可用数据保留；原forward可能已发生，尚无finish头/parity/校准或新模型评分，Stage04未closed。
+Stage04 / [Plan4](../docs/experiment_plans/stage04_finish_protocol.md)：统一FINISH接口与普通停止校准基线，用于定义结束点、控制未学停止的干扰，不人为压低基线或靠FINISH救分。007已合并；008 R7模型兼容与用户真实1313帧audit已accepted。用户首次04_features已加载OFT，但因7/8维证据校验错误失败、无完整cache；[R8最小修复](reviews/008_round8.md)现已由X提交[实现与CPU/fake证据](responses/008_round5.md)，待Codex复核。此前审计和1261帧可用数据保留；原forward可能已发生，尚无真实finish头/parity/校准或新模型评分，Stage04未closed。
 
 默认设计：冻结OFT动作网络，只训练小finish head；普通00数据分组训练／校准／独立测试，当前外部10/01/11留作测试；active与shadow分开，新协议H520/W150所有mask一致，FINISH后或超时后做真实物理保持，无GT许可停车。原始无FINISH模型仅历史参考，新主指标不把不支持写成0%。
 
@@ -20,7 +20,7 @@ Stage03的固定15条主pilot＋10条oracle诊断已完成；旧JSR主10=40%（2
 
 | 任务 | 状态 | 交付／裁决 |
 |---|---|---|
-| [008 两来源域数据合同](tasks/008_finish_data_source_domains.md) | R7模型兼容/真实audit accepted；R8输入证据shape P1 changes_requested | 2cb的feature因8维proprio被7维校验拒绝，无完整cache；原audit和1261可用帧保留，待X修复，仅重导出feature |
+| [008 两来源域数据合同](tasks/008_finish_data_source_domains.md) | R7模型兼容/真实audit accepted；R8修复submitted，待Codex复核 | 已测实现ec5e119，FINISH 602 passed，全套1830 passed/15 skipped；原audit和1261可用帧保留，验收部署后仅重导出feature；[交付](responses/008_round5.md) |
 | 001 指标与人工UIR | closed | PR #1已合并；交流仍保留供后续追踪 |
 | 002 venv路径修复 | closed | 同上；阶段总结与本地备份已核验 |
 | 003 正常00回归入口 | accepted，PR #2已合并 | main合并SHA 4a02c78c0b945c2df2f0748614fecdd1c5127f55；不在本轮伪造closed |
@@ -37,7 +37,9 @@ Stage03的固定15条主pilot＋10条oracle诊断已完成；旧JSR主10=40%（2
 
 [失败与来源证据总结](../docs/stage_summaries/stage04_feature_input_shape_failure_2026-10-16.md)、[CPU复现/实际配置证据](../docs/stage_summaries/evidence/stage04_feature_input_shape_2026-10-16.json)。X只修证据合同/真实形状测试，不改模型/预处理/GT/分组/阈值/指标；Codex验收新部署后，用户只重导出feature，--audit复用原2cb成功目录，feature out/log用全新路径，失败partial保留。原forward可能已执行，计数不全不能报0或1261完成。
 
-当前可用数据仍1261/1313（96.04%）、unknown52；验证仅demo_38两正例，pilot限制不改。R8前暂停未修PR合并/旧版feature重跑，不重新audit/下载/采集，不自动模型作业。无新头/模型评分，008/Stage04未closed，待删=[]。
+X本轮已测实现为`ec5e119582245e0dde957d3e251020f8ebbb030e`，输入证据继续v1，纠正为8维且保留实际12通道/BF16字节。FINISH 602项全部通过，全套1830 passed/15 skipped；新增67项涵盖真实输入规格、worker编解码和synthetic audit→cache→tiny训练→32不同输入parity。详见[008 Round 5](responses/008_round5.md)。这些仅为CPU/fake软件测试，不能视为真实特征／训练完成；最终交付相对实现仅更新本回复和STATUS，HEAD登记于[PR #5](https://github.com/No1dry/LIBERO-Remain/pull/5)。
+
+当前可用数据仍1261/1313（96.04%）、unknown52；验证仅demo_38两正例，pilot限制不改。待Codex复核并部署新冻结源码/session后，由用户在全新out/log启动feature，audit内部SHA仍为`44d0ab96f910221b58f2bfc930c6e1a06db79f23f19755318cd6d34764bf8457`。完整cache核验前不进入真实训练，PR保持open/unmerged；不重跑旧版feature，不重新audit/下载/采集，不自动模型作业。无真实新头/模型评分，008/Stage04未closed，待删=[]。
 
 
 以下007部署与数据准备经过保留为历史，不重复已经完成的预检。
