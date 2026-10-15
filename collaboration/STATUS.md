@@ -10,7 +10,7 @@
 
 ## 当前阶段
 
-Stage04 / [Plan4](../docs/experiment_plans/stage04_finish_protocol.md)：统一FINISH接口控制未学停止的混淆，不人为压低基线。007已合并；008 R7模型兼容／用户1313帧audit有效。R8输入7/8维P1由X修复并获Codex[R9软件accepted](reviews/008_round9.md)，新3433f48源码／session已部署并核验。下一步用户仅重导出1261帧features，复用原成功audit，不再audit／下载／预检。尚无真实头／parity／校准或新模型评分，Stage04未closed。
+Stage04 / [Plan4](../docs/experiment_plans/stage04_finish_protocol.md)：统一FINISH接口控制未学停止混淆。R9软件accepted后，用户3433f48特征重导出1261/1261完成（100%），Codex已逐文件验收全部cache。原audit仍复用；下一步用户启动[05_train小头训练](../docs/experiment_plans/stage04_head_training_runbook_2026-10-16.md)，不重做audit/features。当前无真实训练完成／parity／停止校准或新模型评分，008／Stage04未closed。
 
 默认设计：冻结OFT动作网络，只训练小finish head；普通00数据分组训练／校准／独立测试，当前外部10/01/11留作测试；active与shadow分开，新协议H520/W150所有mask一致，FINISH后或超时后做真实物理保持，无GT许可停车。原始无FINISH模型仅历史参考，新主指标不把不支持写成0%。
 
@@ -20,7 +20,7 @@ Stage03的固定15条主pilot＋10条oracle诊断已完成；旧JSR主10=40%（2
 
 | 任务 | 状态 | 交付／裁决 |
 |---|---|---|
-| [008 两来源域数据合同](tasks/008_finish_data_source_domains.md) | R9软件accepted；原真实audit accepted；等待用户feature-only重试，未closed | X final3433f487d38efe0a08e4c814e87412aad5aba9fe；本地1833 passed/12 skip、服务器FINISH602 passed/0 skip；新部署262源码/11文件；[R9](reviews/008_round9.md)／[完整命令](../docs/experiment_plans/stage04_feature_retry_runbook_2026-10-16.md) |
+| [008 两来源域数据合同](tasks/008_finish_data_source_domains.md) | R9软件／真实audit／完整features accepted；待用户05_train，未closed | 3433f48重试1261/1261（100%），4096维FP32；1071train/190val，unknown52排除，全部输入hash/NPZ/label/source核验；[验收总结](../docs/stage_summaries/stage04_feature_export_pass_2026-10-16.md)／[训练命令](../docs/experiment_plans/stage04_head_training_runbook_2026-10-16.md) |
 | 001 指标与人工UIR | closed | PR #1已合并；交流仍保留供后续追踪 |
 | 002 venv路径修复 | closed | 同上；阶段总结与本地备份已核验 |
 | 003 正常00回归入口 | accepted，PR #2已合并 | main合并SHA 4a02c78c0b945c2df2f0748614fecdd1c5127f55；不在本轮伪造closed |
@@ -33,11 +33,11 @@ Stage03的固定15条主pilot＋10条oracle诊断已完成；旧JSR主10=40%（2
 
 ## 当前下一步
 
-**R8明确P1已修复并accepted，无需继续返修。用户现在只启动新特征导出，不再audit。** [X交付008 Round 5](https://github.com/No1dry/LIBERO-Remain/blob/3433f487d38efe0a08e4c814e87412aad5aba9fe/collaboration/responses/008_round5.md)，tested ec5e1195、final3433f487d38efe0a08e4c814e87412aad5aba9fe；生产只改schema输入8维，动作8×7、原模型／预处理／56token／数据／指标不变。本地1833 passed/12环境skip，服务器602 passed/0skip，两次独立CPUfake复核无明确阻塞。
+**04_features已完成并accepted，不重跑audit或features。下一步用户亲自启动05_train。** 新冻结3433f487d38efe0a08e4c814e87412aad5aba9fe的本次1261次forward全部完成，exit0/tee0；1261×4096 float32 cache已通过Codex完整load_feature_cache、1313观测／1261输入NPZ及来源／标签／角色／dtype／hash复核。cache SHA5d09999ed6b91b1927eb02bf775d623d38064fbdca12503805a34ea01bcc8efc，绑定原audit44d0ab96…和原base4601be2d…；262源码／11部署文件不变。
 
-新源码/HUBU-AI096/zp/ICML/LIBERO-Remain-stage04-finish-3433f48，新session /HUBU-AI096/zp/ICML/stage04_finish_3433f48/session.sh，262源码Git blob+SHA256及11部署文件核验。AUDIT显式指向原2cb成功目录；新OUT/LOG在3433运行根。原audit内部SHA44d0ab96f910221b58f2bfc930c6e1a06db79f23f19755318cd6d34764bf8457及1313观测新代码只读复核通过，runtime字节SHA不变；旧失败features/log全部保留。[完整命令](../docs/experiment_plans/stage04_feature_retry_runbook_2026-10-16.md)，[长期总结](../docs/stage_summaries/stage04_input_contract_fix_acceptance_2026-10-16.md)。
+[训练完整命令](../docs/experiment_plans/stage04_head_training_runbook_2026-10-16.md)，[特征验收总结](../docs/stage_summaries/stage04_feature_export_pass_2026-10-16.md)，[机器回执](../docs/stage_summaries/evidence/stage04_feature_cache_acceptance_2026-10-16.json)。在现有session用finish_model 05_train train，读取新OUT/features/cache、固定REPO/configs/remaining_goals/finish/train.json、输出新OUT/train；只训小头，CPU FP32／50轮，不加载真实VLA或改动作网络。训练1071（1048负23正），验证190（188负2正），unknown52排除；验证正例仅demo_38两帧限制不改。
 
-可用1261/1313（96.04%）、unknown52；验证正例仍demo_38两帧。用户亲自启动feature-only重试，Codex未启动真实模型／仿真／训练。完整cache核验后再交训练命令；之前失败forward计数未知，不报0或1261完成。PR #5本轮未合并；X可在R9软件验收范围保留最新main文档合并已审实现，不改本次运行pin。008/Stage04未closed，精确待删=[]。
+Codex未启动训练／新模型forward／sim。用户完成训练后再核验head并交真实parity命令，随后正常停止控制和Remain；不以缓存完成冒充stop-capable。旧2cb失败forward数仍未知，旧partial/log全保留。PR #5本轮不自动合并；X按R9已审范围保留最新main文档。008／Stage04未closed，精确待删=[]。
 
 以下007部署与数据准备经过保留为历史，不重复已经完成的预检。
 
