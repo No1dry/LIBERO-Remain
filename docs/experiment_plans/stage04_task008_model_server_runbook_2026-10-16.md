@@ -1,5 +1,7 @@
 # Stage04 / 008 已核示范模型兼容后的服务器启动手册
 
+> 2026-10-16最新状态：04_features已因错误的7维proprio证据检查失败，**不要重复下面旧feature out/log，也不要重跑已通过audit**。待[008 R8修复](../../collaboration/reviews/008_round8.md)验收后，Codex给新源码/session/feature目录，并显式复用原成功audit。本页旧命令保留为历史；当前不能训练。
+
 > 2026-10-16执行更新：03_audit已由用户完成并获只读验收，1313帧全部通过，1261帧标签已知。**下面的audit命令仅保留作历史，不要重跑。当前下一步是特征导出，完整写法如下：**
 >
 > `source /HUBU-AI096/zp/ICML/stage04_finish_2cb1428/session.sh`
