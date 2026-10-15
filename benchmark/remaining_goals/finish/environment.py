@@ -378,7 +378,9 @@ class DemonstrationAuditProvider:
                 raise ValueError("data audit environment seed must be nonnegative")
             self.env.seed(seed)
             reset_scene(self.env)
-            self.contract = BasketContract(self.env)
+            # Native reset leaves Panda's command at its one-dimensional
+            # initialization value. Only restoring a saved state synchronizes
+            # the two finger targets required by the strict physical contract.
             self._base_layout = _layout(self.env.sim.model)
             self._base_xml = self.env.sim.model.get_xml()
             if isinstance(self._base_xml, bytes):
@@ -395,6 +397,9 @@ class DemonstrationAuditProvider:
             raise
 
     def _model(self, source_xml):
+        # A model selection/reset never certifies the current saved-state pose.
+        # Invalidate before any operation that could fail or change native state.
+        self.contract = None
         if source_xml is not None and (not isinstance(source_xml, str) or not source_xml.strip()):
             raise ValueError("invalid demonstration XML")
         if source_xml == self._active_source_xml and self._model_valid:
@@ -404,12 +409,16 @@ class DemonstrationAuditProvider:
         self.env.reset_from_xml_string(text)
         if _layout(self.env.sim.model) != self._base_layout:
             raise ValueError("demonstration XML changed basket scene inventory or saved-state joint/layout identity")
-        self.contract = BasketContract(self.env)
         self._active_source_xml = source_xml
         self._model_valid = True
 
+    def _require_contract(self):
+        if self.env is None or not self._model_valid or self.contract is None:
+            raise RuntimeError("successful demonstration restoration is required before truth or hold")
+        return self.contract
+
     def _truth(self):
-        truth = self.contract.evaluator_state()
+        truth = self._require_contract().evaluator_state()
         truth["release_evidence"].update(current_model_xml_sha256=model_xml_hash(self.env),
             source_xml_sha256=(hashlib.sha256(self._active_source_xml.encode()).hexdigest() if self._active_source_xml else None))
         return truth
@@ -417,6 +426,7 @@ class DemonstrationAuditProvider:
     def restore_demonstration(self, state, model_xml=None):
         if self.env is None:
             raise RuntimeError("data provider is closed")
+        self.contract = None
         if not isinstance(model_xml, str) or not model_xml.strip():
             raise ValueError("insufficient demonstration identity: actual trajectory model_xml is required")
         self._model(model_xml)
@@ -439,11 +449,12 @@ class DemonstrationAuditProvider:
         try:
             initial = self.restore_demonstration(state, model_xml=model_xml)
             trace = [{"step": 0, **{key: deepcopy(initial[key]) for key in ("goals", "released", "release_evidence")}}]
-            contract = self.contract.hold.begin()
+            current_contract = self._require_contract()
+            contract = current_contract.hold.begin()
             for step in range(1, steps + 1):
-                action = self.contract.hold.action()
+                action = current_contract.hold.action()
                 # Native done guards do not stop physical label confirmation.
-                for holder in (self.env, self.contract.inner):
+                for holder in (self.env, current_contract.inner):
                     if "done" in vars(holder):
                         holder.done = False
                 self.env.step(action.tolist())
@@ -454,12 +465,13 @@ class DemonstrationAuditProvider:
         finally:
             self._model(previous_xml)
             restore_raw_state(self.env, previous_state)
-            self.contract = BasketContract(self.env)
             _require_exact_state(previous_state, _state(self.env), "passive label branch restoration")
+            self.contract = BasketContract(self.env)
 
     def close(self):
         env, self.env = self.env, None
         self.contract = None
+        self._model_valid = False
         if env is not None:
             env.close()
 
