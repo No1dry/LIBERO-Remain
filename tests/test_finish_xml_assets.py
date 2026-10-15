@@ -136,6 +136,12 @@ def test_same_basename_objects_never_substitute_for_one_another(roots):
     "/unknown/chiliocosm/assets/textures/floor.png",
     "/other/notlibero/assets/textures/floor.png",
     "/other/libero-dev/chiliocosm/assets/textures/floor.png",
+    LEGACY.lstrip("/") + "textures/floor.png",
+    "/" + LEGACY + "textures/floor.png",
+    LEGACY.replace("yifengz", "different_author") + "textures/floor.png",
+    LEGACY.replace("assets/", "assets2/") + "textures/floor.png",
+    LEGACY.replace("workspace/", "workspace/./") + "textures/floor.png",
+    LEGACY.replace("workspace/", "workspace/nested/../") + "textures/floor.png",
 ])
 def test_escape_unknown_roots_and_substring_aliases_are_rejected(roots, original):
     asset(roots, "libero", "textures/floor.png")

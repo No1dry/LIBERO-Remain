@@ -19,7 +19,10 @@ from xml.parsers import expat
 
 RESOLVER_VERSION = "libero-bounded-xml-assets-v1"
 SCAN_SCHEMA = "remaining-finish-xml-assets-scan-v1"
-LEGACY_ROOT = "/home/yifengz/workspace/libero-dev/chiliocosm/assets/"
+# Exact public demonstration alias, compared as path components like _MARKERS.
+# Keep the leading empty component: a relative or differently rooted path is
+# not the approved historical source. This is metadata, not a local home path.
+_LEGACY_PARTS = ("", "home", "yifengz", "workspace", "libero-dev", "chiliocosm", "assets")
 _ROOTS = {"libero", "robosuite"}
 _MARKERS = {"libero": ("libero", "assets"), "robosuite": ("robosuite", "models", "assets")}
 _ATTR = re.compile(rb'([A-Za-z_][A-Za-z0-9_:.-]*)\s*=\s*([\"\x27])(.*?)\2', re.DOTALL)
@@ -123,8 +126,8 @@ def _interpret(original):
     value = original.replace("\\", "/")
     parts = value.split("/")
     candidates = []
-    if value.startswith(LEGACY_ROOT):
-        candidates.append(("libero", value[len(LEGACY_ROOT):], "legacy_chiliocosm_exact_root"))
+    if len(parts) > len(_LEGACY_PARTS) and tuple(parts[:len(_LEGACY_PARTS)]) == _LEGACY_PARTS:
+        candidates.append(("libero", "/".join(parts[len(_LEGACY_PARTS):]), "legacy_chiliocosm_exact_root"))
     for root, marker in _MARKERS.items():
         for index in range(len(parts) - len(marker) + 1):
             if tuple(parts[index:index+len(marker)]) == marker:
