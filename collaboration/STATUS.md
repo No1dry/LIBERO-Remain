@@ -10,7 +10,7 @@
 
 ## 当前阶段
 
-Stage04 / [Plan4](../docs/experiment_plans/stage04_finish_protocol.md)：统一FINISH接口与普通停止校准基线，用于定义结束点并控制“未学停止”的干扰，不是人为压低基线或靠FINISH救分。007已合并；008最新R6受限示范模型兼容已获[R7软件accepted](reviews/008_round7.md)，冻结2cb1428已部署、纯文件准备完成，待用户重跑真实audit。此前初始化、历史资源路径和布局守卫失败均保留，不算模型成绩；当前尚无可用真实标签、新头或新VLA分数，Stage04未closed。
+Stage04 / [Plan4](../docs/experiment_plans/stage04_finish_protocol.md)：统一FINISH接口与普通停止校准基线，用于定义结束点、控制未学停止的干扰，不人为压低基线或靠FINISH救分。007已合并；008 R7软件accepted，冻结2cb1428已部署。用户真实03_audit现已ready并经Codex完整只读复核：1313/1313帧，已知1261帧可导特征；下一阶段用户启动冻结OFT feature。尚未有本阶段模型forward/头训练/新评分，Stage04整体未closed。
 
 默认设计：冻结OFT动作网络，只训练小finish head；普通00数据分组训练／校准／独立测试，当前外部10/01/11留作测试；active与shadow分开，新协议H520/W150所有mask一致，FINISH后或超时后做真实物理保持，无GT许可停车。原始无FINISH模型仅历史参考，新主指标不把不支持写成0%。
 
@@ -20,7 +20,7 @@ Stage03的固定15条主pilot＋10条oracle诊断已完成；旧JSR主10=40%（2
 
 | 任务 | 状态 | 交付／裁决 |
 |---|---|---|
-| [008 两来源域数据合同](tasks/008_finish_data_source_domains.md) | R7软件accepted（R6受限示范模型支持），PR #5未合并/未closed | 冻结2cb1428已部署；本地1766/服务器535 passed，实际文件与来源绑定通过；用户待启动同一1313帧audit，无新模型分数 |
+| [008 两来源域数据合同](tasks/008_finish_data_source_domains.md) | R7软件accepted；真实audit已通过；未closed | 固定2cb1428：1313帧完整，known1261/unknown52；train23正例、val2正例（同demo_38）。下一用户feature，当前无新模型评分 |
 | 001 指标与人工UIR | closed | PR #1已合并；交流仍保留供后续追踪 |
 | 002 venv路径修复 | closed | 同上；阶段总结与本地备份已核验 |
 | 003 正常00回归入口 | accepted，PR #2已合并 | main合并SHA 4a02c78c0b945c2df2f0748614fecdd1c5127f55；不在本轮伪造closed |
@@ -33,11 +33,11 @@ Stage03的固定15条主pilot＋10条oracle诊断已完成；旧JSR主10=40%（2
 
 ## 当前下一步
 
-**R6受限示范模型兼容已获R7软件accepted并部署。** 冻结2cb1428f312175968ac42449994c219e94e9ab14，250源码/9部署文件核验；本地1766 passed/12可选skip，服务器FINISH535 passed/0 skipped。实际50XML/4450引用/87路径纯文件解析全部通过，来源/mesh/baseline已与真实文件及既有布局JSON核对；不冒充新native/audit/标签通过。
+**真实数据audit已完成并接受，不再重跑03_audit。** 2cb1428：ready_for_feature_export、issues0、exit0；预定1313/1313帧（100%）与全部观测/来源/标签只读复核通过。训练1048负/23正/44未知；验证188负/2正/8未知；可用1261/1313（96.04%），未知52保留排除。验证正例仅demo_38两帧，不是两独立episode，不代表stop能力。
 
-用户现在按[新会话命令](../docs/experiment_plans/stage04_task008_model_server_runbook_2026-10-16.md)重跑同一1313帧audit：source `/HUBU-AI096/zp/ICML/stage04_finish_2cb1428/session.sh`，再 `finish_sim 03_audit audit-data --config "$CFG/data.json" --out "$OUT/audit"`。旧session和失败目录不重跑/覆盖，不新增独立预检/下载/采集。完成后Codex读真实0/1/unknown/身份与最终兼容证据，充分后直接feature/训练，不自动串联。
+**用户现在启动04_features**：[已更新完整命令](../docs/experiment_plans/stage04_task008_model_server_runbook_2026-10-16.md)，同2cb session后运行 `finish_sim 04_features export-features --audit "$OUT/audit" --runtime-config "$CFG/oft_sog10.json" --out "$OUT/features"`。将加载原冻结OFT、提取1261输入特征，不自动训练头或改动作网络。Codex随后核cache，才到用户单独head训练。保持原split/超参数/阈值，不因稀少正例临时挑样或新增gate。
 
-[R7裁决](reviews/008_round7.md)、[部署及证据总结](../docs/stage_summaries/stage04_task008_model_fix_acceptance_2026-10-16.md)。保留原HDF/XML/额外碰撞几何，只作用head示范审计；eval/source001/标签/指标不变，物理等价未证明，模型域差异明确。当前无新VLA/model score。R6合并暂停解除，X可保留最新文档和已审实现合并PR并登记，Codex不代合并。前次有限诊断授权不扩大为自动实验；008/Stage04未closed，待删=[]。
+[真实审计长期总结](../docs/stage_summaries/stage04_finish_data_audit_pass_2026-10-16.md)与[验收回执](../docs/stage_summaries/evidence/stage04_finish_data_audit_2026-10-16.json)。前期兼容工程已完成到预定audit通过；没有本阶段新VLA/头/模型评分，30条eval预算未消耗。此后仍用户启动真实阶段，Codex不代跑/自动串联。008/Stage04未closed，原始失败和成功全保留，待删=[]。
 
 
 以下007部署与数据准备经过保留为历史，不重复已经完成的预检。

@@ -1,5 +1,14 @@
 # Stage04 / 008 已核示范模型兼容后的服务器启动手册
 
+> 2026-10-16执行更新：03_audit已由用户完成并获只读验收，1313帧全部通过，1261帧标签已知。**下面的audit命令仅保留作历史，不要重跑。当前下一步是特征导出，完整写法如下：**
+>
+> `source /HUBU-AI096/zp/ICML/stage04_finish_2cb1428/session.sh`
+>
+> `finish_sim 04_features export-features --audit "$OUT/audit" --runtime-config "$CFG/oft_sog10.json" --out "$OUT/features"`
+>
+> 共1261次冻结OFT特征forward，不自动训练；验证正例仅2帧且同一轨迹，按pilot解释。[真实审计总结](../stage_summaries/stage04_finish_data_audit_pass_2026-10-16.md)。
+
+
 2026-10-16。保留此前初始化及资源修复，新增仅head示范域的已核link7碰撞几何变体支持；旧b596/9ddd/089失败目录保留，不使用旧会话。本轮不新增独立预检。PR #5软件accepted，冻结 `2cb1428f312175968ac42449994c219e94e9ab14`；不是模型成绩或阶段closed。Codex已完成实际50XML/4450引用的纯文件解析，未解析0；这不代表物理标签已通过。保留示范原XML与额外碰撞几何，评测环境不变；不声称两个模型物理等价。候选完整方法见[两域手册](../finish_two_domains_runbook.md)，本页补齐本服务器实际路径与会话。真实阶段只能用户显式启动；Codex已做的纯文件准备不要重复。
 
 ## 会话与第一条真实命令
