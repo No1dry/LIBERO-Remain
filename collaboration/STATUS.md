@@ -10,7 +10,7 @@
 
 ## 当前阶段
 
-Stage04 / [Plan4](../docs/experiment_plans/stage04_finish_protocol.md)：统一FINISH接口＋普通停止校准基线，目的是明确benchmark结束点、控制未学停止的干扰，不是把基线分数做低或靠FINISH救分。007的R2兼容性修复软件accepted，4f76f49的source0_11真实四步预检已由用户启动并通过；PR #4现已合并main 94c061e。旧38版失败记录保留；用户批准的A两域合同已由X实现为独立PR #5，Codex本轮软件accepted并已冻结b596af2部署、完成纯文件注册；用户首次真实audit因provider初始化顺序错误失败、采样rows0；该P1已在9ddd40f修复并[R3 accepted](reviews/008_round3.md)，新版本用户audit越过初始化但因历史XML资源根失败，待[008 R4](reviews/008_round4.md)兼容修复；当前无新VLA/model score，Stage04未closed。
+Stage04 / [Plan4](../docs/experiment_plans/stage04_finish_protocol.md)：统一FINISH接口＋普通停止校准基线，目的是明确benchmark结束点、控制未学停止的干扰，不是把基线分数做低或靠FINISH救分。007的R2兼容性修复软件accepted，4f76f49的source0_11真实四步预检已由用户启动并通过；PR #4现已合并main 94c061e。旧38版失败记录保留；用户批准的A两域合同已由X实现为独立PR #5，首轮软件accepted后冻结b596af2部署并完成纯文件注册。首次真实audit的初始化P1已在9ddd40f修复并[R3 accepted](reviews/008_round3.md)；第二次用户audit越过初始化但因历史XML资源根失败。[008 R4](reviews/008_round4.md)兼容修复现已由X[提交](responses/008_round3.md)，实现201457a，待Codex审查／部署和实际50XML文件扫描。当前无新VLA/model score，Stage04未closed。
 
 默认设计：冻结OFT动作网络，只训练小finish head；普通00数据分组训练／校准／独立测试，当前外部10/01/11留作测试；active与shadow分开，新协议H520/W150所有mask一致，FINISH后或超时后做真实物理保持，无GT许可停车。原始无FINISH模型仅历史参考，新主指标不把不支持写成0%。
 
@@ -20,7 +20,7 @@ Stage03的固定15条主pilot＋10条oracle诊断已完成；旧JSR主10=40%（2
 
 | 任务 | 状态 | 交付／裁决 |
 |---|---|---|
-| [008 两来源域数据合同](tasks/008_finish_data_source_domains.md) | R2初始化P1已修/R3软件accepted；R4历史XML路径P1 changes_requested，PR #5未合并/未closed | 9ddd真实audit restore1/rows0，旧chiliocosm根未解析；全50XML纯文件排查已交，待X最小兼容修复，非模型成绩 |
+| [008 两来源域数据合同](tasks/008_finish_data_source_domains.md) | R4历史XML路径P1修复submitted，待Codex审查；PR #5未合并/未closed | [X回复008 Round 3](responses/008_round3.md)，实现201457a；受限资源resolver、全50XML预扫描和SHA绑定已交，实际服务器扫描／物理audit待后续执行，非模型成绩 |
 | 001 指标与人工UIR | closed | PR #1已合并；交流仍保留供后续追踪 |
 | 002 venv路径修复 | closed | 同上；阶段总结与本地备份已核验 |
 | 003 正常00回归入口 | accepted，PR #2已合并 | main合并SHA 4a02c78c0b945c2df2f0748614fecdd1c5127f55；不在本轮伪造closed |
@@ -33,11 +33,11 @@ Stage03的固定15条主pilot＋10条oracle诊断已完成；旧JSR主10=40%（2
 
 ## 当前下一步
 
-**9ddd40f的用户真实audit仍失败：初始化P1已解决，现被旧作者XML资产根阻塞。** provider已建立、采样restore_attempts1/rows0/hold0，command_exit=2；没有标签或模型成绩。[008 R4](reviews/008_round4.md)给X唯一新明确P1，不改两域/模型/标签/指标。
+**X已交R4资源路径P1修复，下一执行者是Codex。** [实现及CPU证据](responses/008_round3.md)绑定201457a；最终完整交付SHA登记在[PR #5](https://github.com/No1dry/LIBERO-Remain/pull/5)正文。保留R2初始化顺序及严格物理合同，不改两域/模型/标签/指标。
 
-Codex已纯文件扫描全部50 XML：4450次引用、87唯一原路径，其中24个chiliocosm旧根未被现resolver识别；87/87固定本地候选存在且contained。无需下载或换纹理，但还需X实现同一受限resolver及全部依赖预扫描。[长期故障记录](../docs/stage_summaries/stage04_task008_xml_asset_failure_2026-10-15.md)与[实际清单](../docs/stage_summaries/evidence/stage04_task008_xml_assets_2026-10-15.json)。
+9ddd历史真实audit为restore_attempts1/rows0/hold0、command_exit=2，没有标签或模型成绩。Codex此前已纯文件检查50 XML：4450次引用、87唯一原路径，其中24个chiliocosm旧根；87/87固定本地候选存在且contained。[长期故障记录](../docs/stage_summaries/stage04_task008_xml_asset_failure_2026-10-15.md)和[实际清单](../docs/stage_summaries/evidence/stage04_task008_xml_assets_2026-10-15.json)保留。这份诊断清单不等于新resolver已在服务器通过。
 
-下一步X最小资源兼容修复→Codex审查/新部署/实际50XML纯文件检查→用户重跑同一audit。此P1验收前暂停PR #5合并与同版audit重跑；不加单独11预检，不重下载HDF，不新增VLA采集。旧9ddd/b596失败全部保留，不覆盖或伪装模型失败。008/Stage04未closed，待删=[]。
+下一步Codex审查、部署新不可变版本／session，通过register-data核对实际50XML／4450引用／87路径、未解析0及资源SHA，再交用户启动同一audit的新out/log。文件检查不标ready，也不保证后续物理audit通过；X本轮仅CPU/fake软件验证。此P1验收前暂停PR #5合并与旧版audit重跑；不加单独11预检，不重下载HDF，不新增VLA采集。旧9ddd/b596失败全部保留，不覆盖或伪装模型失败。008/Stage04未closed，待删=[]。
 
 
 以下007部署与数据准备经过保留为历史，不重复已经完成的预检。
