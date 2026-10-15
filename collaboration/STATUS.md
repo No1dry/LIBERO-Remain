@@ -1,6 +1,6 @@
 # 当前协作状态
 
-更新：2026-10-14。当前权责以本页和[README](README.md)为准；历史记录保留，不把旧执行者署名改掉。
+更新：2026-10-15。当前权责以本页和[README](README.md)为准；历史记录保留，不把旧执行者署名改掉。
 
 ## 当前分工与审查方式
 
@@ -10,7 +10,7 @@
 
 ## 当前阶段
 
-Stage04 / [Plan4](../docs/experiment_plans/stage04_finish_protocol.md)：统一FINISH接口＋普通停止校准基线，目的是明确benchmark结束点、控制未学停止的干扰，不是把基线分数做低或靠FINISH救分。007的R2兼容性修复软件accepted，新冻结4f76f49的source0_11真实四步预检已由用户启动并通过。旧38版失败记录保留；当前无VLA/model score，用户已批准A两域数据合同，训练仍待008代码实现／审查／真实audit，Stage04未closed。
+Stage04 / [Plan4](../docs/experiment_plans/stage04_finish_protocol.md)：统一FINISH接口＋普通停止校准基线，目的是明确benchmark结束点、控制未学停止的干扰，不是把基线分数做低或靠FINISH救分。007的R2兼容性修复软件accepted，4f76f49的source0_11真实四步预检已由用户启动并通过；PR #4现已合并main 94c061e。旧38版失败记录保留；用户批准的A两域合同已由X实现为独立PR #5，Codex本轮软件accepted并已冻结b596af2部署、完成纯文件注册；下一步用户直接启动真实audit，当前无新VLA/model score，Stage04未closed。
 
 默认设计：冻结OFT动作网络，只训练小finish head；普通00数据分组训练／校准／独立测试，当前外部10/01/11留作测试；active与shadow分开，新协议H520/W150所有mask一致，FINISH后或超时后做真实物理保持，无GT许可停车。原始无FINISH模型仅历史参考，新主指标不把不支持写成0%。
 
@@ -20,18 +20,26 @@ Stage03的固定15条主pilot＋10条oracle诊断已完成；旧JSR主10=40%（2
 
 | 任务 | 状态 | 交付／裁决 |
 |---|---|---|
-| [008 两来源域数据合同](tasks/008_finish_data_source_domains.md) | open（用户已批准A，新需求） | 固定HDF 30/5/15组＋official init 5/10/5组，身份消费者统一迁移；X实现，Codex审查部署，用户真实audit |
+| [008 两来源域数据合同](tasks/008_finish_data_source_domains.md) | accepted（软件），[PR #5](https://github.com/No1dry/LIBERO-Remain/pull/5)未合并/未closed | 冻结b596af2已部署；[验收](reviews/008_round1.md)；本地FINISH393/全套1624 passed+12可选skip，服务器393 passed；纯文件两域注册通过，1313待审计帧，无真实模型成绩 |
 | 001 指标与人工UIR | closed | PR #1已合并；交流仍保留供后续追踪 |
 | 002 venv路径修复 | closed | 同上；阶段总结与本地备份已核验 |
 | 003 正常00回归入口 | accepted，PR #2已合并 | main合并SHA 4a02c78c0b945c2df2f0748614fecdd1c5127f55；不在本轮伪造closed |
 | 004 runtime有效版本 | accepted，PR #3已合并 | main合并869f409；已审独立实现7318c4b；旧raw不改 |
 | 005 subset pilot | accepted，PR #3已合并 | main合并869f409；已审实现7c47c12；实验冻结04508dc |
 | 006 观察／试探规则 | accepted（文档），未科学闭环 | 不改001/camera/crop；旧初帧可见性闸门撤销 |
-| [007 FINISH协议与停止校准](tasks/007_finish_protocol_and_stop_calibration.md) | accepted（R2软件修复），PR #4未合并，未closed | [复核裁决](reviews/007_round3.md)；冻结4f76f49；本地1492 passed/12 skipped，FINISH两端261；[真实单11四步预检通过](../docs/stage_summaries/stage04_r2_preflight_pass_2026-10-14.md)，模型调用0；训练未放行 |
+| [007 FINISH协议与停止校准](tasks/007_finish_protocol_and_stop_calibration.md) | accepted（R2软件修复），PR #4已合并，未closed | main 94c061e；[复核裁决](reviews/007_round3.md)对应4f76f49实现未改；[真实单11四步预检通过](../docs/stage_summaries/stage04_r2_preflight_pass_2026-10-14.md)，模型调用0；不等于W150或停止能力通过 |
 
-[PR #3](https://github.com/No1dry/LIBERO-Remain/pull/3)已由Codex验收并由X于2026-10-13合并为main `869f409884b73fa7de8dcacb4c7861d6ddfa19f8`，已审实现未变；历史验收和实验冻结04508dc保留。007为独立[PR #4](https://github.com/No1dry/LIBERO-Remain/pull/4)，旧38e6a44仅作历史失败冻结。当前已审head `4f76f4917a9174fc5b80ef83e3cf21eaf053c98d`，相对X测试实现a7dda8d仅交付/STATUS文档不同。Codex不代合并；X按既有授权保留此已审实现并登记merge，不合并未修38版。
+[PR #3](https://github.com/No1dry/LIBERO-Remain/pull/3)已由Codex验收并由X于2026-10-13合并为main `869f409884b73fa7de8dcacb4c7861d6ddfa19f8`，已审实现未变；历史验收和实验冻结04508dc保留。[PR #4](https://github.com/No1dry/LIBERO-Remain/pull/4)已按007 accepted与008 A.1授权于2026-10-15合并为 `94c061e99168d76fbe50bef85b187db8fe2b9898`：已审4f76f49合入最新main规则得到48cad17，benchmark/scripts/tests/configs/pyproject均保持已验收实现。008从此main独立开分支；旧38e6a44仍仅作历史失败冻结。[合并与新实现登记](responses/008_round1.md)。
 
 ## 当前下一步
+
+008软件accepted，无阻塞返修；源码冻结 `b596af26e167450beb7f3c7fe61b6dfd53523ef6` 已上传新目录，220源码/9部署文件核验。实际HDF/init/BDDL纯文件检查与来源registry通过：head_train30轨迹/1115帧，head_validation5轨迹/198帧，unused15不恢复；init校准/独立normal/Remain为5/10/5来源，祖源独立性unproven。
+
+**用户现在启动真实audit**：[完整实际命令](../docs/experiment_plans/stage04_task008_server_runbook_2026-10-15.md)。source `/HUBU-AI096/zp/ICML/stage04_finish_b596af2/session.sh` 后运行 `finish_sim 03_audit audit-data --config "$CFG/data.json" --out "$OUT/audit"`。已通过4f预检不重复，不要求重新下载HDF。用户完成后Codex读实际产物，类别/证据充分再到feature/训练，不自动串联。尚无真实audit/训练/模型新score，file-only不是ready。
+
+[验收与部署长期总结](../docs/stage_summaries/stage04_task008_acceptance_deployment_2026-10-15.md)。X可保留最新文档和已审实现合并并登记PR #5；Codex不代合并。008研究与任务未closed，精确待删清单=[]。
+
+以下007部署与数据准备经过保留为历史，不重复已经完成的预检。
 
 X的007需求意见此前已采纳，现已交[首轮实现与CPU/fake证据](https://github.com/No1dry/LIBERO-Remain/blob/38e6a449d4e769b842e10c5b393fc2b26a5cfa2b/collaboration/responses/007_round1.md)。Codex[软件审查accepted](reviews/007_round1.md)，无需本轮返修；已将固定源码上传新目录 `/HUBU-AI096/zp/ICML/LIBERO-Remain-stage04-finish-38e6a44`，194个源码文件及10个冻结部署文件核验一致。配置／session／新结果根为 `/HUBU-AI096/zp/ICML/stage04_finish_38e6a44`。
 
@@ -57,4 +65,4 @@ Stage00接入范围closed，Stage01代码范围closed；Stage02正常00实验验
 
 ## 数据分组修订已获用户批准
 
-2026-10-14用户已明确选择[方案A](../docs/experiment_plans/stage04_data_domains_proposal_2026-10-14.md)：HDF整轨迹head_train/validation，official init另作normal_calibration/test/Remain，承认跨域物理祖源独立性未证明；不把demo编号当init、不训练编辑评测输入。Codex已更新Plan4并发[008完整新任务](tasks/008_finish_data_source_domains.md)，不是007返修。X先合并保持已审4f实现的PR #4并登记，再独立008 PR；Codex不代合并。008验收部署后用户先启动audit，未充分前不训练，不新增VLA数据采集或30条eval外预算。
+2026-10-14用户已明确选择[方案A](../docs/experiment_plans/stage04_data_domains_proposal_2026-10-14.md)：HDF整轨迹head_train/head_validation，official init另作normal_calibration/test/Remain，承认跨域物理祖源独立性未证明；不把demo编号当init、不训练编辑评测输入。Codex已更新Plan4并发[008完整新任务](tasks/008_finish_data_source_domains.md)，不是007返修。X现已合并保持已审4f实现的PR #4并从main独立交付008 PR #5；Codex不代合并。008验收部署后用户先启动audit，未充分前不训练，不新增VLA数据采集或30条eval外预算。
