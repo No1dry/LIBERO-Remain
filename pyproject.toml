@@ -12,10 +12,12 @@ dependencies = ["numpy==1.26.4", "PyYAML>=6.0,<7"]
 [project.optional-dependencies]
 test = ["pytest>=7.4,<9"]
 video = ["imageio==2.34.2", "imageio-ffmpeg==0.5.1"]
+finish-data = ["h5py>=3.8,<4"]
 
 [project.scripts]
 libero-remain = "benchmark.remaining_goals.evaluation:main"
 libero-pab = "benchmark.remaining_goals.evaluation:main"
+libero-remain-finish = "benchmark.remaining_goals.finish.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["."]

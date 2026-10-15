@@ -1,0 +1,8 @@
+{
+  "hdf5_path": "/ABS/DATA/libero_10/LIVING_ROOM_SCENE2_put_both_the_alphabet_soup_and_the_tomato_sauce_in_the_basket_demo.hdf5",
+  "init_states_path": "/ABS/LIBERO/libero/libero/init_files/libero_10/LIVING_ROOM_SCENE2_put_both_the_alphabet_soup_and_the_tomato_sauce_in_the_basket.pruned_init",
+  "bddl_path": "/ABS/LIBERO/libero/libero/bddl_files/libero_10/LIVING_ROOM_SCENE2_put_both_the_alphabet_soup_and_the_tomato_sauce_in_the_basket.bddl",
+  "original_instruction": "put both the alphabet soup and the tomato sauce in the basket",
+  "state_stride": 8,
+  "trajectory_source_map": {}
+}

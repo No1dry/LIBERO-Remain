@@ -1,0 +1,5 @@
+{
+  "kind": "remain",
+  "manifest": "/ABS/REMAIN_BANK/manifest.json",
+  "candidate_replay": "/ABS/REPLAY/replay_report.json"
+}

@@ -1,0 +1,8 @@
+{
+  "schema_version": "remaining-finish-job-v1",
+  "purpose": "validation_shadow",
+  "runtime_config": "/ABS/PRIVATE_CONFIG/oft_sog10.json",
+  "source": {"kind": "normal_bank", "manifest": "/ABS/OUTPUT/normal_bank/normal_bank.json"},
+  "head_artifact": "/ABS/OUTPUT/train/head",
+  "video": {"enabled": true, "camera": "both", "fps": 20, "stride": 1}
+}

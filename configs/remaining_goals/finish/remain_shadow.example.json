@@ -1,0 +1,8 @@
+{
+  "schema_version": "remaining-finish-job-v1",
+  "purpose": "remain_shadow",
+  "runtime_config": "/ABS/PRIVATE_CONFIG/oft_sog10.json",
+  "source": {"kind": "remain", "manifest": "/ABS/REMAIN_BANK/manifest.json", "candidate_replay": "/ABS/REPLAY/replay_report.json"},
+  "head_artifact": "/ABS/OUTPUT/train/head",
+  "video": {"enabled": true, "camera": "both", "fps": 20, "stride": 1}
+}
