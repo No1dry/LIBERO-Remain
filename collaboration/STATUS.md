@@ -20,7 +20,7 @@ Stage03的固定15条主pilot＋10条oracle诊断已完成；旧JSR主10=40%（2
 
 | 任务 | 状态 | 交付／裁决 |
 |---|---|---|
-| [008 两来源域数据合同](tasks/008_finish_data_source_domains.md) | R5软件accepted（R4 XML路径P1已修），PR #5未合并/未closed | 冻结089e0b7已部署；真实50XML/4450引用纯文件通过、非路径字节/素材SHA不变；用户待重跑同一1313帧audit，无新模型分数 |
+| [008 两来源域数据合同](tasks/008_finish_data_source_domains.md) | R5软件accepted；真实audit布局兼容性诊断中，未closed | 089e0b7资源/文件通过，compiled layout guard拒绝首帧，restore1/rows0；缺实际逐字段diff，未授权Codex场景诊断，暂无新返修定性 |
 | 001 指标与人工UIR | closed | PR #1已合并；交流仍保留供后续追踪 |
 | 002 venv路径修复 | closed | 同上；阶段总结与本地备份已核验 |
 | 003 正常00回归入口 | accepted，PR #2已合并 | main合并SHA 4a02c78c0b945c2df2f0748614fecdd1c5127f55；不在本轮伪造closed |
@@ -33,11 +33,11 @@ Stage03的固定15条主pilot＋10条oracle诊断已完成；旧JSR主10=40%（2
 
 ## 当前下一步
 
-**R4 XML资源P1已获R5软件accepted并部署，实际50XML全量纯文件核验通过。** 固定089e0b7fa3916e6444b0880ca61101cac791c1ba：本地1688 passed/12可选skip、服务器FINISH457 passed；238源码/9部署文件核验。实际4450/4450引用解析、87唯一文件未解析0；50/50非路径XML字节不变，87/87资源内容SHA与上次库存一致。没有替换纹理/mesh或改原HDF，没有真实label/model score。
+**089e0b7的用户真实audit在compiled layout身份检查处停止：restore_attempts1、rows0、hold0，exit2。** 资源解析/非路径XML字节与素材SHA此前已通过；本次_load model后的_layout与默认_base_layout不等，现报告缺逐字段差异，尚不能认定仅ID顺序还是实质结构不兼容。[本次长期记录](../docs/stage_summaries/stage04_task008_layout_failure_2026-10-15.md)。
 
-用户现在按[新会话命令](../docs/experiment_plans/stage04_task008_xml_server_runbook_2026-10-15.md)重跑同一audit：source `/HUBU-AI096/zp/ICML/stage04_finish_089e0b7/session.sh` 后 `finish_sim 03_audit audit-data --config "$CFG/data.json" --out "$OUT/audit"`。旧b596/9ddd session与失败out不再运行/覆盖；不加独立预检、不重下载、不新增采集。Codex随后读真实1313帧/0/1/unknown/身份，充分后直接feature/训练，不自动串联。
+Codex已只读核查全部50示范XML静态名称/type结构一致，但不是compiled layout证据；未编译/创建新场景、未step/label/VLA。建议向用户请求一次“仅加载场景导出布局、不step/任务动作/模型/训练”的最小兼容诊断授权，当前**尚未授权/执行**。先取得具体diff再决定是否需X改代码，不猜测性放宽guard；用户暂勿重跑同版audit或进入feature/训练。
 
-[R5验收](reviews/008_round5.md)、[实际全量文件与部署总结](../docs/stage_summaries/stage04_task008_xml_fix_acceptance_2026-10-15.md)。纯文件通过不等于物理audit或停止能力通过；作者原机素材字节与跨域祖源未证明。R4合并暂停解除，X可保留最新文档和已审实现合并PR并登记，Codex不代合并。008/Stage04未closed，待删=[]。
+R5软件/资源结论保留，真实audit未通过，不算模型0%。既有PR合并软件裁决不被冒充科研完成；008/Stage04未closed，原始失败全部保留，待删=[]。
 
 
 以下007部署与数据准备经过保留为历史，不重复已经完成的预检。
