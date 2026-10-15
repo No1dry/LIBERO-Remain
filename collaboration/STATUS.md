@@ -10,7 +10,7 @@
 
 ## 当前阶段
 
-Stage04 / [Plan4](../docs/experiment_plans/stage04_finish_protocol.md)：统一FINISH接口＋普通停止校准基线，目的是明确benchmark结束点、控制未学停止的干扰，不是把基线分数做低或靠FINISH救分。007的R2兼容性修复软件accepted，4f76f49的source0_11真实四步预检已由用户启动并通过；PR #4现已合并main 94c061e。旧38版失败记录保留；用户批准的A两域合同已由X实现为独立PR #5，Codex本轮软件accepted并已冻结b596af2部署、完成纯文件注册；用户首次真实audit因provider初始化顺序错误失败、采样rows0，待[008 R2](reviews/008_round2.md)最小修复；当前无新VLA/model score，Stage04未closed。
+Stage04 / [Plan4](../docs/experiment_plans/stage04_finish_protocol.md)：统一FINISH接口＋普通停止校准基线，目的是明确benchmark结束点、控制未学停止的干扰，不是把基线分数做低或靠FINISH救分。007的R2兼容性修复软件accepted，4f76f49的source0_11真实四步预检已由用户启动并通过；PR #4现已合并main 94c061e。旧38版失败记录保留；用户批准的A两域合同已由X实现为独立PR #5，Codex R1软件accepted并已冻结b596af2部署、完成纯文件注册；用户首次真实audit因provider初始化顺序错误失败、采样rows0。X现已提交[008 R2最小修复与CPU证据](responses/008_round2.md)，待Codex复核；当前无新VLA/model score，Stage04未closed。
 
 默认设计：冻结OFT动作网络，只训练小finish head；普通00数据分组训练／校准／独立测试，当前外部10/01/11留作测试；active与shadow分开，新协议H520/W150所有mask一致，FINISH后或超时后做真实物理保持，无GT许可停车。原始无FINISH模型仅历史参考，新主指标不把不支持写成0%。
 
@@ -20,7 +20,7 @@ Stage03的固定15条主pilot＋10条oracle诊断已完成；旧JSR主10=40%（2
 
 | 任务 | 状态 | 交付／裁决 |
 |---|---|---|
-| [008 两来源域数据合同](tasks/008_finish_data_source_domains.md) | R1数据域accepted；R2明确provider初始化P1 changes_requested，[PR #5](https://github.com/No1dry/LIBERO-Remain/pull/5)未合并/未closed | 冻结b596af2已部署；[验收](reviews/008_round1.md)；本地FINISH393/全套1624 passed+12可选skip，服务器393 passed；纯文件两域注册通过，1313待审计帧，无真实模型成绩 |
+| [008 两来源域数据合同](tasks/008_finish_data_source_domains.md) | R1数据域accepted；R2修复submitted待复核，[PR #5](https://github.com/No1dry/LIBERO-Remain/pull/5)未合并/未closed | [R2交付](responses/008_round2.md)，实现31a8d6b；X FINISH414 passed、全套1642 passed+15既有skip；真实audit尚未重跑。R1冻结b596af2的验收/部署/纯文件注册及真实失败保留 |
 | 001 指标与人工UIR | closed | PR #1已合并；交流仍保留供后续追踪 |
 | 002 venv路径修复 | closed | 同上；阶段总结与本地备份已核验 |
 | 003 正常00回归入口 | accepted，PR #2已合并 | main合并SHA 4a02c78c0b945c2df2f0748614fecdd1c5127f55；不在本轮伪造closed |
@@ -35,9 +35,9 @@ Stage03的固定15条主pilot＋10条oracle诊断已完成；旧JSR主10=40%（2
 
 **03_audit实际失败，暂不能特征提取/训练。** 用户运行b596af2后status=insufficient、ValueError invalid Panda current_action、command_exit=2，采样restore0/rows0/hold0。不是模型或数据类别成绩。Codex已备份证据并核对实际robosuite源码：provider在reset和XML reset后、restore_raw_state完成两指目标同步前提前构造BasketContract；两处均需修，不能只修第一处。
 
-[008 Round 2最小P1要求](reviews/008_round2.md)：X只修provider两处初始化顺序、补真实provider生命周期CPU fake，保留严格shape(2,)和所有物理/标签约束；不加open/zero step、不改两域/训练/指标。[长期失败记录](../docs/stage_summaries/stage04_task008_audit_failure_2026-10-15.md)。修复验收前暂停PR #5合并及同版audit重跑；R1的数据域结论与软件测试保留，不冒称真实运行已通过。
+[008 Round 2最小P1要求](reviews/008_round2.md)已由X提交实现`31a8d6bbf01921a9414ede5740e354730c4c5471`：[逐项回复与候选命令](responses/008_round2.md)。只改provider两处初始化顺序、恢复时合同失效及父态重绑定，严格shape(2,)和所有物理/标签约束保留。新增21项真实provider类CPU fake通过，历史b596源码也在隔离CPU假环境准确复现原错误。[长期失败记录](../docs/stage_summaries/stage04_task008_audit_failure_2026-10-15.md)保留。R2验收前继续暂停PR #5合并及同版audit重跑；R1结论与软件测试保留，未声称真实运行已通过。
 
-下一步X改代码→Codex审查新冻结部署和完整命令→用户在新out/log重跑同一audit。**不增加单独预检、不重新下载HDF、不新增VLA采集**；1313帧审计充分后直接进入feature/训练。本轮没有Codex真实作业、没有新VLA成绩，不删旧失败目录。
+下一步Codex复核R2→验收后新冻结部署和完整命令→用户在新out/log重跑同一audit。**不增加单独预检、不重新下载HDF、不新增VLA采集**；1313帧审计充分后直接进入feature/训练。本轮X仅CPU/fake软件验证，没有真实作业或新VLA成绩，不删旧失败目录。
 
 
 以下007部署与数据准备经过保留为历史，不重复已经完成的预检。
