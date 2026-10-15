@@ -1,0 +1,60 @@
+{
+  "source_commit": "2cb1428f312175968ac42449994c219e94e9ab14",
+  "audit_sha256": "44d0ab96f910221b58f2bfc930c6e1a06db79f23f19755318cd6d34764bf8457",
+  "audit_file_sha256": "294120c4c0a557a6211db1ed44c9d3a1a8915edcae1ad2e2a0611d98fb501dce",
+  "log_sha256": "f9b8c049894f4376823c88ea932fcc8f9b4313fd5fa1ee6487714f5b2949b6cf",
+  "status": "ready_for_feature_export",
+  "issues": [],
+  "groups": {
+    "head_train": {
+      "frames": 1115,
+      "known_negative": 1048,
+      "known_positive": 23,
+      "unknown": 44,
+      "positive_trajectory_ids": [
+        "demo_12",
+        "demo_15",
+        "demo_16",
+        "demo_20",
+        "demo_21",
+        "demo_23",
+        "demo_28",
+        "demo_34",
+        "demo_5",
+        "demo_8",
+        "demo_9"
+      ],
+      "unknown_reasons": {
+        "release_evidence_missing": 44
+      }
+    },
+    "head_validation": {
+      "frames": 198,
+      "known_negative": 188,
+      "known_positive": 2,
+      "unknown": 8,
+      "positive_trajectory_ids": [
+        "demo_38"
+      ],
+      "unknown_reasons": {
+        "release_evidence_missing": 8
+      }
+    }
+  },
+  "work_counts": {
+    "current_observations": 1313,
+    "eligible_feature_forwards": 1261,
+    "hold_attempts": 25,
+    "hold_branches": 25,
+    "recorded_hold_steps": 100,
+    "restore_attempts": 1313
+  },
+  "eligible_feature_forwards": 1261,
+  "completion_percent": 100,
+  "known_label_coverage_percent": 96.03960396039604,
+  "server_full_validate_audit_passed": true,
+  "server_observation_files_verified": 1313,
+  "raw_observation_files_copied_locally": false,
+  "local_report_and_log_SHA_match_server": true,
+  "next_stage_started_by_codex": false
+}
