@@ -1,6 +1,6 @@
 # 当前协作状态
 
-更新：2026-10-15。当前权责以本页和[README](README.md)为准；历史记录保留，不把旧执行者署名改掉。
+更新：2026-10-16。当前权责以本页和[README](README.md)为准；历史记录保留，不把旧执行者署名改掉。
 
 ## 当前分工与审查方式
 
@@ -10,7 +10,7 @@
 
 ## 当前阶段
 
-Stage04 / [Plan4](../docs/experiment_plans/stage04_finish_protocol.md)：统一FINISH接口＋普通停止校准基线，目的是明确benchmark结束点、控制未学停止的干扰，不是把基线分数做低或靠FINISH救分。007的R2兼容性修复软件accepted，4f76f49的source0_11真实四步预检已由用户启动并通过；PR #4现已合并main 94c061e。旧38版失败记录保留；用户批准的A两域合同已由X实现为独立PR #5，Codex本轮软件accepted并已冻结b596af2部署、完成纯文件注册；用户首次真实audit因provider初始化顺序错误失败、采样rows0；该P1已在9ddd40f修复并[R3 accepted](reviews/008_round3.md)，新版本用户audit越过初始化但因历史XML资源根失败，该P1已在089e0b7修复并[R5 accepted](reviews/008_round5.md)，实际全量文件扫描通过，待用户重跑audit；当前无新VLA/model score，Stage04未closed。
+Stage04 / [Plan4](../docs/experiment_plans/stage04_finish_protocol.md)：统一FINISH接口与普通停止校准基线，用于定义结束点并控制“未学停止”的干扰，不是人为压低基线或靠FINISH救分。007已合并；008最新R6受限示范模型兼容已获[R7软件accepted](reviews/008_round7.md)，冻结2cb1428已部署、纯文件准备完成，待用户重跑真实audit。此前初始化、历史资源路径和布局守卫失败均保留，不算模型成绩；当前尚无可用真实标签、新头或新VLA分数，Stage04未closed。
 
 默认设计：冻结OFT动作网络，只训练小finish head；普通00数据分组训练／校准／独立测试，当前外部10/01/11留作测试；active与shadow分开，新协议H520/W150所有mask一致，FINISH后或超时后做真实物理保持，无GT许可停车。原始无FINISH模型仅历史参考，新主指标不把不支持写成0%。
 
@@ -20,7 +20,7 @@ Stage03的固定15条主pilot＋10条oracle诊断已完成；旧JSR主10=40%（2
 
 | 任务 | 状态 | 交付／裁决 |
 |---|---|---|
-| [008 两来源域数据合同](tasks/008_finish_data_source_domains.md) | R5资源accepted；R6受限示范模型兼容changes_requested，未closed | 用户授权的零积分诊断已完成：默认161/demo162 geom，joint地址一致；保留原XML/评测不变，待X最小实现，当前audit仍0标签 |
+| [008 两来源域数据合同](tasks/008_finish_data_source_domains.md) | R7软件accepted（R6受限示范模型支持），PR #5未合并/未closed | 冻结2cb1428已部署；本地1766/服务器535 passed，实际文件与来源绑定通过；用户待启动同一1313帧audit，无新模型分数 |
 | 001 指标与人工UIR | closed | PR #1已合并；交流仍保留供后续追踪 |
 | 002 venv路径修复 | closed | 同上；阶段总结与本地备份已核验 |
 | 003 正常00回归入口 | accepted，PR #2已合并 | main合并SHA 4a02c78c0b945c2df2f0748614fecdd1c5127f55；不在本轮伪造closed |
@@ -33,11 +33,11 @@ Stage03的固定15条主pilot＋10条oracle诊断已完成；旧JSR主10=40%（2
 
 ## 当前下一步
 
-**用户已授权最小布局诊断，现已完成并找出具体原因。** 默认161 geom，demo_10为162，多robot0_link7_collision；全部joint/状态地址及_layout其他字段相同，新增项导致geom ID后移。不能称物理等价，完整XML还存在已记录的辅助camera/小数打印差异。实际policy两视角不变。[诊断与科学裁决](../docs/stage_summaries/stage04_task008_layout_diagnosis_2026-10-15.md)。
+**R6受限示范模型兼容已获R7软件accepted并部署。** 冻结2cb1428f312175968ac42449994c219e94e9ab14，250源码/9部署文件核验；本地1766 passed/12可选skip，服务器FINISH535 passed/0 skipped。实际50XML/4450引用/87路径纯文件解析全部通过，来源/mesh/baseline已与真实文件及既有布局JSON核对；不冒充新native/audit/标签通过。
 
-[R6给X的详细最小需求](reviews/008_round6.md)：保留actual HDF XML，只在head示范域显式支持已核模型变体；所有关节地址/匿名几何/未知结构变化仍严查，不删除/禁碰撞geom，不改eval/source001/相机/label/指标。该受限支持属于原方案A落实；额外head→eval模型域差异明示，不声称无影响。X改代码，交CPU/fake和新固定SHA，Codex审查部署后用户重跑原audit。
+用户现在按[新会话命令](../docs/experiment_plans/stage04_task008_model_server_runbook_2026-10-16.md)重跑同一1313帧audit：source `/HUBU-AI096/zp/ICML/stage04_finish_2cb1428/session.sh`，再 `finish_sim 03_audit audit-data --config "$CFG/data.json" --out "$OUT/audit"`。旧session和失败目录不重跑/覆盖，不新增独立预检/下载/采集。完成后Codex读真实0/1/unknown/身份与最终兼容证据，充分后直接feature/训练，不自动串联。
 
-诊断无任务动作/积分/HDF state恢复/label/VLA/训练；初始化两次mj_step1只作不积分刷新，逐次time/qpos/qvel/act/ctrl字节不变，环境已关闭。第一版过严拦截的失败与第二版成功证据都保留。此次有限授权已完成，不扩大为Codex自动audit/训练。当前仍无可用标签/新模型成绩，不让用户重跑未修同版audit；无新增独立预检/下载/采集。PR #5本项交付验收前不合并未修实现，008/Stage04未closed，待删=[]。
+[R7裁决](reviews/008_round7.md)、[部署及证据总结](../docs/stage_summaries/stage04_task008_model_fix_acceptance_2026-10-16.md)。保留原HDF/XML/额外碰撞几何，只作用head示范审计；eval/source001/标签/指标不变，物理等价未证明，模型域差异明确。当前无新VLA/model score。R6合并暂停解除，X可保留最新文档和已审实现合并PR并登记，Codex不代合并。前次有限诊断授权不扩大为自动实验；008/Stage04未closed，待删=[]。
 
 
 以下007部署与数据准备经过保留为历史，不重复已经完成的预检。
