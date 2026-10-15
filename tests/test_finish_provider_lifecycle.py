@@ -81,7 +81,8 @@ def install_native_provider(monkeypatch, tmp_path, *, config=None, native=None, 
     monkeypatch.setattr(target, "create_scene", lambda *args, **kwargs: (native, task, bddl))
     monkeypatch.setattr(target, "environment_identity", lambda *args: {"name": "synthetic", "fingerprint": "test-only"})
     monkeypatch.setattr(target, "reset_scene", lambda env: env.native_reset())
-    monkeypatch.setattr(target, "_processed_demo_xml", lambda text: text)
+    # Tiny XML has no resource dependencies. Keep the actual CPU resolver so
+    # the audit's frozen scan reaches the provider without a test-only bypass.
 
     def observe(env):
         result = raw_observation(env)

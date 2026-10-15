@@ -640,6 +640,33 @@ def _domain_hold_steps(evidence):
     return max(0, len(trace)-1) if isinstance(trace, list) else 0
 
 
+def scan_source_xml_assets(config, *, trajectories=None):
+    """Scan every actual HDF trajectory's XML without creating a provider.
+
+    Resources are resolved by the same restricted resolver used at runtime.
+    The result is file evidence only, including aggregated unresolved entries.
+    """
+    from .xml_assets import scan_xml_assets
+    if trajectories is None:
+        trajectories = read_demonstrations(config["hdf5_path"])
+    return scan_xml_assets([{"trajectory_id": item["trajectory_id"], "model_xml": item["model_xml"]}
+                            for item in trajectories])
+
+
+def _validate_xml_asset_binding(scan, registry, *, trajectories):
+    from .xml_assets import validate_scan
+    if not isinstance(scan, dict):
+        raise ValueError("two-domain audit requires an explicit complete XML asset scan")
+    expected = {item["trajectory_id"]: item["model_xml_sha256"] for item in registry["head_registry"]["records"]}
+    sources = scan.get("sources")
+    if (not isinstance(sources, list) or len(sources) != len(expected)
+            or any(not isinstance(item, dict) for item in sources)
+            or {item.get("trajectory_id"): item.get("original_xml_sha256") for item in sources} != expected):
+        raise ValueError("XML asset scan differs from the complete registered HDF trajectory/XML identities")
+    source_xmls = [{"trajectory_id": item["trajectory_id"], "model_xml": item["model_xml"]} for item in trajectories]
+    return validate_scan(scan, trajectories=source_xmls, verify_files=True)
+
+
 def _audit_domain_demonstrations(config, *, provider_factory=None, out=None):
     from .data_profiles import HEAD_DOMAIN
     from .data_registry import build_source_registry, source_identity, validate_source_registry
@@ -648,7 +675,7 @@ def _audit_domain_demonstrations(config, *, provider_factory=None, out=None):
     if destination is not None:
         destination.mkdir(parents=True, exist_ok=False)
     report = {"schema_version": DOMAIN_AUDIT_SCHEMA, "status": "insufficient", "plan": plan,
-        "profile": copy.deepcopy(plan["profile"]), "registry": None, "source_identity": None,
+        "profile": copy.deepcopy(plan["profile"]), "registry": None, "source_identity": None, "xml_asset_scan": None,
         "original_instruction": config["original_instruction"], "label_contract": copy.deepcopy(LABEL_CONTRACT),
         "rows": [], "issues": [], "assets": {}, "provider_execution_requested": provider_factory is not None,
         "ancestry_independence": "unproven", "provider_identity": {},
@@ -662,12 +689,20 @@ def _audit_domain_demonstrations(config, *, provider_factory=None, out=None):
         report.update(registry=registry, source_identity=source_identity(registry), assets=copy.deepcopy(registry["assets"]))
         if destination is not None:
             _write(destination / "registry.json", registry)
+        trajectories = read_demonstrations(config["hdf5_path"])
+        scan = scan_source_xml_assets(config, trajectories=trajectories)
+        report["xml_asset_scan"] = scan
+        if destination is not None:
+            _write(destination / "xml_asset_scan.json", scan)
+        _validate_xml_asset_binding(scan, registry, trajectories=trajectories)
         if provider_factory is None or destination is None:
             report["issues"].append({"reason": "file_only_registry_not_physical_audit"})
         else:
-            indexed = {item["trajectory_id"]: item for item in read_demonstrations(config["hdf5_path"])}
+            indexed = {item["trajectory_id"]: item for item in trajectories}
             validate_source_registry(registry, verify_files=True)
-            provider = provider_factory(config)
+            provider_config = copy.deepcopy(config)
+            provider_config["_xml_asset_scan"] = copy.deepcopy(scan)
+            provider = provider_factory(provider_config)
             provider_identity = copy.deepcopy(getattr(provider, "metadata", {}))
             canonical_hash(provider_identity)
             report["provider_identity"] = provider_identity
@@ -739,6 +774,13 @@ def _audit_domain_demonstrations(config, *, provider_factory=None, out=None):
                 report["status"] = "insufficient"
                 report["issues"].append({"reason": "source_asset_changed", "type": type(error).__name__, "message": str(error)})
             report["coverage"] = _domain_coverage(report["registry"], report["rows"])
+        if report["xml_asset_scan"] is not None and report["xml_asset_scan"].get("status") == "resolved":
+            try:
+                _validate_xml_asset_binding(report["xml_asset_scan"], report["registry"],
+                    trajectories=read_demonstrations(config["hdf5_path"]))
+            except (OSError, ValueError, KeyError, TypeError) as error:
+                report["status"] = "insufficient"
+                report["issues"].append({"reason": "xml_asset_changed", "type": type(error).__name__, "message": str(error)})
         report["audit_sha256"] = canonical_hash(report)
         if destination is not None:
             _write(destination / "audit.json", report)
@@ -759,6 +801,8 @@ def _validate_domain_audit(audit, *, base_dir=None):
     # New training/export paths require the declared source files still to exist
     # with their actual registered bytes, not merely a self-consistent old JSON.
     registry = validate_source_registry(audit.get("registry"), verify_files=True)
+    _validate_xml_asset_binding(audit.get("xml_asset_scan"), registry,
+        trajectories=read_demonstrations(registry["assets"]["hdf5_path"]["path"]))
     if (validate_profile(audit.get("profile")) != registry["profile"] or audit.get("assets") != registry["assets"]
             or audit.get("source_identity") != source_identity(registry)):
         raise ValueError("audit source-domain binding differs from registry")

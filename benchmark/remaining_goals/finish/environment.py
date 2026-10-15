@@ -10,9 +10,7 @@ from __future__ import annotations
 from copy import deepcopy
 import hashlib
 import math
-import os
 from pathlib import Path
-import xml.etree.ElementTree as ET
 
 import numpy as np
 
@@ -327,23 +325,15 @@ def _layout(model):
     return result
 
 
-def _processed_demo_xml(text):
-    if not isinstance(text, str) or not text.strip():
-        raise ValueError("demonstration model_xml must contain actual XML text")
-    from libero.libero.envs.utils import postprocess_model_xml
-    import libero.libero as package
-    previous = Path.cwd()
-    try:
-        # Official helper builds its LIBERO asset root from cwd + '/libero'.
-        os.chdir(Path(package.__file__).resolve().parent.parent)
-        processed = postprocess_model_xml(text, demo_generation=True)
-    finally:
-        os.chdir(previous)
-    tree = ET.fromstring(processed)
-    for element in tree.findall("./asset/*"):
-        path = element.get("file")
-        if path is not None and not Path(path).is_file():
-            raise ValueError(f"demonstration XML references an unavailable asset: {path}")
+def _processed_demo_xml(text, *, roots=None, expected_scan=None):
+    from .xml_assets import resolve_scanned_xml, resolve_xml
+    if expected_scan is None:
+        processed, report = resolve_xml(text, roots=roots)
+    else:
+        processed, report = resolve_scanned_xml(text, expected_scan, roots=roots)
+    if processed is None:
+        failures = "; ".join(f"{item.get('original')!r}: {item['error']}" for item in report["errors"])
+        raise ValueError(f"demonstration XML assets unresolved: {failures}")
     return processed
 
 
@@ -366,7 +356,13 @@ class DemonstrationAuditProvider:
         self.contract = None
         self._active_source_xml = None
         self._model_valid = False
+        self._xml_asset_scan = deepcopy(config.get("_xml_asset_scan"))
         try:
+            from .xml_assets import RESOLVER_VERSION, validate_scan
+            if self._xml_asset_scan is not None:
+                # Validate before owning a native environment. The same frozen
+                # snapshot is checked again whenever a new XML is compiled.
+                validate_scan(self._xml_asset_scan, verify_files=True)
             self.env, task, bddl = create_scene(profile["suite"], profile["name"], image_size=256, control_freq=20)
             source_bddl = Path(config["bddl_path"])
             if not source_bddl.is_file() or source_bddl.read_bytes() != bddl.read_bytes():
@@ -390,6 +386,8 @@ class DemonstrationAuditProvider:
                              "instruction": task.language, "bddl_sha256": hashlib.sha256(bddl.read_bytes()).hexdigest(),
                              "environment": environment_identity(20), "hold_version": HOLD_VERSION,
                              "release_version": RELEASE_VERSION, "environment_seed": seed,
+                             "xml_asset_resolver_version": RESOLVER_VERSION,
+                             "xml_asset_scan_sha256": (self._xml_asset_scan["scan_sha256"] if self._xml_asset_scan else None),
                              "backend": "LIBERO/robosuite", "scope": "user-invoked data audit, not model evaluation",
                              "real_correctness_certified": False}
         except BaseException:
@@ -404,7 +402,12 @@ class DemonstrationAuditProvider:
             raise ValueError("invalid demonstration XML")
         if source_xml == self._active_source_xml and self._model_valid:
             return
-        text = self._base_xml if source_xml is None else _processed_demo_xml(source_xml)
+        if source_xml is None:
+            text = self._base_xml
+        elif self._xml_asset_scan is None:
+            text = _processed_demo_xml(source_xml)
+        else:
+            text = _processed_demo_xml(source_xml, expected_scan=self._xml_asset_scan)
         self._model_valid = False
         self.env.reset_from_xml_string(text)
         if _layout(self.env.sim.model) != self._base_layout:

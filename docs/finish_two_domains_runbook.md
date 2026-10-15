@@ -36,6 +36,8 @@ Codex负责下载／文件准备／路径和SHA核验；用户不需要重新下
 
 配置同时声明`expected_assets`的三项SHA；registry实际读取并复算文件，不只相信配置字符串。缺group、缺index、SHA变化、重叠成员或类别不足均不能自动换组。HDF unused的编号不能作为Remain来源留出的证明。
 
+历史示范XML还可能引用作者机器上的`/home/yifengz/workspace/libero-dev/chiliocosm/assets/`。本实现把这个明确别名及官方robosuite/libero资源路径，按完整相对suffix映射到当前固定安装包的assets根；不会按文件名搜索或使用旧机器路径碰巧存在的文件。根内`scenes/../textures`可规范化，根外路径、symlink逃逸、歧义、缺文件和未知依赖均报告失败。只修改送入仿真的内存XML中的资源file属性；原HDF/XML字节、几何、相机、纹理参数和mesh缩放保留。不需要建立作者/home目录或下载替代素材。
+
 ## 3. Codex部署后填写的会话与配置
 
 以下是实现支持的Linux Bash候选命令。`REPO/CFG/OUT/LOG`必须是新008目录；Codex验收部署后填写实际SHA和全部路径，不能直接把含`/ABS/`的模板当成已部署命令。所有命令cwd为`$REPO`。
@@ -97,7 +99,9 @@ finish_stage 01_data_plan "$SIM_PY" plan-data --config "$CFG/data.json" --out "$
 finish_stage 02_registry "$SIM_PY" register-data --config "$CFG/data.json" --out "$OUT/registry"
 ```
 
-预算仍为5+10+15=30条模型rollout，最坏20100物理步。标签恢复/K4、特征、normal准备和parity64forward另计；没有新增VLA采集预算。registry只检查真实HDF states/XML、group、采样frame、全部head组直接重复state和eval init身份，**file-only始终不能ready_for_feature_export**。检查两域coverage、实际文件SHA、完整固定成员、registry/profile hash和祖源unproven；命令或文件检查失败时不启动audit。
+预算仍为5+10+15=30条模型rollout，最坏20100物理步。标签恢复/K4、特征、normal准备和parity64forward另计；没有新增VLA采集预算。registry检查真实HDF states/XML、group、采样frame、全部head组直接重复state和eval init身份，来源schema/profile不因资源重定位改变，**file-only始终不能ready_for_feature_export**。
+
+`register-data`还生成`xml_asset_scan.json`及`registration.json`。扫描全部50条实际HDF XML（含unused），记录resolver版本、批准根、原XML及SHA、每条old→new/目标SHA、覆盖和聚合未解析项；不创建环境，也不导入真实仿真或模型包。成功时registration为`registered_file_only`、scan为`resolved`；缺失/未知/越界等问题保存在清单，registration为`insufficient`、命令exit2。检查两域coverage、文件SHA、固定成员、registry/profile hash和祖源unproven，并确认扫描覆盖50条、未解析0后，才交用户启动audit。历史路径的实际库存见[008 XML资源记录](stage_summaries/evidence/stage04_task008_xml_assets_2026-10-15.json)：4450次引用、87个唯一原路径，其中24个旧别名；该库存是诊断证据，正式扫描以当前代码和实际文件为准。
 
 ## 5. 用户真实audit：先检查数据充分性
 
@@ -105,7 +109,9 @@ finish_stage 02_registry "$SIM_PY" register-data --config "$CFG/data.json" --out
 finish_stage 03_audit "$SIM_PY" audit-data --config "$CFG/data.json" --out "$OUT/audit"
 ```
 
-只恢复head_train/head_validation按stride8加最后state采样的行，使用actual XML和固定任务。先保存当前合法观测，再从同状态做必要K4被动保持，之后恢复原状态；不恢复unused/eval来补覆盖。源HDF字节不变。
+audit在创建provider前再次用同一resolver扫描全部50条XML；有未解析项时保存扫描与insufficient报告，不进入恢复。通过后只恢复head_train/head_validation按stride8加最后state采样的行，使用actual XML和固定任务。先保存当前合法观测，再从同状态做必要K4被动保持，之后恢复原状态；不恢复unused/eval来补覆盖。源HDF字节不变。
+
+`audit.json`嵌入该资源扫描，audit SHA继续绑定cache/head的数据身份。运行时处理XML、审计结束以及后续验证audit时核对资源快照，资源文件变化不能静默复用旧审计。当前v2审计缺少这份完整扫描会被拒绝；旧v1历史读取保留。纯文件扫描通过只证明声明的本地依赖可解析，不证明与不可访问的作者旧机器资产逐字节相同，也不保证后续物理layout、release或标签充分性检查通过。
 
 查看`audit/audit.json`：必须`status=ready_for_feature_export`、无关键issues、两组已知0和1均有覆盖，并核实restore/hold计数、unknown原因、source/row身份及两域registry。当前不满目标或明确夹持为0；全满、released=True且同状态K4稳定为1；缺证据为unknown。最后帧、未来示范动作和时钟不构成标签。fake审计通过不代表真实标签数据充分。若不足，停在此阶段交Codex分析，不挑样本换组，不自动训练。
 
