@@ -337,11 +337,37 @@ def _processed_demo_xml(text, *, roots=None, expected_scan=None):
     return processed
 
 
+def _verify_demo_native_references(env):
+    """Check native reset rebound references; never perform another reset/step."""
+    inner, sim = _task_environment(env), env.sim
+    if inner.sim is not sim:
+        raise ValueError("native demonstration task references another simulation")
+    robots = getattr(env, "robots", None)
+    if not isinstance(robots, (list, tuple)) or len(robots) != 1:
+        raise ValueError("native demonstration references require one Panda robot")
+    for robot in robots:
+        if getattr(robot, "sim", None) is not sim or getattr(robot.controller, "sim", None) is not sim:
+            raise ValueError("native demonstration robot/controller references were not rebound")
+    refs = getattr(inner, "obj_body_id", None)
+    if not isinstance(refs, dict):
+        raise ValueError("native demonstration object body references are unavailable")
+    checked = {}
+    for name, obj in {**inner.objects_dict, **inner.fixtures_dict}.items():
+        expected = int(sim.model.body_name2id(obj.root_body))
+        if expected < 0 or refs.get(name) != expected:
+            raise ValueError(f"native object body reference differs: {name}: stored={refs.get(name)!r}, current={expected}")
+        checked[name] = expected
+    return {"native_entry": "reset_from_xml_string", "task_sim_current": True,
+            "robot_and_controller_sim_current": True, "object_body_ids": checked,
+            "geom_lookup": "current model names; no stored baseline geometry IDs"}
+
+
 class DemonstrationAuditProvider:
     """User-run native restoration and isolated passive-label confirmation.
 
-    Uses the demonstration's actual XML when supplied. A changed scene/layout
-    fails explicitly; it is never silently replayed against the default model.
+    Uses the actual demonstration XML. Exact layouts retain the original path;
+    only the fixed, source-bound basket collision insertion has a versioned
+    exception. Unknown changes fail; evaluation models are never substituted.
     """
     def __init__(self, config):
         if not isinstance(config, dict):
@@ -357,6 +383,7 @@ class DemonstrationAuditProvider:
         self._active_source_xml = None
         self._model_valid = False
         self._xml_asset_scan = deepcopy(config.get("_xml_asset_scan"))
+        self._demo_model_config = deepcopy(config)
         try:
             from .xml_assets import RESOLVER_VERSION, validate_scan
             if self._xml_asset_scan is not None:
@@ -382,6 +409,7 @@ class DemonstrationAuditProvider:
             if isinstance(self._base_xml, bytes):
                 self._base_xml = self._base_xml.decode("utf-8")
             self._model_valid = True
+            from .demo_model import RULE_VERSION
             self.metadata = {"provider_version": "basket-native-passive-label-provider-v1", "task_name": task.name,
                              "instruction": task.language, "bddl_sha256": hashlib.sha256(bddl.read_bytes()).hexdigest(),
                              "environment": environment_identity(20), "hold_version": HOLD_VERSION,
@@ -389,7 +417,10 @@ class DemonstrationAuditProvider:
                              "xml_asset_resolver_version": RESOLVER_VERSION,
                              "xml_asset_scan_sha256": (self._xml_asset_scan["scan_sha256"] if self._xml_asset_scan else None),
                              "backend": "LIBERO/robosuite", "scope": "user-invoked data audit, not model evaluation",
-                             "real_correctness_certified": False}
+                             "real_correctness_certified": False,
+                             "demo_model_compatibility": {"rule_version": RULE_VERSION,
+                                 "scope": "head_demonstration_only", "physically_equivalent_to_evaluation": False,
+                                 "loads": []}}
         except BaseException:
             self.close()
             raise
@@ -410,8 +441,25 @@ class DemonstrationAuditProvider:
             text = _processed_demo_xml(source_xml, expected_scan=self._xml_asset_scan)
         self._model_valid = False
         self.env.reset_from_xml_string(text)
-        if _layout(self.env.sim.model) != self._base_layout:
-            raise ValueError("demonstration XML changed basket scene inventory or saved-state joint/layout identity")
+        from .demo_model import validate_demo_model, DemoModelCompatibilityError
+        evidence = None
+        try:
+            evidence = validate_demo_model(self._base_layout, _layout(self.env.sim.model),
+                source_xml=source_xml, processed_xml=text, compiled_model=self.env.sim.model,
+                config=self._demo_model_config, asset_scan=self._xml_asset_scan,
+                baseline_compiled_xml=self._base_xml)
+            if evidence["classification"] == "known_basket_link7_collision":
+                evidence["native_references"] = _verify_demo_native_references(self.env)
+        except DemoModelCompatibilityError as error:
+            self.metadata["demo_model_compatibility"]["loads"].append(deepcopy(error.evidence))
+            raise
+        except (ValueError, RuntimeError, AttributeError, KeyError, TypeError) as error:
+            if evidence is None:
+                raise
+            evidence.update(classification="rejected", error={"type": type(error).__name__, "message": str(error)})
+            self.metadata["demo_model_compatibility"]["loads"].append(deepcopy(evidence))
+            raise DemoModelCompatibilityError(str(error), evidence) from error
+        self.metadata["demo_model_compatibility"]["loads"].append(deepcopy(evidence))
         self._active_source_xml = source_xml
         self._model_valid = True
 

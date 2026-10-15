@@ -681,6 +681,7 @@ def _audit_domain_demonstrations(config, *, provider_factory=None, out=None):
         "ancestry_independence": "unproven", "provider_identity": {},
         "limitations": ["HDF/eval initial-state physical ancestry independence is unproven.",
             "Trajectory grouping applies to the new head, not the frozen SOG10 backbone.",
+            "The head demonstration model may differ from evaluation; compatibility does not establish physical equivalence.",
             "Successful demonstrations do not establish failure/stall-negative coverage."],
         "work_counts": {"restore_attempts": 0, "hold_attempts": 0}}
     provider = None
@@ -751,7 +752,10 @@ def _audit_domain_demonstrations(config, *, provider_factory=None, out=None):
         validate_source_registry(registry, verify_files=True)
     except (OSError, ValueError, KeyError, TypeError, ImportError, RuntimeError) as error:
         report["status"] = "insufficient"
-        report["issues"].append({"reason": "audit_error", "type": type(error).__name__, "message": str(error)})
+        issue = {"reason": "audit_error", "type": type(error).__name__, "message": str(error)}
+        if isinstance(getattr(error, "evidence", None), dict):
+            issue["model_compatibility"] = copy.deepcopy(error.evidence)
+        report["issues"].append(issue)
     except (KeyboardInterrupt, SystemExit) as error:
         report["status"] = "interrupted"
         report["issues"].append({"reason": "audit_interrupted", "type": type(error).__name__})
@@ -763,6 +767,16 @@ def _audit_domain_demonstrations(config, *, provider_factory=None, out=None):
             except Exception as error:
                 report["status"] = "insufficient"
                 report["issues"].append({"reason": "provider_close_error", "type": type(error).__name__, "message": str(error)})
+        if provider is not None:
+            try:
+                # XML-load evidence appears after construction, including failed
+                # loads. Bind the final snapshot into the audit/cache/head hash.
+                identity = copy.deepcopy(getattr(provider, "metadata", {}))
+                canonical_hash(identity)
+                report["provider_identity"] = identity
+            except (OSError, ValueError, KeyError, TypeError, RuntimeError) as error:
+                report["status"] = "insufficient"
+                report["issues"].append({"reason": "provider_metadata_error", "type": type(error).__name__, "message": str(error)})
         report["work_counts"].update(current_observations=len(report["rows"]),
             hold_branches=sum(row["hold_evidence"] is not None for row in report["rows"]),
             recorded_hold_steps=sum(_domain_hold_steps(row["hold_evidence"]) for row in report["rows"]),

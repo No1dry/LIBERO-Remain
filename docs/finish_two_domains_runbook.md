@@ -113,6 +113,10 @@ audit在创建provider前再次用同一resolver扫描全部50条XML；有未解
 
 `audit.json`嵌入该资源扫描，audit SHA继续绑定cache/head的数据身份。运行时处理XML、审计结束以及后续验证audit时核对资源快照，资源文件变化不能静默复用旧审计。当前v2审计缺少这份完整扫描会被拒绝；旧v1历史读取保留。纯文件扫描通过只证明声明的本地依赖可解析，不证明与不可访问的作者旧机器资产逐字节相同，也不保证后续物理layout、release或标签充分性检查通过。
 
+head示范审计保留actual HDF原生模型。当前仅对固定官方basket HDF、两域profile、原XML及资源扫描共同绑定的已核变体提供受限支持：相对默认布局恰好多一个`robot0_link7_collision`，其body/mesh归属须匹配已核证据。关节和状态地址、其他布局字段、具名与匿名几何体的完整顺序仍严格检查；未知变化拒绝。原XML不删几何体、不禁碰撞、不换成eval模型，也不调整相机。模型加载的具体差异和原始/处理后/compiled XML与layout SHA写入provider元数据，并随最终audit SHA绑定cache/head；失败证据也保留。
+
+这项兼容仅作用于head示范审计，normal/Remain评测及source001保持原模型。示范域与评测域还存在模型差异，可能影响碰撞、观察和K4；支持加载不等于物理等价或标签充分。真实诊断及边界见[008模型布局诊断](stage_summaries/stage04_task008_layout_diagnosis_2026-10-15.md)。诊断只编译比较过demo_10，全50条XML的静态签名检查不能代替全部状态的真实audit。
+
 查看`audit/audit.json`：必须`status=ready_for_feature_export`、无关键issues、两组已知0和1均有覆盖，并核实restore/hold计数、unknown原因、source/row身份及两域registry。当前不满目标或明确夹持为0；全满、released=True且同状态K4稳定为1；缺证据为unknown。最后帧、未来示范动作和时钟不构成标签。fake审计通过不代表真实标签数据充分。若不足，停在此阶段交Codex分析，不挑样本换组，不自动训练。
 
 ## 6. 用户特征导出、小头训练
