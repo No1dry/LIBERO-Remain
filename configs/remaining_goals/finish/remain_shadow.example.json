@@ -1,5 +1,6 @@
 {
-  "schema_version": "remaining-finish-job-v1",
+  "schema_version": "remaining-finish-job-v2",
+  "source_registry": "/ABS/OUTPUT/registry/registry.json",
   "purpose": "remain_shadow",
   "runtime_config": "/ABS/PRIVATE_CONFIG/oft_sog10.json",
   "source": {"kind": "remain", "manifest": "/ABS/REMAIN_BANK/manifest.json", "candidate_replay": "/ABS/REPLAY/replay_report.json"},

@@ -13,6 +13,10 @@ from .schema import PROTOCOL
 
 RUN_SCHEMA = "remaining-finish-run-v1"
 BANK_SCHEMA = "remaining-finish-normal-bank-v1"
+RUN_SCHEMA_V2 = "remaining-finish-run-v2"
+BANK_SCHEMA_V2 = "remaining-finish-normal-bank-v2"
+EVAL_ROLES = {"validation_shadow": "normal_calibration", "normal_active": "normal_test",
+              "remain_active": "remain_test", "remain_shadow": "remain_test"}
 PURPOSES = {"validation_shadow": ("shadow", "validation"),
             "normal_active": ("active", "normal_test"),
             "remain_active": ("active", "remain_test"),
@@ -45,26 +49,65 @@ def head_manifest(path):
     path = Path(path)
     path = path / "head.json" if path.is_dir() else path
     head = read_json(path)
-    if (head.get("schema_version") != "remaining-finish-head-v1" or
+    if (head.get("schema_version") not in {"remaining-finish-head-v1", "remaining-finish-head-v2"} or
             head.get("artifact_sha256") != canonical_hash({k:v for k,v in head.items() if k != "artifact_sha256"})):
         raise ValueError("invalid head schema/hash")
     if head["weights"]["path"] != "head.npz" or file_sha(path.parent / "head.npz") != head["weights"]["sha256"]:
         raise ValueError("head weight bytes differ")
+    if head["schema_version"] == "remaining-finish-head-v2":
+        from .data import validate_head_identities
+        identities = validate_head_identities(head.get("identities"))
+        if (identities["split_identity"].get("schema_version") != "remaining-finish-source-domains-identity-v2"
+                or head.get("identity_sha256") != {key: canonical_hash(value) for key, value in identities.items()}):
+            raise ValueError("two-domain head identity hashes/schema differ")
     return head
 
 
-def prepare_normal_bank(indices, output, *, environment_config=None, prepare=None):
+def _registry(value, *, verify_files):
+    from .data_registry import validate_source_registry
+    registry = deepcopy(value) if isinstance(value, dict) else read_json(value)
+    validate_source_registry(registry, verify_files=verify_files)
+    return registry
+
+
+def _normal_member_binding(report, member, registry):
+    from .data_registry import source_identity
+    assets = source_identity(registry)["assets"]
+    provenance = report["provenance"]
+    restored = provenance.get("restored_official_state", {})
+    if (provenance.get("official_initial_state_file", {}).get("sha256") != assets["init_states_sha256"]
+            or provenance.get("initial_state_index") != member["initial_state_index"]
+            or restored.get("dtype") not in {"<f8", "=f8"}
+            or restored.get("shape") != [member["state_dimension"]]
+            or restored.get("sha256") != member["state_sha256"]
+            or provenance.get("bddl_sha256") != assets["bddl_sha256"]):
+        raise ValueError("normal preparation official init file/state/BDDL differs from its registered eval source")
+
+
+def prepare_normal_bank(indices, output, *, environment_config=None, prepare=None, source_registry=None):
     """USER real stage; save precisely the requested ordinary 00 sources."""
     if (not indices or len(set(indices)) != len(indices) or
             any(type(i) is not int or i < 0 for i in indices)):
         raise ValueError("normal source indices must be distinct nonnegative integers")
+    registry, members = None, None
+    if source_registry is not None:
+        from .data_registry import source_identity, registry_members
+        from .data_profiles import EVAL_DOMAIN
+        registry = _registry(source_registry, verify_files=True)
+        members = {item["initial_state_index"]: item for role in ("normal_calibration", "normal_test")
+                   for item in registry_members(registry, EVAL_DOMAIN, role)}
+        if any(index not in members for index in indices):
+            raise ValueError("new normal preparation accepts only registered normal_calibration/normal_test init sources")
     if prepare is None:
         from ..regression_states import prepare_normal00
         prepare = prepare_normal00
     out = Path(output).resolve()
     out.mkdir(parents=True, exist_ok=False)
-    bank = {"schema_version": BANK_SCHEMA, "status": "preparing", "expected_indices": indices,
+    bank = {"schema_version": BANK_SCHEMA_V2 if registry is not None else BANK_SCHEMA, "status": "preparing", "expected_indices": indices,
             "episodes": [], "preparations": [], "environment": None, "error": None}
+    if registry is not None:
+        bank.update(source_registry=registry, source_identity=source_identity(registry),
+                    eval_sources=[deepcopy(members[index]) for index in indices], ancestry_independence="unproven")
     try:
         for index in indices:
             prefix = f"sources/{index:03d}"
@@ -73,6 +116,8 @@ def prepare_normal_bank(indices, output, *, environment_config=None, prepare=Non
                                           "sha256": file_sha(out/prefix/"preparation.json")})
             if report["status"] != "prepared":
                 raise RuntimeError(f"source {index} preparation failed: {report.get('error')}")
+            if registry is not None:
+                _normal_member_binding(report, members[index], registry)
             identity = report["environment_config"]["environment"]
             if bank["environment"] not in (None, identity):
                 raise ValueError("normal source environment changed")
@@ -95,7 +140,7 @@ def load_source(source):
     path = Path(source["manifest"]).resolve()
     if source["kind"] == "normal_bank":
         manifest = read_json(path)
-        if (manifest.get("schema_version") != BANK_SCHEMA or manifest.get("status") != "prepared" or
+        if (manifest.get("schema_version") not in {BANK_SCHEMA, BANK_SCHEMA_V2} or manifest.get("status") != "prepared" or
                 manifest.get("content_hash") != canonical_hash({k:v for k,v in manifest.items() if k != "content_hash"})):
             raise ValueError("normal bank is incomplete or changed")
         indices = manifest.get("expected_indices")
@@ -106,6 +151,18 @@ def load_source(source):
         by_index = {e["initial_state_index"]: e for e in manifest["episodes"]}
         if set(by_index) != set(indices):
             raise ValueError("normal bank source indices differ")
+        members, registry = None, None
+        if manifest["schema_version"] == BANK_SCHEMA_V2:
+            from .data_registry import source_identity, registry_members
+            from .data_profiles import EVAL_DOMAIN
+            registry = _registry(manifest["source_registry"], verify_files=False)
+            members = {item["initial_state_index"]: item for role in ("normal_calibration", "normal_test")
+                       for item in registry_members(registry, EVAL_DOMAIN, role)}
+            if (manifest.get("source_identity") != source_identity(registry)
+                    or any(index not in members for index in indices)
+                    or manifest.get("eval_sources") != [members[index] for index in indices]
+                    or manifest.get("ancestry_independence") != "unproven"):
+                raise ValueError("normal bank source domain/role/registry identity differs")
         seen = set()
         for item in manifest["preparations"]:
             index = item["source_index"]
@@ -117,6 +174,8 @@ def load_source(source):
                 raise ValueError("normal preparation evidence changed")
             report = read_json(report_path)
             _validate_normal_preparation(path.parent, report_path, report, by_index[index], index, manifest["environment"])
+            if registry is not None:
+                _normal_member_binding(report, members[index], registry)
     elif source["kind"] == "remain":
         from ..pilot import _source
         manifest, _, _, _ = _source(path, source.get("candidate_replay"))
@@ -201,18 +260,38 @@ def _validate_normal_preparation(root, report_path, report, episode, index, envi
 
 def dry_plan(config):
     """No simulator imports, checkpoint deserialization, prediction or training."""
-    if config.get("schema_version") != "remaining-finish-job-v1":
+    version = config.get("schema_version")
+    if version not in {"remaining-finish-job-v1", "remaining-finish-job-v2"}:
         raise ValueError("unsupported finish job config")
+    two_domains = version == "remaining-finish-job-v2"
     purpose = config["purpose"]
     if purpose not in PURPOSES:
         raise ValueError("invalid finish purpose")
     mode, split_name = PURPOSES[purpose]
-    split = validate_split(config.get("split"), alternative_confirmation=config.get("alternative_confirmation"))
+    registry, source_id, members = None, None, None
+    if two_domains:
+        from .data_registry import source_identity, registry_members
+        from .data_profiles import EVAL_DOMAIN
+        if "split" in config or "alternative_confirmation" in config or not config.get("source_registry"):
+            raise ValueError("two-domain job requires source_registry and cannot use legacy integer split")
+        registry = _registry(config["source_registry"], verify_files=True)
+        source_id = source_identity(registry)
+        members = registry_members(registry, EVAL_DOMAIN, EVAL_ROLES[purpose])
+        indices = [item["initial_state_index"] for item in members]
+    else:
+        if "source_registry" in config:
+            raise ValueError("legacy job cannot consume a two-domain source registry")
+        split = validate_split(config.get("split"), alternative_confirmation=config.get("alternative_confirmation"))
+        indices = split[split_name]
     source, source_path = load_source(config["source"])
     expected_kind = "remain" if split_name == "remain_test" else "normal_bank"
     if config["source"]["kind"] != expected_kind:
         raise ValueError("source kind differs from purpose")
-    indices = split[split_name]
+    if expected_kind == "normal_bank":
+        if two_domains and (source.get("schema_version") != BANK_SCHEMA_V2 or source.get("source_identity") != source_id):
+            raise ValueError("two-domain job requires this registry's v2 normal bank")
+        if not two_domains and source.get("schema_version") != BANK_SCHEMA:
+            raise ValueError("legacy job cannot consume a two-domain normal bank")
     masks = {(True, False), (False, True), (True, True)} if expected_kind == "remain" else {(False, False)}
     episodes = [deepcopy(e) for e in source["episodes"] if e["task_id"] == "basket"
                 and e["initial_state_index"] in indices and tuple(e["initial_mask"]) in masks]
@@ -222,6 +301,13 @@ def dry_plan(config):
         raise ValueError("source lacks the exact fixed source/mask set; no replacements")
     if len({e["episode_id"] for e in episodes}) != len(episodes):
         raise ValueError("duplicate episode identity")
+    if two_domains:
+        by_index = {member["initial_state_index"]: member for member in members}
+        for episode in episodes:
+            if (type(episode["initial_state_index"]) is not int or episode.get("seed") != episode["initial_state_index"]
+                    or episode.get("bddl_sha256") != source_id["assets"]["bddl_sha256"]):
+                raise ValueError("selected episode index/seed/BDDL differs from its registered eval source")
+            episode["eval_source"] = deepcopy(by_index[episode["initial_state_index"]])
     runtime = read_json(config["runtime_config"])
     if (runtime.get("model_id") != "openvla_oft" or runtime.get("suite") != "libero_10" or
             runtime.get("execution", {}).get("max_chunk_steps") != 8
@@ -232,24 +318,42 @@ def dry_plan(config):
     if not video["enabled"]:
         raise ValueError("FINISH runs require saved video")
     head = head_manifest(config["head_artifact"])
-    if head["identities"]["split_identity"]["split"] != split:
-        raise ValueError("head training groups differ from run groups")
+    if two_domains:
+        from .data_registry import validate_source_identity
+        if head.get("schema_version") != "remaining-finish-head-v2":
+            raise ValueError("two-domain job requires a v2 head; legacy artifacts cannot be mixed")
+        validate_source_identity(head["identities"]["split_identity"])
+        if head["identities"]["split_identity"] != source_id:
+            raise ValueError("head and evaluation source registries/profiles differ")
+    elif head.get("schema_version") != "remaining-finish-head-v1" or head["identities"]["split_identity"].get("split") != split:
+        raise ValueError("legacy head training groups differ from run groups")
     threshold, calibration = 0.5, None
     if mode == "active":
         calibration = read_json(config["calibration"])
-        if (calibration.get("schema_version") != "remaining-finish-calibration-v1" or
+        expected_schema = "remaining-finish-calibration-v2" if two_domains else "remaining-finish-calibration-v1"
+        if (calibration.get("schema_version") != expected_schema or
                 calibration.get("calibration_sha256") != canonical_hash({k:v for k,v in calibration.items() if k != "calibration_sha256"}) or
                 calibration.get("calibrated") is not True or
-                calibration.get("binding", {}).get("head_sha256") != head["artifact_sha256"] or
-                calibration.get("validation_source_indices") != split["validation"]):
+                calibration.get("binding", {}).get("head_sha256") != head["artifact_sha256"]):
             raise ValueError("active requires this head's complete useful normal-validation calibration")
+        if two_domains:
+            expected_members = registry_members(registry, EVAL_DOMAIN, "normal_calibration")
+            if (calibration.get("source_identity") != source_id
+                    or calibration.get("calibration_domain") != EVAL_DOMAIN
+                    or calibration.get("calibration_role") != "normal_calibration"
+                    or calibration.get("calibration_members") != expected_members
+                    or calibration.get("calibration_source_keys") != [item["source_key"] for item in expected_members]
+                    or calibration.get("validation_source_indices") != [item["initial_state_index"] for item in expected_members]):
+                raise ValueError("active threshold belongs to a different source domain/role/profile or calibration group")
+        elif calibration.get("validation_source_indices") != split["validation"]:
+            raise ValueError("active calibration differs from the legacy validation group")
         threshold = calibration["selected_threshold"]
     runtime["policy_factory"] = "benchmark.remaining_goals.finish.oft:make_policy"
     runtime["finish"] = {"head_artifact": str(Path(config["head_artifact"]).resolve()), "threshold": threshold,
                          "threshold_identity": calibration["calibration_sha256"] if calibration else "validation-shadow-placeholder-0.5"}
-    plan = {"schema_version": "remaining-finish-plan-v1", "protocol_version": PROTOCOL, "dry_plan": True,
+    plan = {"schema_version": "remaining-finish-plan-v2" if two_domains else "remaining-finish-plan-v1", "protocol_version": PROTOCOL, "dry_plan": True,
             "simulation_created": False, "weights_loaded": False, "purpose": purpose, "mode": mode,
-            "split": split, "config": deepcopy(config), "policy_config": runtime, "video": video,
+            "config": deepcopy(config), "policy_config": runtime, "video": video,
             "head_sha256": head["artifact_sha256"], "head_split_identity": deepcopy(head["identities"]["split_identity"]),
             "threshold": threshold,
             "source_path": str(source_path), "manifest_hash": canonical_hash(source),
@@ -261,6 +365,14 @@ def dry_plan(config):
             "maximum_queries_per_episode": 66,
             "technical_failure_policy": "pause_remaining; preserve fixed expected and missing",
             "notice": "File-only plan; no physical validity, real parity or stopping-capability claim."}
+    if two_domains:
+        plan.update(source_registry=registry, source_identity=source_id, eval_domain=EVAL_DOMAIN,
+                    eval_role=EVAL_ROLES[purpose], eval_members=members, ancestry_independence="unproven",
+                    source_binding_scope=("Fresh normal preparation binds original official init file and pre-settle state bytes."
+                        if expected_kind == "normal_bank" else
+                        "Legacy Remain index, saved edited states, model XML, BDDL and source/replay evidence are validated. Registered raw init state identity is an index association, not a claim that edited/saved state equals raw init or a retroactive pre-settle provenance record."))
+    else:
+        plan["split"] = split
     plan["plan_sha256"] = canonical_hash(plan)
     return plan
 
@@ -269,6 +381,38 @@ def evidence_identity(metadata, episode):
     return {**{k: metadata[k] for k in ("run_id", "run_config_sha256", "manifest_hash", "mode", "head_sha256")},
             "protocol_version": PROTOCOL, "episode_id": episode["episode_id"],
             "state_sha256": episode["state_sha256"], **metadata["configuration"]}
+
+
+def _identity_fields(plan):
+    common = ("manifest_hash", "mode", "purpose", "head_sha256", "configuration", "episodes")
+    return common + (("source_identity", "eval_domain", "eval_role", "eval_members", "ancestry_independence")
+                     if plan.get("schema_version") == "remaining-finish-plan-v2" else ("split",))
+
+
+def _validate_plan_domains(plan):
+    from .data_registry import source_identity, registry_members, validate_source_identity
+    from .data_profiles import EVAL_DOMAIN
+    registry = _registry(plan["source_registry"], verify_files=False)
+    identity = source_identity(registry)
+    validate_source_identity(plan["source_identity"])
+    role = EVAL_ROLES[plan["purpose"]]
+    members = registry_members(registry, EVAL_DOMAIN, role)
+    if (plan["source_identity"] != identity or plan["head_split_identity"] != identity
+            or plan["eval_domain"] != EVAL_DOMAIN or plan["eval_role"] != role
+            or plan["eval_members"] != members or plan.get("ancestry_independence") != "unproven"
+            or "split" in plan):
+        raise ValueError("frozen FINISH plan source domain/profile/registry differs")
+    masks = {"10", "01", "11"} if role == "remain_test" else {"00"}
+    expected = {(member["source_key"], mask) for member in members for mask in masks}
+    actual = []
+    for episode in plan["episodes"]:
+        member = episode.get("eval_source")
+        if (member not in members or type(episode.get("initial_state_index")) is not int
+                or episode["initial_state_index"] != member["initial_state_index"]):
+            raise ValueError("frozen episode differs from its actual eval registry member")
+        actual.append((member["source_key"], "".join(str(int(v)) for v in episode["initial_mask"])))
+    if len(actual) != len(expected) or set(actual) != expected:
+        raise ValueError("frozen run differs from the fixed eval source/mask population")
 
 
 def _normal_capability(summary, purpose):
@@ -335,9 +479,9 @@ def run(config, output, *, policy_factory=None, env_factory=None, recorder_facto
     from .metrics import summarize
     out = Path(output).resolve()
     out.mkdir(parents=True, exist_ok=False)
-    metadata = {"schema_version": RUN_SCHEMA, "protocol_version": PROTOCOL,
+    metadata = {"schema_version": RUN_SCHEMA_V2 if plan.get("schema_version") == "remaining-finish-plan-v2" else RUN_SCHEMA, "protocol_version": PROTOCOL,
                 "run_id": uuid.uuid4().hex, "run_config_sha256": plan["plan_sha256"],
-                **{k:deepcopy(plan[k]) for k in ("manifest_hash", "mode", "purpose", "head_sha256", "configuration", "episodes", "split")},
+                **{k:deepcopy(plan[k]) for k in _identity_fields(plan)},
                 "plan": plan, "status": "running", "results": [], "error": None,
                 "attempts": [], "cleanup_errors": [], "interrupted": False,
                 "missing": [e["episode_id"] for e in plan["episodes"]]}
@@ -445,12 +589,18 @@ def read_run(directory):
     from .schema import validate_finish_result
     directory = Path(directory)
     metadata = read_json(directory/"run.json")
-    if metadata.get("schema_version") != RUN_SCHEMA or metadata.get("protocol_version") != PROTOCOL:
+    if metadata.get("schema_version") not in {RUN_SCHEMA, RUN_SCHEMA_V2} or metadata.get("protocol_version") != PROTOCOL:
         raise ValueError("unsupported/mixed run schema; legacy STOP is not FINISH")
     plan = metadata["plan"]
     if plan["plan_sha256"] != canonical_hash({k:v for k,v in plan.items() if k != "plan_sha256"}) or metadata["run_config_sha256"] != plan["plan_sha256"]:
         raise ValueError("run plan hash mismatch")
-    for key in ("episodes", "mode", "configuration", "head_sha256", "manifest_hash", "purpose", "split"):
+    if metadata["schema_version"] == RUN_SCHEMA_V2:
+        if plan.get("schema_version") != "remaining-finish-plan-v2":
+            raise ValueError("two-domain run cannot contain a legacy plan")
+        _validate_plan_domains(plan)
+    elif plan.get("schema_version") != "remaining-finish-plan-v1":
+        raise ValueError("legacy run cannot contain a two-domain plan")
+    for key in _identity_fields(plan):
         if metadata[key] != plan[key]:
             raise ValueError("run metadata differs from frozen plan")
     expected = {e["episode_id"]: e for e in metadata["episodes"]}
@@ -509,10 +659,16 @@ def calibrate(directory, output):
     metadata, results = read_run(directory)
     if metadata["purpose"] != "validation_shadow":
         raise ValueError("calibration uses only the planned normal-validation shadow run")
-    episodes = [{"episode_id":e["episode_id"], "source_index":e["initial_state_index"], "split":"validation"}
-                for e in metadata["episodes"]]
-    report = calibrate_threshold(episodes, results, expected_validation_sources=metadata["split"]["validation"],
-                                 split_identity=metadata["plan"]["head_split_identity"])
+    if metadata["schema_version"] == RUN_SCHEMA_V2:
+        episodes = [{"episode_id": e["episode_id"], "initial_state_index": e["initial_state_index"],
+                     "eval_source": deepcopy(e["eval_source"])} for e in metadata["episodes"]]
+        report = calibrate_threshold(episodes, results, source_registry=metadata["plan"]["source_registry"],
+                                     split_identity=metadata["source_identity"])
+    else:
+        episodes = [{"episode_id":e["episode_id"], "source_index":e["initial_state_index"], "split":"validation"}
+                    for e in metadata["episodes"]]
+        report = calibrate_threshold(episodes, results, expected_validation_sources=metadata["split"]["validation"],
+                                     split_identity=metadata["plan"]["head_split_identity"])
     report["binding"] = {"head_sha256": metadata["head_sha256"], "run_id": metadata["run_id"],
                          "source_run_sha256": file_sha(Path(directory)/"run.json")}
     report.pop("calibration_sha256", None)

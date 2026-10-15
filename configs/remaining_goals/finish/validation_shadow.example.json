@@ -1,5 +1,6 @@
 {
-  "schema_version": "remaining-finish-job-v1",
+  "schema_version": "remaining-finish-job-v2",
+  "source_registry": "/ABS/OUTPUT/registry/registry.json",
   "purpose": "validation_shadow",
   "runtime_config": "/ABS/PRIVATE_CONFIG/oft_sog10.json",
   "source": {"kind": "normal_bank", "manifest": "/ABS/OUTPUT/normal_bank/normal_bank.json"},
