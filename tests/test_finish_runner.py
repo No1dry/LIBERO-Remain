@@ -23,7 +23,7 @@ def episode(mask=None):
 def observation(step):
     return {"agentview_image": np.full((4, 5, 3), step % 256, np.uint8),
             "robot0_eye_in_hand_image": np.full((3, 6, 3), (step + 10) % 256, np.uint8),
-            "proprio": np.array([step, -0., 0, 0, 0, 0, 0], dtype=np.float32)}
+            "proprio": np.array([step, -0., 0, 0, 0, 0, 0, 0], dtype=np.float32)}
 
 
 def inputs(step=0):
@@ -31,7 +31,7 @@ def inputs(step=0):
             "tensors": {"input_ids": np.array([[1, 3, 7]], np.int64),
                         "attention_mask": np.ones((1, 3), np.int64),
                         "pixel_values": np.full((1, 6, 2, 2), step / 100, np.float32),
-                        "proprio": np.full(7, step, np.float64)},
+                        "proprio": np.full(8, step, np.float64)},
             "tensor_dtypes": {"input_ids": "torch.int64", "attention_mask": "torch.int64",
                               "pixel_values": "torch.float32", "proprio": "numpy.float64"},
             "crops": {"agentview": np.full((2, 3, 3), step % 256, np.uint8),

@@ -2,6 +2,10 @@
 
 2026-10-15，X候选交付。依据[008任务](../collaboration/tasks/008_finish_data_source_domains.md)及[修订Plan4](experiment_plans/stage04_finish_protocol.md)。本手册替代新实验使用的旧统一source分组流程；FINISH控制协议仍为v1。代码验收后由Codex部署新冻结SHA、填写并核对服务器配置，再由用户逐阶段启动真实作业。本文不表示这些真实阶段已经执行。
 
+> 2026-10-16／R8修复：当前固定LIBERO-SOG10 OFT的proprio是位置3＋axis-angle3＋双指2，共8维；输入证据接受原始`(8,)`或`(1,8)`，动作chunk仍为`(8,7)`。两个相机各6个fused通道、拼接12通道保持由原processor生成；不截断、补零或reshape模型实参。输入证据版本仍为`remaining-finish-input-v1`，有限值、单batch、来源dtype、BF16的uint16逐bit存储和bool存储校验保持；当前输入证据不接受旧7维工件冒充真实OFT输入。
+>
+> [已验收的1313帧audit](stage_summaries/stage04_finish_data_audit_pass_2026-10-16.md)继续复用，内部SHA为`44d0ab96f910221b58f2bfc930c6e1a06db79f23f19755318cd6d34764bf8457`，1261帧已知／52帧unknown。修复验收后，仅由用户在新源码/session及全新feature out/log运行`export-features`；`--audit`显式指向`/HUBU-AI096/zp/ICML/stage04_finish_2cb1428/results/run01/audit`。下文audit步骤对这次恢复仅是历史流程，不重跑；旧失败feature partial保留且不作为成功cache复用。Codex部署时填齐新路径，完整cache复核后才进入小头训练。验证集仅demo_38两正例的pilot限制不变。
+
 ## 1. 固定范围和身份
 
 只使用basket、原SOG10 OFT和既定小型finish head。H520/W150/chunk8、seed7、相机/crop、完整原指令、动作解码、控制与评分不变。已完成的4f版单11四步预检不重复；原38失败和4f成功证据保留。数据域变更不证明W150、其他状态的release或模型停止能力已通过。
@@ -121,8 +125,11 @@ head示范审计保留actual HDF原生模型。当前仅对固定官方basket HD
 
 ## 6. 用户特征导出、小头训练
 
+本次R8恢复复用下列已验收audit；`OUT`仍指向Codex填写的全新输出目录。后续parity也使用同一`AUDIT`，但须等待完整cache复核和小头训练验收后再运行。
+
 ```bash
-finish_stage 04_features "$SIM_PY" export-features --audit "$OUT/audit" --runtime-config "$CFG/oft_sog10.json" --out "$OUT/features"
+AUDIT=/HUBU-AI096/zp/ICML/stage04_finish_2cb1428/results/run01/audit
+finish_stage 04_features "$SIM_PY" export-features --audit "$AUDIT" --runtime-config "$CFG/oft_sog10.json" --out "$OUT/features"
 ```
 
 检查`features/feature_export.json`完成、`features/cache/cache.json`绑定本audit/profile/registry及实际base/code/raw/input/feature身份。只导出head_train/head_validation的已知标签；metadata不进入网络，每输入沿原同一次forward取56个action-token的均值特征。
@@ -144,7 +151,7 @@ finish_stage 06_normal_bank "$SIM_PY" prepare-normal --source-registry "$OUT/reg
 旧source001的edited savedstate不等于raw official init。新job验证其原有index、savedstate、modelXML、BDDL、preparation/source及replay绑定，再与registry实际eval键关联；不会为旧包补造不存在的原始采集provenance。
 
 ```bash
-finish_stage 07_parity "$SIM_PY" parity --audit "$OUT/audit" --runtime-config "$CFG/oft_sog10.json" --head-artifact "$OUT/train/head" --atol 0 --rtol 0 --out "$OUT/parity"
+finish_stage 07_parity "$SIM_PY" parity --audit "$AUDIT" --runtime-config "$CFG/oft_sog10.json" --head-artifact "$OUT/train/head" --atol 0 --rtol 0 --out "$OUT/parity"
 ```
 
 32不同输入只来自HDF head_validation；state、raw observation、模型输入均去重。不足32就报不足，不能从其他组借。每输入原/只读shadow各一次forward，同worker恢复Python/NumPy/Torch/CUDA RNG；保留预先声明的容差，不看结果再放宽。检查parity报告passed及32pairs/64forward；此命令不创建仿真。

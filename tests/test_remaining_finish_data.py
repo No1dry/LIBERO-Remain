@@ -198,7 +198,7 @@ def test_hold_missing_or_unknown_evidence_stays_unknown(change):
 
 def input_evidence():
     tensors = {"input_ids": np.array([[1, 2]], dtype=np.int64), "attention_mask": np.ones((1, 2), dtype=np.int64),
-               "pixel_values": np.ones((1, 6, 2, 2), np.float32), "proprio": np.zeros((1, 7), np.float32)}
+               "pixel_values": np.ones((1, 6, 2, 2), np.float32), "proprio": np.zeros((1, 8), np.float32)}
     return {"schema_version": "remaining-finish-input-v1", "tensors": tensors,
             "tensor_dtypes": {k: "numpy." + str(v.dtype) for k, v in tensors.items()},
             "crops": {"agentview": np.zeros((2, 2, 3), np.uint8), "wrist": np.zeros((2, 2, 3), np.uint8)}}

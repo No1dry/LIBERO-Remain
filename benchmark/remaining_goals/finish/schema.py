@@ -51,6 +51,24 @@ def _array(value, name):
     return value.copy(order="C")
 
 
+_INPUT_SHAPES = {"proprio": "(8,) or (1, 8)",
+                 "pixel_values": "rank 4 or 5 with leading batch 1; channels unconstrained"}
+_INPUT_DTYPE = ("finite numeric storage matching an explicit torch/numpy dtype; "
+                "torch.bfloat16 uses uint16 bits; bool uses uint8 zero/one")
+
+
+def _input_tensor_error(name, item, label, reason):
+    """Report metadata only, including when untrusted fields are malformed."""
+    shape = str(tuple(item.shape)) if isinstance(item, np.ndarray) else f"<not ndarray: {type(item).__name__}>"
+    storage = item.dtype.name if isinstance(item, np.ndarray) else f"<{type(item).__name__}>"
+    if isinstance(label, str):
+        source = label if re.fullmatch(r"(?:torch|numpy)\.[A-Za-z0-9_]{1,32}", label) else "<invalid dtype string>"
+    else:
+        source = f"<{type(label).__name__}>"
+    return ValueError(f"{name}: expected shape={_INPUT_SHAPES[name]}, dtype={_INPUT_DTYPE}; "
+                      f"actual shape={shape}, dtype={storage}, source_dtype={source}; {reason}")
+
+
 def validate_input_evidence(value):
     """Validate actual forward inputs, including lossless BF16 byte views.
 
@@ -68,36 +86,42 @@ def validate_input_evidence(value):
         raise ValueError("FINISH inputs require exactly the four model tensors and two camera crops")
     output = {}
     for name, item in tensors.items():
-        array = _array(item, name)
-        label = labels[name]
-        if not isinstance(label, str) or "." not in label:
-            raise ValueError("tensor source dtype must be explicit")
-        owner, dtype = label.split(".", 1)
-        if owner not in {"torch", "numpy"}:
-            raise ValueError("unsupported tensor dtype namespace")
-        if dtype == "bfloat16":
-            if owner != "torch" or array.dtype != np.dtype("uint16"):
-                raise ValueError("BF16 inputs require original uint16 bits")
-            if np.any((array & np.uint16(0x7F80)) == np.uint16(0x7F80)):
-                raise ValueError("BF16 input has NaN or infinity")
-        elif dtype == "bool":
-            if array.dtype != np.dtype("uint8") or not np.isin(array, [0, 1]).all():
-                raise ValueError("boolean inputs require uint8 zero/one storage")
-        else:
-            allowed = {"float16", "float32", "float64", "int8", "int16", "int32", "int64",
-                       "uint8", "uint16", "uint32", "uint64"}
-            if dtype not in allowed or array.dtype != np.dtype(dtype):
-                raise ValueError("tensor source dtype does not match its bytes")
-        output[name] = array
+        try:
+            array = _array(item, name)
+            label = labels[name]
+            if not isinstance(label, str) or "." not in label:
+                raise ValueError("tensor source dtype must be explicit")
+            owner, dtype = label.split(".", 1)
+            if owner not in {"torch", "numpy"}:
+                raise ValueError("unsupported tensor dtype namespace")
+            if dtype == "bfloat16":
+                if owner != "torch" or array.dtype != np.dtype("uint16"):
+                    raise ValueError("BF16 inputs require original uint16 bits")
+                if np.any((array & np.uint16(0x7F80)) == np.uint16(0x7F80)):
+                    raise ValueError("BF16 input has NaN or infinity")
+            elif dtype == "bool":
+                if array.dtype != np.dtype("uint8") or not np.isin(array, [0, 1]).all():
+                    raise ValueError("boolean inputs require uint8 zero/one storage")
+            else:
+                allowed = {"float16", "float32", "float64", "int8", "int16", "int32", "int64",
+                           "uint8", "uint16", "uint32", "uint64"}
+                if dtype not in allowed or array.dtype != np.dtype(dtype):
+                    raise ValueError("tensor source dtype does not match its bytes")
+            output[name] = array
+        except ValueError as error:
+            if name in _INPUT_SHAPES:
+                raise _input_tensor_error(name, item, labels[name], str(error)) from error
+            raise
     ids, attention = output["input_ids"], output["attention_mask"]
     if ids.ndim != 2 or ids.shape[0] != 1 or ids.dtype.kind not in "iu" or attention.shape != ids.shape:
         raise ValueError("input_ids and attention_mask must describe the same one-input batch")
     if attention.dtype.kind not in "iu" or not np.isin(attention, [0, 1]).all():
         raise ValueError("attention_mask must be an integer/boolean mask")
-    if output["proprio"].shape not in {(7,), (1, 7)} or output["pixel_values"].ndim not in {4, 5}:
-        raise ValueError("unexpected OFT proprio/pixel tensor shape")
-    if output["pixel_values"].shape[0] != 1:
-        raise ValueError("FINISH requires one actual observation per query")
+    if output["proprio"].shape not in {(8,), (1, 8)}:
+        raise _input_tensor_error("proprio", output["proprio"], labels["proprio"], "unexpected OFT proprio tensor shape")
+    if output["pixel_values"].ndim not in {4, 5} or output["pixel_values"].shape[0] != 1:
+        raise _input_tensor_error("pixel_values", output["pixel_values"], labels["pixel_values"],
+                                  "FINISH requires one actual observation in a rank-4/5 pixel tensor")
     images = {}
     for name, item in crops.items():
         array = _array(item, name)
