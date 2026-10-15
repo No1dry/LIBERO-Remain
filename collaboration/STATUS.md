@@ -20,7 +20,7 @@ Stage03的固定15条主pilot＋10条oracle诊断已完成；旧JSR主10=40%（2
 
 | 任务 | 状态 | 交付／裁决 |
 |---|---|---|
-| [008 两来源域数据合同](tasks/008_finish_data_source_domains.md) | R5软件accepted；真实audit布局兼容性诊断中，未closed | 089e0b7资源/文件通过，compiled layout guard拒绝首帧，restore1/rows0；缺实际逐字段diff，未授权Codex场景诊断，暂无新返修定性 |
+| [008 两来源域数据合同](tasks/008_finish_data_source_domains.md) | R5资源accepted；R6受限示范模型兼容changes_requested，未closed | 用户授权的零积分诊断已完成：默认161/demo162 geom，joint地址一致；保留原XML/评测不变，待X最小实现，当前audit仍0标签 |
 | 001 指标与人工UIR | closed | PR #1已合并；交流仍保留供后续追踪 |
 | 002 venv路径修复 | closed | 同上；阶段总结与本地备份已核验 |
 | 003 正常00回归入口 | accepted，PR #2已合并 | main合并SHA 4a02c78c0b945c2df2f0748614fecdd1c5127f55；不在本轮伪造closed |
@@ -33,11 +33,11 @@ Stage03的固定15条主pilot＋10条oracle诊断已完成；旧JSR主10=40%（2
 
 ## 当前下一步
 
-**089e0b7的用户真实audit在compiled layout身份检查处停止：restore_attempts1、rows0、hold0，exit2。** 资源解析/非路径XML字节与素材SHA此前已通过；本次_load model后的_layout与默认_base_layout不等，现报告缺逐字段差异，尚不能认定仅ID顺序还是实质结构不兼容。[本次长期记录](../docs/stage_summaries/stage04_task008_layout_failure_2026-10-15.md)。
+**用户已授权最小布局诊断，现已完成并找出具体原因。** 默认161 geom，demo_10为162，多robot0_link7_collision；全部joint/状态地址及_layout其他字段相同，新增项导致geom ID后移。不能称物理等价，完整XML还存在已记录的辅助camera/小数打印差异。实际policy两视角不变。[诊断与科学裁决](../docs/stage_summaries/stage04_task008_layout_diagnosis_2026-10-15.md)。
 
-Codex已只读核查全部50示范XML静态名称/type结构一致，但不是compiled layout证据；未编译/创建新场景、未step/label/VLA。建议向用户请求一次“仅加载场景导出布局、不step/任务动作/模型/训练”的最小兼容诊断授权，当前**尚未授权/执行**。先取得具体diff再决定是否需X改代码，不猜测性放宽guard；用户暂勿重跑同版audit或进入feature/训练。
+[R6给X的详细最小需求](reviews/008_round6.md)：保留actual HDF XML，只在head示范域显式支持已核模型变体；所有关节地址/匿名几何/未知结构变化仍严查，不删除/禁碰撞geom，不改eval/source001/相机/label/指标。该受限支持属于原方案A落实；额外head→eval模型域差异明示，不声称无影响。X改代码，交CPU/fake和新固定SHA，Codex审查部署后用户重跑原audit。
 
-R5软件/资源结论保留，真实audit未通过，不算模型0%。既有PR合并软件裁决不被冒充科研完成；008/Stage04未closed，原始失败全部保留，待删=[]。
+诊断无任务动作/积分/HDF state恢复/label/VLA/训练；初始化两次mj_step1只作不积分刷新，逐次time/qpos/qvel/act/ctrl字节不变，环境已关闭。第一版过严拦截的失败与第二版成功证据都保留。此次有限授权已完成，不扩大为Codex自动audit/训练。当前仍无可用标签/新模型成绩，不让用户重跑未修同版audit；无新增独立预检/下载/采集。PR #5本项交付验收前不合并未修实现，008/Stage04未closed，待删=[]。
 
 
 以下007部署与数据准备经过保留为历史，不重复已经完成的预检。
