@@ -1,3 +1,5 @@
+> 2026-10-16最新：R8输入8维修复已由Codex R9软件验收，原audit仍有效。**本页旧2cb命令仅作历史，不重跑audit或旧features。** 现在使用[新3433特征重导出手册](stage04_feature_retry_runbook_2026-10-16.md)，AUDIT复用原成功目录、OUT/LOG全新。
+
 # Stage04 / 008 已核示范模型兼容后的服务器启动手册
 
 > 2026-10-16最新状态：04_features已因错误的7维proprio证据检查失败，**不要重复下面旧feature out/log，也不要重跑已通过audit**。待[008 R8修复](../../collaboration/reviews/008_round8.md)验收后，Codex给新源码/session/feature目录，并显式复用原成功audit。本页旧命令保留为历史；当前不能训练。
