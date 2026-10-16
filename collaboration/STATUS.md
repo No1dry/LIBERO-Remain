@@ -10,7 +10,7 @@
 
 ## 当前阶段
 
-Stage04 / [Plan4](../docs/experiment_plans/stage04_finish_protocol.md)：FINISH停止控制阶段。用户5/5普通shadow采集完成（100%），但既定离线校准capability_not_established、selected_threshold=null：0.99诊断点3及时/1释放unknown/1任务未完成不触发；4条整轨迹出现完成真值unknown。暂停normal_active／Remain，不重训、不改规则救分；X已提交[R10只读测量审计提案](responses/008_round6.md)，待Codex评议，未改实现或运行native诊断。原代码验收和已完成子阶段保留，008／Stage04未closed。
+Stage04 / [Plan4](../docs/experiment_plans/stage04_finish_protocol.md)：原5条shadow采集完整，停止校准仍未建立、阈值null。X的R10只读提案已由Codex[R11接受](reviews/008_round11.md)，用户已同意最小诊断；[009](tasks/009_release_observability_replay.md)由X实现仅35号0..292原动作前缀重执行，不加载VLA/head、不改原评分／协议，用户在验收部署后亲自启动。主normal_active／Remain继续暂不运行；008/009/Stage04未closed。
 
 默认设计：冻结OFT动作网络，只训练小finish head；普通00数据分组训练／校准／独立测试，当前外部10/01/11留作测试；active与shadow分开，新协议H520/W150所有mask一致，FINISH后或超时后做真实物理保持，无GT许可停车。原始无FINISH模型仅历史参考，新主指标不把不支持写成0%。
 
@@ -20,7 +20,8 @@ Stage03的固定15条主pilot＋10条oracle诊断已完成；旧JSR主10=40%（2
 
 | 任务 | 状态 | 交付／裁决 |
 |---|---|---|
-| [008 两来源域数据合同](tasks/008_finish_data_source_domains.md) | 软件/前序子阶段及5条shadow采集accepted；校准未建立；R10只读提案submitted，未closed | 5/5完整，0.99诊断3及时/1unknown/1未触发，不是任务成功率；[总结](../docs/stage_summaries/stage04_shadow_calibration_unestablished_2026-10-16.md)／[R10](reviews/008_round10.md)／[X回应](responses/008_round6.md) |
+| [009 最小释放测量诊断](tasks/009_release_observability_replay.md) | open，用户确认，待X实现/CPU-fake/独立PR | 只35号原bank初态，最多292记录动作、293快照，初始化/native substep另计；0 VLA/head/processor调用，不改release/calibration/旧分数 |
+| [008 两来源域数据合同](tasks/008_finish_data_source_domains.md) | 原代码/采集accepted；校准未建立；R11提案accepted，未closed | [X只读回复](https://github.com/No1dry/LIBERO-Remain/blob/54364ebb579d38a81d2d9396585d084cb9ac21da/collaboration/responses/008_round6.md)；无生产diff，原uncalibrated不改；转009最小诊断 |
 | 001 指标与人工UIR | closed | PR #1已合并；交流仍保留供后续追踪 |
 | 002 venv路径修复 | closed | 同上；阶段总结与本地备份已核验 |
 | 003 正常00回归入口 | accepted，PR #2已合并 | main合并SHA 4a02c78c0b945c2df2f0748614fecdd1c5127f55；不在本轮伪造closed |
@@ -33,15 +34,13 @@ Stage03的固定15条主pilot＋10条oracle诊断已完成；旧JSR主10=40%（2
 
 ## 当前下一步
 
-**09_shadow采集完整accepted；10离线校准未建立，暂不运行normal_active／Remain。** 5/5 completed（100%）、330预测、3350物理步、5视频、技术错误/缺失0；完整read_run输入/ledger/video/hash核验通过。calibration_sha ac4cd37c…，calibrated=false、selected_threshold=null，exit2/tee0是未建立状态，不是代码崩溃。官方init仅35..39，未用测试组。
+**X开始[009](tasks/009_release_observability_replay.md)独立诊断实现。** 用户已明确“同意最小诊断”：仅basket_s035_00原normal-bank已settle初态、step1..292记录动作，0 VLA/head/processor，不追加296/W150/init37，不改release／unknown规则／阈值／评分或旧工件。Codex审查部署后给实际命令，仍由用户启动；当前还没有新诊断CLI可执行。
 
-0.99只是网格诊断：init37/38/39首hit已完成释放且及时（60%），35首hit释放unknown（20%），36未全完成且未触发（20%）。另整轨迹unknown gate涉及35/37/38/39共80%；283帧完成真值unknown里281保守近手包络、2非双垫contact，异常缺字段0。无contact不能直接改release True，保守球重叠也不证明仍抓持；当前未发现明确实现bug，不撤销R9验收，不自动要求重训。[总结](../docs/stage_summaries/stage04_shadow_calibration_unestablished_2026-10-16.md)／[证据](../docs/stage_summaries/evidence/stage04_shadow_calibration_diagnosis_2026-10-16.json)。
+[R11接受提案](reviews/008_round11.md)，[长期授权/审查总结](../docs/stage_summaries/stage04_release_audit_proposal_accepted_2026-10-16.md)，[证据](../docs/stage_summaries/evidence/stage04_release_proposal_review_2026-10-16.json)。X回复HEAD54364ebb…相对实际3433f48无生产变更，无需本轮返修文档。Codex补核3350动作关联／6710个target release分支／3355聚合，旧规则不一致0。None假设补全的紧tau：35[263,292]、37[287,295]、38[241,250]、39[364,380]；后三条timely稳健，35仍不可判定，原calibrated=false／selected_threshold=null不变。这些补全不是新标签或主结果。
 
-**X已交[008 Round 6](responses/008_round6.md)，下一步由Codex评议；任何协议修订或新增native诊断仍须与用户确认。** 只读核对未发现明确实现bug；纯CPU fake复现了整轨迹门槛及tau受unknown影响的边界，生产代码与3433f48不变。本机未取得原raw/video树，不把汇总核对冒充完整原数据复核。固定MuJoCo2.3.7无mj_geomDistance；建议先复用现有文件，必要时另立只记录evaluator证据的有限重放任务（首选init35至292，0模型forward），当前尚未实现或执行。
+服务器只读包/头文件确认MuJoCo2.3.7、robosuite1.4.0，无geomDistance符号；没有创建native或model。009须保持原reset/step/read顺序，query原始观测hash与旧truth/动作不匹配即停，新状态不冒充原完整native快照。292条控制步不隐藏初始化或内部substep。记录器evaluator-side，不进入模型／GT停车；第一版不实施更紧几何判据或协议v2/v3。
 
-暂不修改模型、release／unknown规则、阈值网格或分组；不拿unknown当失败／成功，不用normal_test/Remain救校准，不直接绕active门槛。未来版本须保留旧结果、并列敏感性并披露事后提出的来源；优先复用原始数据，不新采VLA数据、不重训、不重跑；用户当前无需启动实验。
-
-shadow主指标N/A，不是0%；3/5及时不是新协议任务成功率。普通stop-capable及Remain核心研究现象尚未建立。已用5/30模型rollout预算，后续10normal+15Remain未开始；原始输入/视频/失败partial和脏工作区保留，不自动合并PR，007/008/Stage04未closed，精确待删=[]。
+PR #5已审代码可按R9由X合并并保留最新main的R11/009文档，Codex不代合并；009另开PR。所有前序数据验收保留，normal_active/Remain未启动，不重训或重跑整批。用户当前等待X交付，不需重复已有命令；协议或范围再变另经用户确认。008/009/Stage04未closed，精确待删=[]。
 
 以下007部署与数据准备经过保留为历史，不重复已经完成的预检。
 
