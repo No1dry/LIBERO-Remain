@@ -10,7 +10,7 @@
 
 ## 当前阶段
 
-Stage04 / [Plan4](../docs/experiment_plans/stage04_finish_protocol.md)：原5条shadow采集完整，停止校准仍未建立、阈值null。X的R10只读提案已由Codex[R11接受](reviews/008_round11.md)，用户已同意最小诊断；[009](tasks/009_release_observability_replay.md)由X实现仅35号0..292原动作前缀重执行，不加载VLA/head、不改原评分／协议，用户在验收部署后亲自启动。主normal_active／Remain继续暂不运行；008/009/Stage04未closed。
+Stage04 / [Plan4](../docs/experiment_plans/stage04_finish_protocol.md)：原5条shadow采集完整，停止校准仍未建立、阈值null。X的R10只读提案已由Codex[R11接受](reviews/008_round11.md)，用户已同意最小诊断；[009实现与CPU/fake交付](responses/009_round1.md)已提交，待Codex审查部署。仅35号0..292原动作前缀重执行，不加载VLA/head、不改原评分／协议，真实run仍由用户启动。主normal_active／Remain继续暂不运行；008/009/Stage04未closed。
 
 默认设计：冻结OFT动作网络，只训练小finish head；普通00数据分组训练／校准／独立测试，当前外部10/01/11留作测试；active与shadow分开，新协议H520/W150所有mask一致，FINISH后或超时后做真实物理保持，无GT许可停车。原始无FINISH模型仅历史参考，新主指标不把不支持写成0%。
 
@@ -20,8 +20,8 @@ Stage03的固定15条主pilot＋10条oracle诊断已完成；旧JSR主10=40%（2
 
 | 任务 | 状态 | 交付／裁决 |
 |---|---|---|
-| [009 最小释放测量诊断](tasks/009_release_observability_replay.md) | open，用户确认，待X实现/CPU-fake/独立PR | 只35号原bank初态，最多292记录动作、293快照，初始化/native substep另计；0 VLA/head/processor调用，不改release/calibration/旧分数 |
-| [008 两来源域数据合同](tasks/008_finish_data_source_domains.md) | 原代码/采集accepted；校准未建立；R11提案accepted，未closed | [X只读回复](https://github.com/No1dry/LIBERO-Remain/blob/54364ebb579d38a81d2d9396585d084cb9ac21da/collaboration/responses/008_round6.md)；无生产diff，原uncalibrated不改；转009最小诊断 |
+| [009 最小释放测量诊断](tasks/009_release_observability_replay.md) | submitted，待Codex审查；真实run未启动 | [X交付](responses/009_round1.md)，实现5410355；全套1985 passed／15 skipped，新增155项全通过。独立plan/run、来源SHA复核、首差异停、typed侧录；只35号最多292动作，不改release/calibration |
+| [008 两来源域数据合同](tasks/008_finish_data_source_domains.md) | 原代码/采集accepted；PR #5已合并；校准未建立，未closed | main合并3d361f4，已审生产不变，保留R11/009文档；[X只读回复](https://github.com/No1dry/LIBERO-Remain/blob/54364ebb579d38a81d2d9396585d084cb9ac21da/collaboration/responses/008_round6.md)，原uncalibrated不改；转009最小诊断 |
 | 001 指标与人工UIR | closed | PR #1已合并；交流仍保留供后续追踪 |
 | 002 venv路径修复 | closed | 同上；阶段总结与本地备份已核验 |
 | 003 正常00回归入口 | accepted，PR #2已合并 | main合并SHA 4a02c78c0b945c2df2f0748614fecdd1c5127f55；不在本轮伪造closed |
@@ -34,13 +34,15 @@ Stage03的固定15条主pilot＋10条oracle诊断已完成；旧JSR主10=40%（2
 
 ## 当前下一步
 
-**X开始[009](tasks/009_release_observability_replay.md)独立诊断实现。** 用户已明确“同意最小诊断”：仅basket_s035_00原normal-bank已settle初态、step1..292记录动作，0 VLA/head/processor，不追加296/W150/init37，不改release／unknown规则／阈值／评分或旧工件。Codex审查部署后给实际命令，仍由用户启动；当前还没有新诊断CLI可执行。
+**Codex审查[009交付](responses/009_round1.md)，验收后准备纯文件plan、部署并交用户真实run命令。** 实现`5410355436ef0f418f0c95c47293efbdce905b07`，独立分支`x/task009-release-observability`；本轮仅新诊断／测试／手册及协作文档，原生产路径未改。实际CLI与日志封装见[运行手册](../docs/finish_release_audit_runbook.md)。全套1985 passed／15 skipped，新增155项与既有FINISH602项全部通过。X未运行真实仿真／VLA／head／训练，尚无服务器部署或真实重执行结果。
+
+授权仍限basket_s035_00原normal-bank已settle初态、step1..292记录动作，0 VLA/head/processor，不追加296/W150/init37，不改release／unknown规则／阈值／评分或旧工件。CLI的plan纯文件，run先重核来源后沿用原reset/step；原query/旧truth/动作首差异即停并保留partial。CPU/fake不是物理认证，不因代码提交自动启动或追加实验。
 
 [R11接受提案](reviews/008_round11.md)，[长期授权/审查总结](../docs/stage_summaries/stage04_release_audit_proposal_accepted_2026-10-16.md)，[证据](../docs/stage_summaries/evidence/stage04_release_proposal_review_2026-10-16.json)。X回复HEAD54364ebb…相对实际3433f48无生产变更，无需本轮返修文档。Codex补核3350动作关联／6710个target release分支／3355聚合，旧规则不一致0。None假设补全的紧tau：35[263,292]、37[287,295]、38[241,250]、39[364,380]；后三条timely稳健，35仍不可判定，原calibrated=false／selected_threshold=null不变。这些补全不是新标签或主结果。
 
 服务器只读包/头文件确认MuJoCo2.3.7、robosuite1.4.0，无geomDistance符号；没有创建native或model。009须保持原reset/step/read顺序，query原始观测hash与旧truth/动作不匹配即停，新状态不冒充原完整native快照。292条控制步不隐藏初始化或内部substep。记录器evaluator-side，不进入模型／GT停车；第一版不实施更紧几何判据或协议v2/v3。
 
-PR #5已审代码可按R9由X合并并保留最新main的R11/009文档，Codex不代合并；009另开PR。所有前序数据验收保留，normal_active/Remain未启动，不重训或重跑整批。用户当前等待X交付，不需重复已有命令；协议或范围再变另经用户确认。008/009/Stage04未closed，精确待删=[]。
+[PR #5](https://github.com/No1dry/LIBERO-Remain/pull/5)已由X按R9及009明确授权合并为main `3d361f44a9393638d41738d375004e8ea7794301`，保留R11/009文档及已审生产实现。009以此main另开分支／PR，不自行合并。所有前序数据验收保留，normal_active/Remain未启动，不重训或重跑整批。等待Codex审查本轮交付，不重复已有真实命令；协议或范围再变另经用户确认。008/009/Stage04未closed，精确待删=[]。
 
 以下007部署与数据准备经过保留为历史，不重复已经完成的预检。
 
