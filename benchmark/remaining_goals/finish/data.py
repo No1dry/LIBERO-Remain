@@ -21,6 +21,7 @@ from ..observation_artifact import load_observation_artifact, save_observation_a
 from .schema import input_sha256, validate_input_evidence
 
 AUDIT_SCHEMA = "remaining-finish-data-audit-v1"
+DOMAIN_AUDIT_SCHEMA = "remaining-finish-data-audit-v2"
 CACHE_SCHEMA = "remaining-finish-feature-cache-v1"
 FEATURE_VERSION = "oft-l1-action56-mean-v1"
 DEFAULT_SPLIT = {"train": list(range(5, 35)), "validation": list(range(35, 40)),
@@ -310,6 +311,18 @@ def read_initial_states(path):
 
 def audit_plan(config):
     """Pure config/file plan: never opens a dataset, restores state or loads weights."""
+    if isinstance(config, dict) and ("data_profile" in config or "expected_assets" in config):
+        from .data_profiles import ASSET_KEYS, validate_domain_config
+        profile = validate_domain_config(config)
+        return {"schema_version": "remaining-finish-data-plan-v2", "profile": profile,
+            "profile_sha256": canonical_hash(profile), "expected_assets": copy.deepcopy(config["expected_assets"]),
+            "files": {key: {"path": config[key], "exists": Path(config[key]).is_file()} for key in ASSET_KEYS},
+            "state_stride": 8, "sampling_rule": "stride8-plus-last-saved-state-v1",
+            "restoration_roles": ["head_train", "head_validation"], "label_contract": copy.deepcopy(LABEL_CONTRACT),
+            "simulation_created": False, "weights_loaded": False, "labels_generated": 0,
+            "ready_for_feature_export": False, "ancestry_independence": "unproven",
+            "frames_and_hold_steps": "file registry determines sampled frames; at most four hold steps per complete/released frame",
+            "source_mapping": "separate actual HDF trajectory and official init keys; no demo-to-init mapping"}
     if not isinstance(config, dict):
         raise ValueError("data audit config must be an object")
     for key in ("hdf5_path", "init_states_path", "bddl_path", "original_instruction"):
@@ -383,6 +396,8 @@ def audit_demonstrations(config, *, provider_factory=None, out=None):
     must branch from this state, preserve the saved current input, and return a
     source_state_sha256, hold_contract and independent step-0..K truth trace.
     """
+    if isinstance(config, dict) and ("data_profile" in config or "expected_assets" in config):
+        return _audit_domain_demonstrations(config, provider_factory=provider_factory, out=out)
     plan = audit_plan(config)
     destination = Path(out) if out is not None else None
     if destination is not None:
@@ -506,8 +521,13 @@ def audit_demonstrations(config, *, provider_factory=None, out=None):
 
 
 def validate_audit(audit, *, base_dir=None):
+    if isinstance(audit, dict) and audit.get("schema_version") == DOMAIN_AUDIT_SCHEMA:
+        return _validate_domain_audit(audit, base_dir=base_dir)
     if not isinstance(audit, dict) or audit.get("schema_version") != AUDIT_SCHEMA:
         raise ValueError("unsupported data audit schema")
+    if any(key in audit for key in ("profile", "registry", "source_identity")) or any(
+            any(key in row for key in ("domain", "role", "source_key")) for row in audit.get("rows", [])):
+        raise ValueError("legacy audit cannot contain two-domain identities")
     payload = {key: value for key, value in audit.items() if key != "audit_sha256"}
     if audit.get("audit_sha256") != canonical_hash(payload):
         raise ValueError("data audit hash mismatch")
@@ -563,14 +583,350 @@ def validate_audit(audit, *, base_dir=None):
     return audit
 
 
+def validate_domain_rows(rows, registry):
+    """Check source ownership and direct state/observation duplicates, not ancestry."""
+    from .data_profiles import HEAD_DOMAIN
+    from .data_registry import validate_source_registry
+    validate_source_registry(registry)
+    if not isinstance(rows, list):
+        raise ValueError("domain rows must be a list")
+    records = {row["source_key"]: row for row in registry["head_registry"]["records"]}
+    seen_ids, states, observations = set(), {}, {}
+    for row in rows:
+        if not isinstance(row, dict) or any(key in row for key in ("source_index", "split")):
+            raise ValueError("domain rows cannot contain legacy source identities")
+        source = records.get(row.get("source_key"))
+        if (not source or row.get("domain") != HEAD_DOMAIN or row.get("role") not in {"head_train", "head_validation"}
+                or source["role"] != row["role"] or source["trajectory_id"] != row.get("trajectory_id")
+                or row.get("edited_variant", False) is not False):
+            raise ValueError("head row has wrong source domain, role or edited evaluation provenance")
+        step = row.get("saved_state_index")
+        if (type(step) is not int or step not in source["sampled_frame_indices"]
+                or row.get("state_sha256") != source["state_sha256s"][step]
+                or row.get("model_xml_sha256") != source["model_xml_sha256"]):
+            raise ValueError("head row frame/state/XML differs from registered HDF")
+        expected_id = f"{source['source_key']}:frame:{step}"
+        if row.get("row_id") != expected_id or expected_id in seen_ids:
+            raise ValueError("duplicate or incorrect domain row identity")
+        seen_ids.add(expected_id)
+        digest = row["state_sha256"]
+        if digest in states and states[digest] != row["role"]:
+            raise ValueError("direct saved-state duplicate across head groups")
+        states[digest] = row["role"]
+        observation = row.get("observation")
+        observation_hash = observation.get("observation_sha256") if isinstance(observation, dict) else row.get("raw_observation_sha256")
+        _require_hash(observation_hash)
+        if observation_hash in observations and observations[observation_hash] != row["role"]:
+            raise ValueError("direct raw-observation duplicate across head groups")
+        observations[observation_hash] = row["role"]
+    return rows
+
+
+def _domain_coverage(registry, rows):
+    from .data_profiles import HEAD_DOMAIN, EVAL_DOMAIN
+    head = {}
+    for role, keys in registry["head_registry"]["groups"].items():
+        selected = [row for row in rows if row["role"] == role]
+        expected = sum(len(row["sampled_frame_indices"]) for row in registry["head_registry"]["records"] if row["role"] == role)
+        head[role] = {"sources": len(keys), "expected_sampled_frames": expected,
+            "audited_frames": len(selected), "labels": {str(label): sum(row["label"] == label for row in selected)
+                for label in (0, 1, None)}}
+    return {HEAD_DOMAIN: head, EVAL_DOMAIN: {role: {"sources": len(keys), "restored_frames": 0}
+        for role, keys in registry["eval_registry"]["groups"].items()}}
+
+
+def _domain_hold_steps(evidence):
+    trace = evidence.get("trace") if isinstance(evidence, dict) else None
+    return max(0, len(trace)-1) if isinstance(trace, list) else 0
+
+
+def scan_source_xml_assets(config, *, trajectories=None):
+    """Scan every actual HDF trajectory's XML without creating a provider.
+
+    Resources are resolved by the same restricted resolver used at runtime.
+    The result is file evidence only, including aggregated unresolved entries.
+    """
+    from .xml_assets import scan_xml_assets
+    if trajectories is None:
+        trajectories = read_demonstrations(config["hdf5_path"])
+    return scan_xml_assets([{"trajectory_id": item["trajectory_id"], "model_xml": item["model_xml"]}
+                            for item in trajectories])
+
+
+def _validate_xml_asset_binding(scan, registry, *, trajectories):
+    from .xml_assets import validate_scan
+    if not isinstance(scan, dict):
+        raise ValueError("two-domain audit requires an explicit complete XML asset scan")
+    expected = {item["trajectory_id"]: item["model_xml_sha256"] for item in registry["head_registry"]["records"]}
+    sources = scan.get("sources")
+    if (not isinstance(sources, list) or len(sources) != len(expected)
+            or any(not isinstance(item, dict) for item in sources)
+            or {item.get("trajectory_id"): item.get("original_xml_sha256") for item in sources} != expected):
+        raise ValueError("XML asset scan differs from the complete registered HDF trajectory/XML identities")
+    source_xmls = [{"trajectory_id": item["trajectory_id"], "model_xml": item["model_xml"]} for item in trajectories]
+    return validate_scan(scan, trajectories=source_xmls, verify_files=True)
+
+
+def _audit_domain_demonstrations(config, *, provider_factory=None, out=None):
+    from .data_profiles import HEAD_DOMAIN
+    from .data_registry import build_source_registry, source_identity, validate_source_registry
+    plan = audit_plan(config)
+    destination = Path(out) if out is not None else None
+    if destination is not None:
+        destination.mkdir(parents=True, exist_ok=False)
+    report = {"schema_version": DOMAIN_AUDIT_SCHEMA, "status": "insufficient", "plan": plan,
+        "profile": copy.deepcopy(plan["profile"]), "registry": None, "source_identity": None, "xml_asset_scan": None,
+        "original_instruction": config["original_instruction"], "label_contract": copy.deepcopy(LABEL_CONTRACT),
+        "rows": [], "issues": [], "assets": {}, "provider_execution_requested": provider_factory is not None,
+        "ancestry_independence": "unproven", "provider_identity": {},
+        "limitations": ["HDF/eval initial-state physical ancestry independence is unproven.",
+            "Trajectory grouping applies to the new head, not the frozen SOG10 backbone.",
+            "The head demonstration model may differ from evaluation; compatibility does not establish physical equivalence.",
+            "Successful demonstrations do not establish failure/stall-negative coverage."],
+        "work_counts": {"restore_attempts": 0, "hold_attempts": 0}}
+    provider = None
+    try:
+        registry = build_source_registry(config)
+        report.update(registry=registry, source_identity=source_identity(registry), assets=copy.deepcopy(registry["assets"]))
+        if destination is not None:
+            _write(destination / "registry.json", registry)
+        trajectories = read_demonstrations(config["hdf5_path"])
+        scan = scan_source_xml_assets(config, trajectories=trajectories)
+        report["xml_asset_scan"] = scan
+        if destination is not None:
+            _write(destination / "xml_asset_scan.json", scan)
+        _validate_xml_asset_binding(scan, registry, trajectories=trajectories)
+        if provider_factory is None or destination is None:
+            report["issues"].append({"reason": "file_only_registry_not_physical_audit"})
+        else:
+            indexed = {item["trajectory_id"]: item for item in trajectories}
+            validate_source_registry(registry, verify_files=True)
+            provider_config = copy.deepcopy(config)
+            provider_config["_xml_asset_scan"] = copy.deepcopy(scan)
+            provider = provider_factory(provider_config)
+            provider_identity = copy.deepcopy(getattr(provider, "metadata", {}))
+            canonical_hash(provider_identity)
+            report["provider_identity"] = provider_identity
+            for source in registry["head_registry"]["records"]:
+                if source["role"] not in {"head_train", "head_validation"}:
+                    continue
+                trajectory = indexed[source["trajectory_id"]]
+                for step in source["sampled_frame_indices"]:
+                    state = trajectory["states"][step].copy()
+                    digest = state_sha256(state)
+                    if digest != source["state_sha256s"][step]:
+                        raise ValueError("HDF frame changed after source registration")
+                    report["work_counts"]["restore_attempts"] += 1
+                    restored = provider.restore_demonstration(state.copy(), model_xml=trajectory["model_xml"])
+                    observation = copy.deepcopy(_legal_observation(restored["observation"]))
+                    current = {key: copy.deepcopy(restored.get(key)) for key in ("goals", "released", "release_evidence")}
+                    canonical_hash(current)
+                    _truth(current)
+                    if step == 0 and any(current["goals"]):
+                        raise ValueError("normal HDF demonstration must begin at actual mask00")
+                    # Save the actual current input before any independently restored hold branch.
+                    reference = save_observation_artifact(destination, f"observations/{len(report['rows']):08d}.npz", observation)
+                    row = {"row_id": f"{source['source_key']}:frame:{step}", "domain": HEAD_DOMAIN,
+                        "role": source["role"], "source_key": source["source_key"], "trajectory_id": source["trajectory_id"],
+                        "saved_state_index": step, "state_sha256": digest, "model_xml_sha256": source["model_xml_sha256"],
+                        "observation": reference, "current": current, "hold_evidence": None,
+                        "original_instruction_sha256": hashlib.sha256(config["original_instruction"].encode()).hexdigest()}
+                    row.update(derive_label(current, None, state_digest=digest))
+                    report["rows"].append(row)
+                    if all(current["goals"]) and current["released"] is True:
+                        report["work_counts"]["hold_attempts"] += 1
+                        hold = provider.capture_hold_label(state.copy(), 4, model_xml=trajectory["model_xml"])
+                        if hold is not None and not isinstance(hold, dict):
+                            raise ValueError("passive hold provider must return a JSON object or unknown None")
+                        canonical_hash(hold)
+                        row["hold_evidence"] = copy.deepcopy(hold)
+                    row.update(derive_label(current, row["hold_evidence"], state_digest=digest))
+            validate_domain_rows(report["rows"], registry)
+            report["class_coverage"] = {role: {str(label): sum(row["role"] == role and row["label"] == label
+                for row in report["rows"]) for label in (0, 1, None)} for role in ("head_train", "head_validation")}
+            for role, counts in report["class_coverage"].items():
+                if not counts["0"] or not counts["1"]:
+                    report["issues"].append({"reason": "label_class_coverage_insufficient", "role": role})
+            if not report["issues"]:
+                report["status"] = "ready_for_feature_export"
+        validate_source_registry(registry, verify_files=True)
+    except (OSError, ValueError, KeyError, TypeError, ImportError, RuntimeError) as error:
+        report["status"] = "insufficient"
+        issue = {"reason": "audit_error", "type": type(error).__name__, "message": str(error)}
+        if isinstance(getattr(error, "evidence", None), dict):
+            issue["model_compatibility"] = copy.deepcopy(error.evidence)
+        report["issues"].append(issue)
+    except (KeyboardInterrupt, SystemExit) as error:
+        report["status"] = "interrupted"
+        report["issues"].append({"reason": "audit_interrupted", "type": type(error).__name__})
+        raise
+    finally:
+        if provider is not None and callable(getattr(provider, "close", None)):
+            try:
+                provider.close()
+            except Exception as error:
+                report["status"] = "insufficient"
+                report["issues"].append({"reason": "provider_close_error", "type": type(error).__name__, "message": str(error)})
+        if provider is not None:
+            try:
+                # XML-load evidence appears after construction, including failed
+                # loads. Bind the final snapshot into the audit/cache/head hash.
+                identity = copy.deepcopy(getattr(provider, "metadata", {}))
+                canonical_hash(identity)
+                report["provider_identity"] = identity
+            except (OSError, ValueError, KeyError, TypeError, RuntimeError) as error:
+                report["status"] = "insufficient"
+                report["issues"].append({"reason": "provider_metadata_error", "type": type(error).__name__, "message": str(error)})
+        report["work_counts"].update(current_observations=len(report["rows"]),
+            hold_branches=sum(row["hold_evidence"] is not None for row in report["rows"]),
+            recorded_hold_steps=sum(_domain_hold_steps(row["hold_evidence"]) for row in report["rows"]),
+            eligible_feature_forwards=sum(row["label"] is not None for row in report["rows"]))
+        if report["registry"] is not None:
+            try:
+                validate_source_registry(report["registry"], verify_files=True)
+            except (OSError, ValueError, KeyError, TypeError) as error:
+                report["status"] = "insufficient"
+                report["issues"].append({"reason": "source_asset_changed", "type": type(error).__name__, "message": str(error)})
+            report["coverage"] = _domain_coverage(report["registry"], report["rows"])
+        if report["xml_asset_scan"] is not None and report["xml_asset_scan"].get("status") == "resolved":
+            try:
+                _validate_xml_asset_binding(report["xml_asset_scan"], report["registry"],
+                    trajectories=read_demonstrations(config["hdf5_path"]))
+            except (OSError, ValueError, KeyError, TypeError) as error:
+                report["status"] = "insufficient"
+                report["issues"].append({"reason": "xml_asset_changed", "type": type(error).__name__, "message": str(error)})
+        report["audit_sha256"] = canonical_hash(report)
+        if destination is not None:
+            _write(destination / "audit.json", report)
+    return report
+
+
+def _validate_domain_audit(audit, *, base_dir=None):
+    from .data_registry import validate_source_registry, source_identity
+    from .data_profiles import validate_profile
+    if any(key in audit for key in ("split", "alternative_confirmation", "trajectories", "trajectory_source_map")):
+        raise ValueError("two-domain audit cannot mix legacy source mappings")
+    if audit.get("audit_sha256") != canonical_hash({k: v for k, v in audit.items() if k != "audit_sha256"}):
+        raise ValueError("two-domain audit hash mismatch")
+    if audit.get("status") != "ready_for_feature_export" or audit.get("issues"):
+        raise ValueError("two-domain data audit is insufficient")
+    if audit.get("label_contract") != LABEL_CONTRACT or audit.get("ancestry_independence") != "unproven":
+        raise ValueError("two-domain label/ancestry contract differs")
+    # New training/export paths require the declared source files still to exist
+    # with their actual registered bytes, not merely a self-consistent old JSON.
+    registry = validate_source_registry(audit.get("registry"), verify_files=True)
+    _validate_xml_asset_binding(audit.get("xml_asset_scan"), registry,
+        trajectories=read_demonstrations(registry["assets"]["hdf5_path"]["path"]))
+    if (validate_profile(audit.get("profile")) != registry["profile"] or audit.get("assets") != registry["assets"]
+            or audit.get("source_identity") != source_identity(registry)):
+        raise ValueError("audit source-domain binding differs from registry")
+    if audit.get("provider_execution_requested") is not True:
+        raise ValueError("file-only registry cannot be used for feature export")
+    rows = validate_domain_rows(audit.get("rows"), registry)
+    expected_ids = {f"{source['source_key']}:frame:{step}" for source in registry["head_registry"]["records"]
+                    for step in source["sampled_frame_indices"]}
+    if {row["row_id"] for row in rows} != expected_ids:
+        raise ValueError("audit omits declared head sampled frames")
+    if not isinstance(audit.get("original_instruction"), str) or not audit["original_instruction"].strip():
+        raise ValueError("audit lacks original instruction")
+    for row in rows:
+        expected = derive_label(row["current"], row.get("hold_evidence"), state_digest=row["state_sha256"])
+        if (type(row.get("label")) is not type(expected["label"]) or row["label"] != expected["label"]
+                or row.get("reason") != expected["reason"]):
+            raise ValueError("cached domain label differs from physical evaluator/hold evidence")
+        if row["saved_state_index"] == 0 and any(row["current"]["goals"]):
+            raise ValueError("normal HDF first frame is not mask00")
+        if row.get("original_instruction_sha256") != hashlib.sha256(audit["original_instruction"].encode()).hexdigest():
+            raise ValueError("original instruction identity differs")
+        if base_dir is not None:
+            _legal_observation(load_observation_artifact(base_dir, row["observation"]))
+    expected_coverage = _domain_coverage(registry, rows)
+    if audit.get("coverage") != expected_coverage:
+        raise ValueError("domain audit coverage differs from its rows")
+    for role in ("head_train", "head_validation"):
+        counts = expected_coverage["head_demonstration"][role]["labels"]
+        if not counts["0"] or not counts["1"] or audit.get("class_coverage", {}).get(role) != counts:
+            raise ValueError("domain audit lacks both known label classes or accurate class counts")
+    expected_work = {"restore_attempts": len(rows),
+        "hold_attempts": sum(all(row["current"]["goals"]) and row["current"]["released"] is True for row in rows),
+        "current_observations": len(rows), "hold_branches": sum(row["hold_evidence"] is not None for row in rows),
+        "recorded_hold_steps": sum(_domain_hold_steps(row["hold_evidence"]) for row in rows),
+        "eligible_feature_forwards": sum(row["label"] is not None for row in rows)}
+    if audit.get("work_counts") != expected_work:
+        raise ValueError("physical audit work counts differ from its evidence")
+    return audit
+
+
 def _identities(audit, base_identity):
     if not isinstance(base_identity, dict) or not base_identity:
         raise ValueError("base checkpoint/code identity is required")
+    if audit.get("schema_version") == DOMAIN_AUDIT_SCHEMA:
+        from .data_registry import source_identity
+        registry = audit["registry"]
+        return {"base_identity": copy.deepcopy(base_identity),
+                "data_identity": {"audit_sha256": audit["audit_sha256"], "assets": copy.deepcopy(audit["assets"]),
+                                  "profile_sha256": registry["profile_sha256"],
+                                  "registry_sha256": registry["registry_sha256"]},
+                "split_identity": source_identity(registry),
+                "label_contract": copy.deepcopy(LABEL_CONTRACT)}
     return {"base_identity": copy.deepcopy(base_identity),
             "data_identity": {"audit_sha256": audit["audit_sha256"], "assets": audit["assets"]},
             "split_identity": {"split": audit["split"], "sha256": canonical_hash(audit["split"]),
                                "alternative_confirmation": audit.get("alternative_confirmation")},
             "label_contract": copy.deepcopy(LABEL_CONTRACT)}
+
+
+DOMAIN_CACHE_SCHEMA = "remaining-finish-feature-cache-v2"
+
+
+def validate_head_identities(value):
+    """Check head metadata without importing torch, loading weights or restoring physics."""
+    fields = {"base_identity", "data_identity", "split_identity", "label_contract"}
+    if (not isinstance(value, dict) or set(value) != fields
+            or any(not isinstance(item, dict) or not item for item in value.values())):
+        raise ValueError("head identities require nonempty base/data/split/label-contract objects")
+    canonical_hash(value)
+    split, dataset = value["split_identity"], value["data_identity"]
+    markers = {"schema_version", "profile", "profile_sha256", "registry_sha256", "head_registry_sha256",
+               "eval_registry_sha256", "groups", "ancestry_independence"}
+    if set(split).intersection(markers) or set(dataset).intersection({"profile_sha256", "registry_sha256"}):
+        from .data_registry import validate_source_identity
+        validate_source_identity(split)
+        if set(dataset) != {"audit_sha256", "assets", "profile_sha256", "registry_sha256"}:
+            raise ValueError("domain head data identity is incomplete or mixed with legacy fields")
+        _require_hash(dataset["audit_sha256"])
+        for key in ("profile_sha256", "registry_sha256"):
+            if dataset[key] != split[key]:
+                raise ValueError("head data/source-domain identity differs")
+        assets = dataset["assets"]
+        if (not isinstance(assets, dict) or set(assets) != {"hdf5_path", "init_states_path", "bddl_path"}
+                or any(not isinstance(asset, dict) for asset in assets.values())):
+            raise ValueError("domain head asset identity is incomplete")
+        expected_assets = {key: assets[field].get("sha256") for key, field in (
+            ("hdf5_sha256", "hdf5_path"), ("init_states_sha256", "init_states_path"), ("bddl_sha256", "bddl_path"))}
+        if expected_assets != split["assets"] or value["label_contract"] != LABEL_CONTRACT:
+            raise ValueError("head source assets or physical label contract differs")
+    return copy.deepcopy(value)
+
+
+def _feature_row(row, audit):
+    if audit.get("schema_version") == DOMAIN_AUDIT_SCHEMA:
+        return row.get("domain") == "head_demonstration" and row.get("role") in {"head_train", "head_validation"}
+    return row.get("split") in {"train", "validation"}
+
+
+def _feature_identity_fields(audit):
+    if audit.get("schema_version") == DOMAIN_AUDIT_SCHEMA:
+        return ("domain", "role", "source_key", "trajectory_id", "saved_state_index", "state_sha256",
+                "model_xml_sha256", "label")
+    return ("source_index", "trajectory_id", "state_sha256", "split", "label")
+
+
+def _validate_feature_rows(rows, audit):
+    if audit.get("schema_version") == DOMAIN_AUDIT_SCHEMA:
+        validate_domain_rows(rows, audit["registry"])
+    else:
+        validate_group_rows(rows, audit["split"])
 
 
 def _input_evidence(base_dir, row):
@@ -603,22 +959,23 @@ def save_feature_cache(out, features, *, rows, audit, base_identity, feature_ver
     labels = []
     for row in rows:
         source = audit_rows.get(row.get("row_id"))
-        if not source or source["label"] is None or source["split"] not in {"train", "validation"}:
+        if not source or source["label"] is None or not _feature_row(source, audit):
             raise ValueError("feature rows require audited train/validation labels")
-        for key in ("source_index", "trajectory_id", "state_sha256", "split", "label"):
+        for key in _feature_identity_fields(audit):
             if type(row.get(key)) is not type(source[key]) or row.get(key) != source[key]:
                 raise ValueError("feature row identity differs from audited row")
         _input_evidence(out, row)
         if row.get("raw_observation_sha256") != source["observation"]["observation_sha256"]:
             raise ValueError("raw observation identity differs")
         labels.append(source["label"])
-    validate_group_rows(rows, audit["split"])
+    _validate_feature_rows(rows, audit)
     if {r["row_id"] for r in rows} != {r["row_id"] for r in audit["rows"]
-            if r["label"] is not None and r["split"] in {"train", "validation"}}:
+            if r["label"] is not None and _feature_row(r, audit)}:
         raise ValueError("feature export omitted an eligible audited row")
     with (out / "features.npz").open("xb") as stream:
         np.savez_compressed(stream, features=features, labels=np.asarray(labels, dtype=np.uint8))
-    manifest = {"schema_version": CACHE_SCHEMA, "feature_version": feature_version, "rows": copy.deepcopy(rows),
+    schema = DOMAIN_CACHE_SCHEMA if audit.get("schema_version") == DOMAIN_AUDIT_SCHEMA else CACHE_SCHEMA
+    manifest = {"schema_version": schema, "feature_version": feature_version, "rows": copy.deepcopy(rows),
                 "shape": list(features.shape), "dtype": "float32", "features_path": "features.npz",
                 "features_sha256": _file_hash(out / "features.npz"), "audit": copy.deepcopy(audit),
                 "identities": _identities(audit, base_identity)}
@@ -627,15 +984,21 @@ def save_feature_cache(out, features, *, rows, audit, base_identity, feature_ver
     return manifest
 
 
-def load_feature_cache(path, *, audit=None, expected_base_identity=None, allowed_splits=None):
+def load_feature_cache(path, *, audit=None, expected_base_identity=None, allowed_splits=None, allowed_roles=None,
+                       expected_source_identity=None):
     path = Path(path)
     path = path / "cache.json" if path.is_dir() else path
     manifest = read_json(path)
-    if manifest.get("schema_version") != CACHE_SCHEMA or manifest.get("feature_version") != FEATURE_VERSION:
+    if manifest.get("schema_version") not in {CACHE_SCHEMA, DOMAIN_CACHE_SCHEMA} or manifest.get("feature_version") != FEATURE_VERSION:
         raise ValueError("unsupported feature cache schema/version")
     if manifest.get("cache_sha256") != canonical_hash({k: v for k, v in manifest.items() if k != "cache_sha256"}):
         raise ValueError("feature cache manifest hash mismatch")
     embedded = validate_audit(manifest["audit"], base_dir=path.parent)
+    domain_cache = manifest["schema_version"] == DOMAIN_CACHE_SCHEMA
+    if domain_cache != (embedded["schema_version"] == DOMAIN_AUDIT_SCHEMA):
+        raise ValueError("feature cache/audit source-domain versions differ")
+    if (domain_cache and allowed_splits is not None) or (not domain_cache and allowed_roles is not None):
+        raise ValueError("new source-domain roles and legacy splits cannot be mixed")
     if audit is not None and canonical_hash(embedded) != canonical_hash(audit):
         raise ValueError("feature cache belongs to another data audit")
     identity = manifest["identities"]
@@ -643,6 +1006,8 @@ def load_feature_cache(path, *, audit=None, expected_base_identity=None, allowed
         raise ValueError("feature identity differs from audit")
     if expected_base_identity is not None and identity["base_identity"] != expected_base_identity:
         raise ValueError("feature cache base identity mismatch")
+    if expected_source_identity is not None and identity["split_identity"] != expected_source_identity:
+        raise ValueError("feature cache source identity mismatch")
     raw = _contained(path.parent, manifest["features_path"]).read_bytes()
     if hashlib.sha256(raw).hexdigest() != manifest["features_sha256"]:
         raise ValueError("feature NPZ hash mismatch")
@@ -662,22 +1027,23 @@ def load_feature_cache(path, *, audit=None, expected_base_identity=None, allowed
     rows = manifest["rows"]
     if len(rows) != len(features):
         raise ValueError("feature metadata count differs")
-    validate_group_rows(rows, embedded["split"])
+    _validate_feature_rows(rows, embedded)
     sources = {row["row_id"]: row for row in embedded["rows"]}
     for row, label in zip(rows, labels.tolist()):
         source = sources.get(row["row_id"])
-        if not source or source["label"] is None or source["split"] not in {"train", "validation"}:
+        if not source or source["label"] is None or not _feature_row(source, embedded):
             raise ValueError("feature row is not an audited training/validation state")
-        for key in ("source_index", "trajectory_id", "state_sha256", "split", "label"):
+        for key in _feature_identity_fields(embedded):
             if type(row.get(key)) is not type(source[key]) or row.get(key) != source[key]:
                 raise ValueError("feature row source/label changed")
-        if label != source["label"] or (allowed_splits is not None and row["split"] not in allowed_splits):
+        if (label != source["label"] or (allowed_splits is not None and row["split"] not in allowed_splits)
+                or (allowed_roles is not None and row["role"] not in allowed_roles)):
             raise ValueError("feature label or allowed split mismatch")
         _input_evidence(path.parent, row)
         if row.get("raw_observation_sha256") != source["observation"]["observation_sha256"]:
             raise ValueError("raw observation identity differs")
     if {r["row_id"] for r in rows} != {r["row_id"] for r in embedded["rows"]
-            if r["label"] is not None and r["split"] in {"train", "validation"}}:
+            if r["label"] is not None and _feature_row(r, embedded)}:
         raise ValueError("feature cache omitted an eligible audited row")
     return {"features": features, "labels": labels, "rows": rows, "identities": identity, "manifest": manifest}
 
@@ -704,7 +1070,7 @@ def export_features(audit_dir, policy, out, *, base_identity):
             stream.write(raw)
     rows, features = [], []
     for source in copied["rows"]:
-        if source["label"] is None or source["split"] not in {"train", "validation"}:
+        if source["label"] is None or not _feature_row(source, copied):
             continue
         observation = _legal_observation(load_observation_artifact(out, source["observation"]))
         predict = getattr(policy, "predict_features", None) or policy.predict
@@ -717,7 +1083,7 @@ def export_features(audit_dir, policy, out, *, base_identity):
         evidence = validate_input_evidence(result["input_evidence"])
         inputs = {key: evidence[key] for key in ("tensors", "crops")}
         reference = save_observation_artifact(out, f"inputs/{len(rows):08d}.npz", inputs)
-        row = {key: copy.deepcopy(source[key]) for key in ("row_id", "trajectory_id", "source_index", "state_sha256", "split", "label")}
+        row = {key: copy.deepcopy(source[key]) for key in ("row_id", *_feature_identity_fields(copied))}
         row.update(input_artifact=reference, input_sha256=input_sha256(evidence),
                    input_tensor_dtypes=evidence["tensor_dtypes"],
                    raw_observation_sha256=source["observation"]["observation_sha256"])

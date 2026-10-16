@@ -8,19 +8,23 @@ import sys
 
 
 def parser():
-    root = argparse.ArgumentParser(description="LIBERO-Remain task007 FINISH-v1 explicit stages")
+    root = argparse.ArgumentParser(description="LIBERO-Remain FINISH-v1 explicit stages with task008 two-domain data identity")
     sub = root.add_subparsers(dest="command", required=True)
     p = sub.add_parser("budget-plan", help="No assets/imports: fixed Stage04 evaluation budget")
     p.add_argument("--include-remain-shadow", action="store_true")
     p = sub.add_parser("plan-data", help="Read configuration/files only; never construct simulator/model")
     p.add_argument("--config", required=True)
     p.add_argument("--out", required=True)
+    p = sub.add_parser("register-data", help="CPU files only: register both source domains and scan all HDF XML assets; no labels or simulator")
+    p.add_argument("--config", required=True)
+    p.add_argument("--out", required=True)
     p = sub.add_parser("audit-data", help="USER REAL: restore saved states and passive hold labels")
     p.add_argument("--config", required=True)
     p.add_argument("--out", required=True)
-    p = sub.add_parser("prepare-normal", help="USER REAL: prepare precisely validation/test normal00 sources")
+    p = sub.add_parser("prepare-normal", help="USER REAL: prepare official init normal_calibration/normal_test sources")
     p.add_argument("--indices", required=True, nargs="+", type=int)
     p.add_argument("--environment-config")
+    p.add_argument("--source-registry", help="Task008 registry.json; binds the bank to actual official init SHA and indices")
     p.add_argument("--out", required=True)
     p = sub.add_parser("preflight", help="USER REAL: restore source and inspect release/hold, no model")
     p.add_argument("--source-config", required=True)
@@ -34,7 +38,7 @@ def parser():
     p.add_argument("--cache", required=True)
     p.add_argument("--training-config")
     p.add_argument("--out", required=True)
-    p = sub.add_parser("parity", help="USER REAL: original/shadow actions on 32 fixed validation inputs")
+    p = sub.add_parser("parity", help="USER REAL: original/shadow actions on 32 distinct HDF head_validation inputs")
     p.add_argument("--audit", required=True)
     p.add_argument("--runtime-config", required=True)
     p.add_argument("--head-artifact", required=True)
@@ -46,7 +50,7 @@ def parser():
         p = sub.add_parser(name, help=description)
         p.add_argument("--config", required=True)
         p.add_argument("--out", required=True)
-    p = sub.add_parser("calibrate", help="Read-only normal-validation shadow first-hit threshold selection")
+    p = sub.add_parser("calibrate", help="Read-only official-init normal_calibration shadow first-hit threshold selection")
     p.add_argument("--run", required=True)
     p.add_argument("--out", required=True)
     p = sub.add_parser("rescore", help="Read-only ledger/video verification and new scoring directory")
@@ -128,6 +132,28 @@ def main(argv=None):
                       "remain_active":15,"remain_shadow":extra,"rollouts":30+extra,
                       "horizon":520,"retention_steps":150,"chunk":8,"maximum_physical_steps":(30+extra)*670,
                       "notice":"Feature/audit/parity/preparation costs separate. Each real stage requires its own user command."}
+        elif command == "register-data":
+            from .data_registry import build_source_registry, validate_source_registry
+            from .data import scan_source_xml_assets, read_demonstrations, _validate_xml_asset_binding
+            config = read_json(args.config)
+            registry = build_source_registry(config)
+            _new_report(args.out, "registry.json", registry)
+            scan = scan_source_xml_assets(config)
+            workflow.write_json(Path(args.out)/"xml_asset_scan.json", scan)
+            result = {"status": "registered_file_only" if scan.get("status") == "resolved" else "insufficient",
+                      "registry_path": str(Path(args.out)/"registry.json"),
+                      "registry_sha256": registry["registry_sha256"], "ready_for_feature_export": False,
+                      "xml_asset_scan_path": str(Path(args.out)/"xml_asset_scan.json"),
+                      "xml_asset_scan_sha256": scan["scan_sha256"], "xml_asset_errors": len(scan["errors"]),
+                      "simulation_created": False, "weights_loaded": False,
+                      "ancestry_independence": "unproven"}
+            if result["status"] == "registered_file_only":
+                try:
+                    validate_source_registry(registry, verify_files=True)
+                    _validate_xml_asset_binding(scan, registry, trajectories=read_demonstrations(config["hdf5_path"]))
+                except (OSError, ValueError, KeyError, TypeError) as error:
+                    result.update(status="insufficient", error={"type": type(error).__name__, "message": str(error)})
+            workflow.write_json(Path(args.out)/"registration.json", result)
         elif command in ("plan-data", "audit-data"):
             from .data import audit_plan, audit_demonstrations
             config = read_json(args.config)
@@ -138,7 +164,8 @@ def main(argv=None):
                 result = audit_demonstrations(config, provider_factory=make_audit_provider, out=args.out)
         elif command == "prepare-normal":
             result = workflow.prepare_normal_bank(args.indices, args.out,
-                        environment_config=read_json(args.environment_config) if args.environment_config else None)
+                        environment_config=read_json(args.environment_config) if args.environment_config else None,
+                        source_registry=args.source_registry)
         elif command == "preflight":
             result = preflight(read_json(args.source_config), args.episode_id, args.out)
         elif command == "export-features":

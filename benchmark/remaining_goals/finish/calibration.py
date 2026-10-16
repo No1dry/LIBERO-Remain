@@ -77,12 +77,14 @@ def _first_stable(truth, horizon, confirmation_steps):
 
 
 def calibrate_threshold(episodes, results, *, thresholds=THRESHOLDS, timely_steps=24,
-                        confirmation_steps=4, expected_validation_sources=None, split_identity=None):
+                        confirmation_steps=4, expected_validation_sources=None, split_identity=None,
+                        source_registry=None):
     """Search first p>=threshold on a fixed expected normal-validation population.
 
-    Each episode needs episode_id, source_index and split='validation'. Default
-    expected sources are 35..39. An explicitly supplied alternate list must
-    already come from a confirmed data split; test sources are never inferred.
+    With source_registry, each episode explicitly carries its official-init
+    eval_source member and initial_state_index; only normal_calibration is
+    accepted. HDF head_validation is a separate source domain. Legacy callers
+    retain episode_id/source_index/split='validation' and the old split contract.
     Unknown physical truth or incomplete/missing evidence prevents a calibrated
     declaration, even when excluding it would improve the threshold. No timely
     crossing means stopping capability remains unestablished. Active independent
@@ -96,13 +98,30 @@ def calibrate_threshold(episodes, results, *, thresholds=THRESHOLDS, timely_step
     if (not thresholds or any(type(v) not in (int, float) or not math.isfinite(v) or not 0 < v <= 1 for v in thresholds)
             or len(set(thresholds)) != len(thresholds)):
         raise ValueError("threshold candidates must be unique finite probabilities")
-    expected_sources = list(range(35, 40)) if expected_validation_sources is None else list(expected_validation_sources)
-    if split_identity is not None:
+    two_domains = source_registry is not None or (isinstance(split_identity, dict)
+                   and split_identity.get("schema_version") == "remaining-finish-source-domains-identity-v2")
+    members = None
+    if two_domains:
+        from .data_registry import validate_source_registry, registry_members, source_identity, validate_source_identity
+        from .data_profiles import EVAL_DOMAIN
+        if source_registry is None or split_identity is None:
+            raise ValueError("two-domain calibration requires its registry and frozen source identity")
+        validate_source_registry(source_registry, verify_files=False)
+        validate_source_identity(split_identity)
+        if split_identity != source_identity(source_registry):
+            raise ValueError("calibration registry differs from the head's two-domain identity")
+        members = registry_members(source_registry, EVAL_DOMAIN, "normal_calibration")
+        expected_sources = [item["initial_state_index"] for item in members]
+        if expected_validation_sources is not None and list(expected_validation_sources) != expected_sources:
+            raise ValueError("calibration must use registered official-init normal_calibration members")
+    else:
+        expected_sources = list(range(35, 40)) if expected_validation_sources is None else list(expected_validation_sources)
+    if not two_domains and split_identity is not None:
         split = validate_split(split_identity.get("split"),
                                alternative_confirmation=split_identity.get("alternative_confirmation"))
         if split_identity.get("sha256") != canonical_hash(split) or expected_sources != split["validation"]:
             raise ValueError("calibration source group differs from the frozen head-data split")
-    elif expected_sources != list(range(35, 40)):
+    elif not two_domains and expected_sources != list(range(35, 40)):
         raise ValueError("alternate validation sources require the confirmed frozen split identity")
     if (not expected_sources or any(type(v) is not int or v < 5 for v in expected_sources)
             or len(set(expected_sources)) != len(expected_sources)):
@@ -112,12 +131,20 @@ def calibrate_threshold(episodes, results, *, thresholds=THRESHOLDS, timely_step
         identity = episode.get("episode_id")
         if not isinstance(identity, str) or not identity or identity in expected:
             raise ValueError("expected episode identities must be unique")
-        if episode.get("split") != "validation" or type(episode.get("source_index")) is not int:
+        if two_domains:
+            member = episode.get("eval_source")
+            if (not isinstance(member, dict) or member not in members
+                    or episode.get("initial_state_index") != member["initial_state_index"]
+                    or type(episode.get("initial_state_index")) is not int
+                    or "source_index" in episode or "split" in episode):
+                raise ValueError("calibration source must be a registered official-init normal_calibration member, not a head trajectory")
+        elif episode.get("split") != "validation" or type(episode.get("source_index")) is not int:
             raise ValueError("calibration source must be explicitly normal-validation")
         if episode.get("edited_variant", False) or episode.get("instruction_mode", "original") != "original":
             raise ValueError("edited/oracle test data cannot calibrate thresholds")
         expected[identity] = episode
-    if sorted(e["source_index"] for e in episodes) != sorted(expected_sources):
+    index_field = "initial_state_index" if two_domains else "source_index"
+    if sorted(e[index_field] for e in episodes) != sorted(expected_sources):
         raise ValueError("calibration expected episodes do not match the frozen validation source group")
     indexed = {}
     for result in results:
@@ -140,7 +167,7 @@ def calibrate_threshold(episodes, results, *, thresholds=THRESHOLDS, timely_step
             issues.append({"episode_id": identity, "reason": "technical_error", "status": result.get("status")})
             continue
         try:
-            for key in ("source_index", "split"):
+            for key in (("initial_state_index", "eval_source") if two_domains else ("source_index", "split")):
                 if key in result and (type(result[key]) is not type(episode[key]) or result[key] != episode[key]):
                     raise ValueError("result source identity conflicts with expected episode")
             truth, queries, horizon = _inspect(result)
@@ -183,7 +210,7 @@ def calibrate_threshold(episodes, results, *, thresholds=THRESHOLDS, timely_step
     evidence_valid = not issues
     useful = chosen is not None and chosen["timely"] > 0
     calibrated = evidence_valid and useful
-    report = {"schema_version": "remaining-finish-calibration-v1", "expected": len(expected),
+    report = {"schema_version": "remaining-finish-calibration-v2" if two_domains else "remaining-finish-calibration-v1", "expected": len(expected),
               "completed": completed, "errors": errors, "missing": missing, "unknown": unknown,
               "coverage": completed / len(expected), "threshold_search_completed": True,
               "validation_evidence_valid": evidence_valid, "calibrated": calibrated,
@@ -201,5 +228,11 @@ def calibrate_threshold(episodes, results, *, thresholds=THRESHOLDS, timely_step
               "limitations": ["Shadow future actions do not prove counterfactual post-FINISH hold stability.",
                               "Zero observed premature exits in a small pilot is not a population guarantee.",
                               "A threshold artifact does not establish independent normal active stopping capability."]}
+    if two_domains:
+        report.update(source_identity=copy.deepcopy(split_identity), calibration_domain=EVAL_DOMAIN,
+                      calibration_role="normal_calibration", calibration_members=copy.deepcopy(members),
+                      calibration_source_keys=[item["source_key"] for item in members],
+                      ancestry_independence="unproven")
+        report["limitations"].append("HDF head-validation trajectories and official-init normal-calibration states are distinct source domains; physical ancestry independence is unproven.")
     report["calibration_sha256"] = canonical_hash(report)
     return report

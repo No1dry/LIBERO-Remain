@@ -16,7 +16,8 @@ import numpy as np
 
 from ..isolated_policy import SubprocessPolicy
 from ..observation_artifact import load_observation_artifact, save_observation_artifact
-from .data import (FEATURE_VERSION, _contained, _legal_observation, canonical_hash,
+from .data import (DOMAIN_AUDIT_SCHEMA, FEATURE_VERSION, _contained, _legal_observation, _identities, _feature_row,
+                   _feature_identity_fields, canonical_hash,
                    export_features, read_json, validate_audit)
 from .schema import input_sha256, validate_policy_result
 
@@ -87,8 +88,12 @@ def feature_export_command(audit_dir, runtime_config, out):
         config["policy_factory"] = "benchmark.remaining_goals.finish.oft:make_feature_policy"
         config.pop("finish", None)
         report.update(audit_sha256=audit["audit_sha256"], runtime_config_sha256=canonical_hash(config),
-                      expected_forwards=sum(row["label"] is not None and row["split"] in {"train", "validation"}
+                      expected_forwards=sum(row["label"] is not None and _feature_row(row, audit)
                                             for row in audit["rows"]))
+        if audit["schema_version"] == DOMAIN_AUDIT_SCHEMA:
+            from .data_registry import source_identity
+            report.update(schema_version="remaining-finish-feature-export-command-v2",
+                          source_identity=source_identity(audit["registry"]))
         _write(path, report)
         policy = SubprocessPolicy(config)
         report["model_loads"] = 1
@@ -117,8 +122,12 @@ def feature_export_command(audit_dir, runtime_config, out):
 def _validation_selection(audit):
     """Deterministic round-robin sources, unique state and raw-observation hashes."""
     grouped = {}
+    domain = audit.get("schema_version") == DOMAIN_AUDIT_SCHEMA
     for row in audit["rows"]:
-        if row["split"] == "validation":
+        if domain:
+            if row.get("domain") == "head_demonstration" and row.get("role") == "head_validation":
+                grouped.setdefault(row["source_key"], []).append(row)
+        elif row["split"] == "validation":
             grouped.setdefault(row["source_index"], []).append(row)
     for rows in grouped.values():
         rows.sort(key=lambda r: (r["trajectory_id"], r["saved_state_index"], r["row_id"]))
@@ -174,6 +183,14 @@ def parity_command(audit_dir, runtime_config, head_artifact, out, atol=0, rtol=0
         selection = {"schema_version": "remaining-finish-parity-selection-v1", "audit_sha256": audit["audit_sha256"],
                      "rule": "source-round-robin-trajectory-step-unique-state-and-raw-observation-v1",
                      "rows": rows, "instruction": audit["original_instruction"], "tolerance": report["tolerance"]}
+        domain = audit["schema_version"] == DOMAIN_AUDIT_SCHEMA
+        if domain:
+            from .data_registry import source_identity
+            source = source_identity(audit["registry"])
+            selection.update(schema_version="remaining-finish-parity-selection-v2",
+                             rule="head-validation-source-key-round-robin-unique-state-and-raw-observation-v2",
+                             domain="head_demonstration", role="head_validation", source_identity=source)
+            report.update(schema_version="remaining-finish-parity-command-v2", source_identity=copy.deepcopy(source))
         selection["selection_sha256"] = canonical_hash(selection)
         _write(out / "inputs.json", selection)
         report.update(selection_sha256=selection["selection_sha256"], selected=len(rows), audit_sha256=audit["audit_sha256"])
@@ -185,10 +202,18 @@ def parity_command(audit_dir, runtime_config, head_artifact, out, atol=0, rtol=0
             config = _config(runtime_config)
             head_path, head = _head_manifest(head_artifact)
             identities = head.get("identities", {})
-            if identities.get("data_identity", {}).get("audit_sha256") != audit["audit_sha256"]:
-                raise ValueError("parity validation inputs differ from the head's frozen data audit")
-            if identities.get("split_identity", {}).get("split") != audit["split"]:
-                raise ValueError("parity validation split differs from the head's frozen split")
+            if domain:
+                expected = _identities(audit, identities.get("base_identity"))
+                if (head.get("schema_version") != "remaining-finish-head-v2" or identities != expected
+                        or head.get("identity_sha256") != {key: canonical_hash(value) for key, value in expected.items()}):
+                    raise ValueError("parity head/audit source-domain identities differ")
+            else:
+                if head.get("schema_version") != "remaining-finish-head-v1":
+                    raise ValueError("legacy parity cannot use a new source-domain head")
+                if identities.get("data_identity", {}).get("audit_sha256") != audit["audit_sha256"]:
+                    raise ValueError("parity validation inputs differ from the head's frozen data audit")
+                if identities.get("split_identity", {}).get("split") != audit["split"]:
+                    raise ValueError("parity validation split differs from the head's frozen split")
             config["policy_factory"] = "benchmark.remaining_goals.finish.oft:make_parity_policy"
             config["finish"] = {"head_artifact": str(head_path.absolute()), "threshold": 0.5,
                                 "threshold_identity": {"purpose": "action-parity-only-not-calibration"}}
@@ -229,7 +254,9 @@ def parity_command(audit_dir, runtime_config, head_artifact, out, atol=0, rtol=0
                 actual = validated["input_evidence"]
                 actual_reference = save_observation_artifact(out, f"inputs/{index:04d}.npz",
                                                              {key: actual[key] for key in ("tensors", "crops")})
-                report["pairs"].append({"row_id": row["row_id"], "source_index": row["source_index"],
+                row_identity = {"row_id": row["row_id"], "source_index": row["source_index"]} if not domain else {
+                    key: copy.deepcopy(row[key]) for key in ("row_id", *_feature_identity_fields(audit))}
+                report["pairs"].append({**row_identity,
                     "observation": reference, "input_artifact": actual_reference,
                     "input_tensor_dtypes": actual["tensor_dtypes"], "input_sha256": input_sha256(actual),
                     "actions_path": pair_path, "actions_sha256": hashlib.sha256(target.read_bytes()).hexdigest(),

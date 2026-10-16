@@ -11,7 +11,7 @@ import numpy as np
 import torch
 from torch import nn
 
-from .model import (FinishHead, _identities, assert_frozen, canonical_hash,
+from .model import (FinishHead, _identities, _domain_identity, assert_frozen, canonical_hash,
                     freeze_base_modules, module_state_sha256, save_head_artifact)
 
 
@@ -61,7 +61,7 @@ def _write(path, data):
 
 
 def train_head(train_features, train_labels, val_features, val_labels, output, *,
-               identities, config=None, base_modules=None):
+               identities, config=None, base_modules=None, feature_provenance=None):
     """Train only the declared head. Caller must supply already audited splits.
 
     ``train_from_cache`` is the public file entry and verifies provenance before
@@ -80,12 +80,36 @@ def train_head(train_features, train_labels, val_features, val_labels, output, *
     negatives = len(y_train) - positives
     if not positives or not negatives:
         raise ValueError("insufficient training data: both positive and negative labels are required")
+    if _domain_identity(identities) and set(y_val.tolist()) != {0.0, 1.0}:
+        raise ValueError("insufficient head_validation data: both label classes are required")
+    provenance = None
+    if _domain_identity(identities):
+        if not isinstance(feature_provenance, dict):
+            raise ValueError("two-domain training requires explicit feature provenance")
+        provenance = deepcopy(feature_provenance)
+        canonical_hash(provenance)
+        if provenance.get("kind") == "synthetic-test-only":
+            if provenance != {"kind": "synthetic-test-only", "test_only": True}:
+                raise ValueError("synthetic feature provenance must not claim a validated real cache")
+        else:
+            from .data import DOMAIN_CACHE_SCHEMA, FEATURE_VERSION, _require_hash
+            fields = {"kind", "cache_schema_version", "feature_version", "cache_sha256", "features_sha256",
+                      "input_rows_sha256", "row_count", "role_counts"}
+            if (set(provenance) != fields or provenance["kind"] != "validated-feature-cache"
+                    or provenance["cache_schema_version"] != DOMAIN_CACHE_SCHEMA
+                    or provenance["feature_version"] != FEATURE_VERSION
+                    or type(provenance["row_count"]) is not int or provenance["row_count"] != len(x_train) + len(x_val)
+                    or provenance["role_counts"] != {"head_train": len(x_train), "head_validation": len(x_val)}):
+                raise ValueError("training feature provenance differs from the selected head rows")
+            for key in ("cache_sha256", "features_sha256", "input_rows_sha256"):
+                _require_hash(provenance[key])
     modules = {} if base_modules is None else base_modules
     freeze_base_modules(modules)
     base_before = module_state_sha256(modules) if modules else None
     output = Path(output)
     output.mkdir(parents=True, exist_ok=False)
-    progress = {"schema_version": "remaining-finish-training-v1", "status": "running", "config": config,
+    progress = {"schema_version": "remaining-finish-training-v2" if _domain_identity(identities) else "remaining-finish-training-v1",
+                "status": "running", "config": config,
                 "identities": identities, "pos_weight": negatives / positives,
                 "class_counts": {"training_positive": positives, "training_negative": negatives,
                                  "validation_positive": int(y_val.sum().item()),
@@ -95,6 +119,8 @@ def train_head(train_features, train_labels, val_features, val_labels, output, *
                 "base_modules_present": bool(modules), "base_modules_frozen": True,
                 "input_shapes": {"training": list(x_train.shape), "validation": list(x_val.shape)},
                 "epochs": [], "best_epoch": None, "best_validation_bce": None}
+    if provenance is not None:
+        progress["feature_provenance"] = provenance
     _write(output / "training.json", progress)
     try:
         device = torch.device(config["device"])
@@ -151,12 +177,34 @@ def train_head(train_features, train_labels, val_features, val_labels, output, *
 
 
 def train_from_cache(cache_path, output, *, config=None):
-    from .data import load_feature_cache
-    cache = load_feature_cache(cache_path, allowed_splits=["train", "validation"])
-    train = np.array([row["split"] == "train" for row in cache["rows"]], dtype=bool)
-    validation = np.array([row["split"] == "validation" for row in cache["rows"]], dtype=bool)
+    from .data import DOMAIN_CACHE_SCHEMA, load_feature_cache, read_json
+    path = Path(cache_path)
+    manifest_path = path / "cache.json" if path.is_dir() else path
+    # Version dispatch is explicit; validated loading then checks this same
+    # embedded audit/profile and every row before any tensors reach training.
+    domain = manifest_path.is_file() and read_json(manifest_path).get("schema_version") == DOMAIN_CACHE_SCHEMA
+    if domain:
+        cache = load_feature_cache(cache_path, allowed_roles=["head_train", "head_validation"])
+        train = np.array([row["domain"] == "head_demonstration" and row["role"] == "head_train"
+                          for row in cache["rows"]], dtype=bool)
+        validation = np.array([row["domain"] == "head_demonstration" and row["role"] == "head_validation"
+                               for row in cache["rows"]], dtype=bool)
+    else:
+        cache = load_feature_cache(cache_path, allowed_splits=["train", "validation"])
+        train = np.array([row["split"] == "train" for row in cache["rows"]], dtype=bool)
+        validation = np.array([row["split"] == "validation" for row in cache["rows"]], dtype=bool)
+    if domain != _domain_identity(cache["identities"]):
+        raise ValueError("training cache/source-domain versions differ")
     if not train.any() or not validation.any() or not (train | validation).all():
         raise ValueError("head training needs audited train and validation rows only")
+    extra = {}
+    if domain:
+        manifest = cache["manifest"]
+        extra["feature_provenance"] = {"kind": "validated-feature-cache",
+            "cache_schema_version": manifest["schema_version"], "feature_version": manifest["feature_version"],
+            "cache_sha256": manifest["cache_sha256"], "features_sha256": manifest["features_sha256"],
+            "input_rows_sha256": canonical_hash(cache["rows"]), "row_count": len(cache["rows"]),
+            "role_counts": {"head_train": int(train.sum()), "head_validation": int(validation.sum())}}
     return train_head(cache["features"][train], cache["labels"][train],
                       cache["features"][validation], cache["labels"][validation], output,
-                      identities=cache["identities"], config=config)
+                      identities=cache["identities"], config=config, **extra)

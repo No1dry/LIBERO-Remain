@@ -91,7 +91,7 @@ def test_bad_head_artifacts_fail_closed(tmp_path, field):
 
 def test_head_training_only_uses_training_class_weight_and_preserves_frozen_base(tmp_path):
     base = {"backbone": torch.nn.Sequential(torch.nn.Linear(4, 4), torch.nn.Dropout(0.7)),
-            "action_head": torch.nn.Linear(4, 7), "projector": torch.nn.Linear(7, 4)}
+            "action_head": torch.nn.Linear(4, 7), "projector": torch.nn.Linear(8, 4)}
     original = model.module_state_sha256(base)
     generator = np.random.default_rng(6)
     x = generator.normal(size=(8, 4)).astype(np.float32)
@@ -188,9 +188,13 @@ class FakeProcessor:
 
     def __call__(self, prompt, crop):
         self.calls += 1
-        return {"input_ids": torch.tensor([[1, 2, 3]]),
+        rgb = torch.from_numpy(np.asarray(crop).copy()).permute(2, 0, 1)[None].to(torch.bfloat16)
+        # Fixed OFT fuses two vision backbones: six channels per RGB camera.
+        # Both branches are synthetic; only the fused channel ABI is modeled.
+        fused = torch.cat([rgb, rgb], dim=1)
+        return {"input_ids": torch.tensor([[1, 2, 3]], dtype=torch.int64),
                 "attention_mask": torch.ones((1, 3), dtype=torch.bool),
-                "pixel_values": torch.from_numpy(np.asarray(crop).copy()).permute(2, 0, 1)[None].to(torch.bfloat16)}
+                "pixel_values": fused}
 
 
 class FakeL1(torch.nn.Module):
@@ -229,7 +233,7 @@ class FakeModel(torch.nn.Module):
 class FakeBase:
     def __init__(self):
         self.model, self.action_head = FakeModel(), FakeL1()
-        self.proprio_projector, self.noisy_action_projector = torch.nn.Linear(7, 4), None
+        self.proprio_projector, self.noisy_action_projector = torch.nn.Linear(8, 4), None
         self.processor = FakeProcessor()
         self.resets = 0
 
@@ -250,7 +254,7 @@ class FakeBase:
 
 def observation():
     return {"image": np.full((4, 4, 3), 19, np.uint8),
-            "wrist_image": np.full((4, 4, 3), 73, np.uint8), "proprio": np.arange(7, dtype=np.float64)}
+            "wrist_image": np.full((4, 4, 3), 73, np.uint8), "proprio": np.arange(8, dtype=np.float64)}
 
 
 def test_same_original_forward_captures_only_action_hidden_actual_tensors_and_crops():
@@ -271,6 +275,10 @@ def test_same_original_forward_captures_only_action_hidden_actual_tensors_and_cr
     assert set(evidence["tensors"]) == {"input_ids", "attention_mask", "pixel_values", "proprio"}
     assert evidence["tensor_dtypes"]["pixel_values"] == "torch.bfloat16"
     assert evidence["tensors"]["pixel_values"].dtype == np.uint16
+    assert evidence["tensors"]["pixel_values"].shape == (1, 12, 4, 4)
+    assert evidence["tensors"]["proprio"].shape == (8,)
+    assert base.proprio_projector.in_features == 8
+    assert result["candidate_actions"].shape == (8, 7)
     assert evidence["tensor_dtypes"]["attention_mask"] == "torch.bool"
     assert evidence["tensors"]["attention_mask"].dtype == np.uint8
     assert evidence["tensor_dtypes"]["proprio"] == "numpy.float64"

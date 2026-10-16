@@ -19,6 +19,8 @@ from torch import nn
 
 FEATURE_VERSION = "oft-l1-action56-mean-v1"
 HEAD_SCHEMA = "remaining-finish-head-v1"
+DOMAIN_HEAD_SCHEMA = "remaining-finish-head-v2"
+DOMAIN_IDENTITY_SCHEMA = "remaining-finish-source-domains-identity-v2"
 IDENTITY_FIELDS = {"base_identity", "data_identity", "split_identity", "label_contract"}
 MAX_HEAD_BYTES = 128 * 1024 * 1024
 
@@ -109,12 +111,14 @@ def module_state_sha256(modules):
     return digest.hexdigest()
 
 
+def _domain_identity(value):
+    """Version marker only; _identities performs the full semantic validation."""
+    return value.get("split_identity", {}).get("schema_version") == DOMAIN_IDENTITY_SCHEMA
+
+
 def _identities(value):
-    if (not isinstance(value, dict) or set(value) != IDENTITY_FIELDS
-            or any(not isinstance(item, dict) or not item for item in value.values())):
-        raise ValueError("head identities require nonempty base/data/split/label-contract objects")
-    canonical_hash(value)
-    return deepcopy(value)
+    from .data import validate_head_identities
+    return validate_head_identities(value)
 
 
 def _architecture(dimension):
@@ -138,7 +142,8 @@ def save_head_artifact(output, head, *, identities, training):
     weights = output / "head.npz"
     with weights.open("xb") as stream:
         np.savez_compressed(stream, **arrays)
-    manifest = {"schema_version": HEAD_SCHEMA, "architecture": _architecture(head.dimension),
+    schema = DOMAIN_HEAD_SCHEMA if _domain_identity(identities) else HEAD_SCHEMA
+    manifest = {"schema_version": schema, "architecture": _architecture(head.dimension),
                 "identities": identities,
                 "identity_sha256": {key: canonical_hash(value) for key, value in identities.items()},
                 "training": deepcopy(training),
@@ -154,20 +159,24 @@ def save_head_artifact(output, head, *, identities, training):
     return manifest
 
 
-def load_head_artifact(path, *, expected_base_identity=None):
+def load_head_artifact(path, *, expected_base_identity=None, expected_source_identity=None):
     path = Path(path)
     path = path / "head.json" if path.is_dir() else path
     manifest = read_json(path)
-    if not isinstance(manifest, dict) or manifest.get("schema_version") != HEAD_SCHEMA:
+    if not isinstance(manifest, dict) or manifest.get("schema_version") not in {HEAD_SCHEMA, DOMAIN_HEAD_SCHEMA}:
         raise ValueError("unsupported finish head artifact version")
     payload = {key: value for key, value in manifest.items() if key != "artifact_sha256"}
     if manifest.get("artifact_sha256") != canonical_hash(payload):
         raise ValueError("finish head artifact hash mismatch")
     identities = _identities(manifest.get("identities"))
+    if (manifest["schema_version"] == DOMAIN_HEAD_SCHEMA) != _domain_identity(identities):
+        raise ValueError("finish head/source-domain artifact versions differ")
     if manifest.get("identity_sha256") != {key: canonical_hash(value) for key, value in identities.items()}:
         raise ValueError("finish head identities hash mismatch")
     if expected_base_identity is not None and identities["base_identity"] != expected_base_identity:
         raise ValueError("finish head base checkpoint/code identity mismatch")
+    if expected_source_identity is not None and identities["split_identity"] != expected_source_identity:
+        raise ValueError("finish head source-domain identity mismatch")
     architecture = manifest.get("architecture", {})
     dimension = architecture.get("dimension")
     if type(dimension) is not int or architecture != _architecture(dimension):

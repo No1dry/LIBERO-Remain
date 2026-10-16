@@ -1,5 +1,7 @@
 # Stage04 FINISH-v1 用户运行手册
 
+> 历史007统一source审计手册。2026-10-14用户批准两来源域后，新实验改用[008两域运行手册](finish_two_domains_runbook.md)和显式v2数据artifact；不要按本页旧分组或trajectory_source_map运行新数据。FINISH控制协议仍为v1，本页保留供旧版本追踪。
+
 版本：2026-10-13；任务 [007](../collaboration/tasks/007_finish_protocol_and_stop_calibration.md)，研究依据 [Plan4](experiment_plans/stage04_finish_protocol.md)。这是 X 的候选运行手册。Codex 验收并上传冻结代码后，须把下面的绝对路径、SHA、解释器和已安装资产填写为服务器实值。**本次交付没有运行真实 MuJoCo、真实数据恢复、真实 VLA 前向、真实数据训练、校准或模型评测。** CPU/fake 通过只说明软件合同，不代表真实停止能力。
 
 每个命令独立执行并查看产物后再进行下一步。没有自动训练→评测流程、后台排队或自动补样。全部真实实验由用户启动、运行、暂停和监督；X 交代码与软件测试，Codex 审查、部署及填写最终机器命令。

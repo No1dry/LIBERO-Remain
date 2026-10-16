@@ -10,9 +10,7 @@ from __future__ import annotations
 from copy import deepcopy
 import hashlib
 import math
-import os
 from pathlib import Path
-import xml.etree.ElementTree as ET
 
 import numpy as np
 
@@ -327,31 +325,49 @@ def _layout(model):
     return result
 
 
-def _processed_demo_xml(text):
-    if not isinstance(text, str) or not text.strip():
-        raise ValueError("demonstration model_xml must contain actual XML text")
-    from libero.libero.envs.utils import postprocess_model_xml
-    import libero.libero as package
-    previous = Path.cwd()
-    try:
-        # Official helper builds its LIBERO asset root from cwd + '/libero'.
-        os.chdir(Path(package.__file__).resolve().parent.parent)
-        processed = postprocess_model_xml(text, demo_generation=True)
-    finally:
-        os.chdir(previous)
-    tree = ET.fromstring(processed)
-    for element in tree.findall("./asset/*"):
-        path = element.get("file")
-        if path is not None and not Path(path).is_file():
-            raise ValueError(f"demonstration XML references an unavailable asset: {path}")
+def _processed_demo_xml(text, *, roots=None, expected_scan=None):
+    from .xml_assets import resolve_scanned_xml, resolve_xml
+    if expected_scan is None:
+        processed, report = resolve_xml(text, roots=roots)
+    else:
+        processed, report = resolve_scanned_xml(text, expected_scan, roots=roots)
+    if processed is None:
+        failures = "; ".join(f"{item.get('original')!r}: {item['error']}" for item in report["errors"])
+        raise ValueError(f"demonstration XML assets unresolved: {failures}")
     return processed
+
+
+def _verify_demo_native_references(env):
+    """Check native reset rebound references; never perform another reset/step."""
+    inner, sim = _task_environment(env), env.sim
+    if inner.sim is not sim:
+        raise ValueError("native demonstration task references another simulation")
+    robots = getattr(env, "robots", None)
+    if not isinstance(robots, (list, tuple)) or len(robots) != 1:
+        raise ValueError("native demonstration references require one Panda robot")
+    for robot in robots:
+        if getattr(robot, "sim", None) is not sim or getattr(robot.controller, "sim", None) is not sim:
+            raise ValueError("native demonstration robot/controller references were not rebound")
+    refs = getattr(inner, "obj_body_id", None)
+    if not isinstance(refs, dict):
+        raise ValueError("native demonstration object body references are unavailable")
+    checked = {}
+    for name, obj in {**inner.objects_dict, **inner.fixtures_dict}.items():
+        expected = int(sim.model.body_name2id(obj.root_body))
+        if expected < 0 or refs.get(name) != expected:
+            raise ValueError(f"native object body reference differs: {name}: stored={refs.get(name)!r}, current={expected}")
+        checked[name] = expected
+    return {"native_entry": "reset_from_xml_string", "task_sim_current": True,
+            "robot_and_controller_sim_current": True, "object_body_ids": checked,
+            "geom_lookup": "current model names; no stored baseline geometry IDs"}
 
 
 class DemonstrationAuditProvider:
     """User-run native restoration and isolated passive-label confirmation.
 
-    Uses the demonstration's actual XML when supplied. A changed scene/layout
-    fails explicitly; it is never silently replayed against the default model.
+    Uses the actual demonstration XML. Exact layouts retain the original path;
+    only the fixed, source-bound basket collision insertion has a versioned
+    exception. Unknown changes fail; evaluation models are never substituted.
     """
     def __init__(self, config):
         if not isinstance(config, dict):
@@ -366,7 +382,14 @@ class DemonstrationAuditProvider:
         self.contract = None
         self._active_source_xml = None
         self._model_valid = False
+        self._xml_asset_scan = deepcopy(config.get("_xml_asset_scan"))
+        self._demo_model_config = deepcopy(config)
         try:
+            from .xml_assets import RESOLVER_VERSION, validate_scan
+            if self._xml_asset_scan is not None:
+                # Validate before owning a native environment. The same frozen
+                # snapshot is checked again whenever a new XML is compiled.
+                validate_scan(self._xml_asset_scan, verify_files=True)
             self.env, task, bddl = create_scene(profile["suite"], profile["name"], image_size=256, control_freq=20)
             source_bddl = Path(config["bddl_path"])
             if not source_bddl.is_file() or source_bddl.read_bytes() != bddl.read_bytes():
@@ -378,38 +401,75 @@ class DemonstrationAuditProvider:
                 raise ValueError("data audit environment seed must be nonnegative")
             self.env.seed(seed)
             reset_scene(self.env)
-            self.contract = BasketContract(self.env)
+            # Native reset leaves Panda's command at its one-dimensional
+            # initialization value. Only restoring a saved state synchronizes
+            # the two finger targets required by the strict physical contract.
             self._base_layout = _layout(self.env.sim.model)
             self._base_xml = self.env.sim.model.get_xml()
             if isinstance(self._base_xml, bytes):
                 self._base_xml = self._base_xml.decode("utf-8")
             self._model_valid = True
+            from .demo_model import RULE_VERSION
             self.metadata = {"provider_version": "basket-native-passive-label-provider-v1", "task_name": task.name,
                              "instruction": task.language, "bddl_sha256": hashlib.sha256(bddl.read_bytes()).hexdigest(),
                              "environment": environment_identity(20), "hold_version": HOLD_VERSION,
                              "release_version": RELEASE_VERSION, "environment_seed": seed,
+                             "xml_asset_resolver_version": RESOLVER_VERSION,
+                             "xml_asset_scan_sha256": (self._xml_asset_scan["scan_sha256"] if self._xml_asset_scan else None),
                              "backend": "LIBERO/robosuite", "scope": "user-invoked data audit, not model evaluation",
-                             "real_correctness_certified": False}
+                             "real_correctness_certified": False,
+                             "demo_model_compatibility": {"rule_version": RULE_VERSION,
+                                 "scope": "head_demonstration_only", "physically_equivalent_to_evaluation": False,
+                                 "loads": []}}
         except BaseException:
             self.close()
             raise
 
     def _model(self, source_xml):
+        # A model selection/reset never certifies the current saved-state pose.
+        # Invalidate before any operation that could fail or change native state.
+        self.contract = None
         if source_xml is not None and (not isinstance(source_xml, str) or not source_xml.strip()):
             raise ValueError("invalid demonstration XML")
         if source_xml == self._active_source_xml and self._model_valid:
             return
-        text = self._base_xml if source_xml is None else _processed_demo_xml(source_xml)
+        if source_xml is None:
+            text = self._base_xml
+        elif self._xml_asset_scan is None:
+            text = _processed_demo_xml(source_xml)
+        else:
+            text = _processed_demo_xml(source_xml, expected_scan=self._xml_asset_scan)
         self._model_valid = False
         self.env.reset_from_xml_string(text)
-        if _layout(self.env.sim.model) != self._base_layout:
-            raise ValueError("demonstration XML changed basket scene inventory or saved-state joint/layout identity")
-        self.contract = BasketContract(self.env)
+        from .demo_model import validate_demo_model, DemoModelCompatibilityError
+        evidence = None
+        try:
+            evidence = validate_demo_model(self._base_layout, _layout(self.env.sim.model),
+                source_xml=source_xml, processed_xml=text, compiled_model=self.env.sim.model,
+                config=self._demo_model_config, asset_scan=self._xml_asset_scan,
+                baseline_compiled_xml=self._base_xml)
+            if evidence["classification"] == "known_basket_link7_collision":
+                evidence["native_references"] = _verify_demo_native_references(self.env)
+        except DemoModelCompatibilityError as error:
+            self.metadata["demo_model_compatibility"]["loads"].append(deepcopy(error.evidence))
+            raise
+        except (ValueError, RuntimeError, AttributeError, KeyError, TypeError) as error:
+            if evidence is None:
+                raise
+            evidence.update(classification="rejected", error={"type": type(error).__name__, "message": str(error)})
+            self.metadata["demo_model_compatibility"]["loads"].append(deepcopy(evidence))
+            raise DemoModelCompatibilityError(str(error), evidence) from error
+        self.metadata["demo_model_compatibility"]["loads"].append(deepcopy(evidence))
         self._active_source_xml = source_xml
         self._model_valid = True
 
+    def _require_contract(self):
+        if self.env is None or not self._model_valid or self.contract is None:
+            raise RuntimeError("successful demonstration restoration is required before truth or hold")
+        return self.contract
+
     def _truth(self):
-        truth = self.contract.evaluator_state()
+        truth = self._require_contract().evaluator_state()
         truth["release_evidence"].update(current_model_xml_sha256=model_xml_hash(self.env),
             source_xml_sha256=(hashlib.sha256(self._active_source_xml.encode()).hexdigest() if self._active_source_xml else None))
         return truth
@@ -417,6 +477,7 @@ class DemonstrationAuditProvider:
     def restore_demonstration(self, state, model_xml=None):
         if self.env is None:
             raise RuntimeError("data provider is closed")
+        self.contract = None
         if not isinstance(model_xml, str) or not model_xml.strip():
             raise ValueError("insufficient demonstration identity: actual trajectory model_xml is required")
         self._model(model_xml)
@@ -439,11 +500,12 @@ class DemonstrationAuditProvider:
         try:
             initial = self.restore_demonstration(state, model_xml=model_xml)
             trace = [{"step": 0, **{key: deepcopy(initial[key]) for key in ("goals", "released", "release_evidence")}}]
-            contract = self.contract.hold.begin()
+            current_contract = self._require_contract()
+            contract = current_contract.hold.begin()
             for step in range(1, steps + 1):
-                action = self.contract.hold.action()
+                action = current_contract.hold.action()
                 # Native done guards do not stop physical label confirmation.
-                for holder in (self.env, self.contract.inner):
+                for holder in (self.env, current_contract.inner):
                     if "done" in vars(holder):
                         holder.done = False
                 self.env.step(action.tolist())
@@ -454,12 +516,13 @@ class DemonstrationAuditProvider:
         finally:
             self._model(previous_xml)
             restore_raw_state(self.env, previous_state)
-            self.contract = BasketContract(self.env)
             _require_exact_state(previous_state, _state(self.env), "passive label branch restoration")
+            self.contract = BasketContract(self.env)
 
     def close(self):
         env, self.env = self.env, None
         self.contract = None
+        self._model_valid = False
         if env is not None:
             env.close()
 
