@@ -5,7 +5,7 @@
 ## 交付身份
 
 - 已按010授权合并accepted PR #6，main合并SHA：`190629495001df9cf53e08d2f5c501ca22a9e7b5`。合并保留main的009真实结果与010任务文档；009已审生产实现未改。
-- 010独立分支：`x/task010-versioned-release`，基于上述main；本PR不合并。
+- 010独立分支：`x/task010-versioned-release`，基于上述main；[PR #7](https://github.com/No1dry/LIBERO-Remain/pull/7)已提交，保持open、未合并。
 - 实现SHA：`4521c53f22f670cc60e05d7aabac10403a75dfe8`。本文件与STATUS属于后续交付文档，最终SHA以PR head及PR正文登记为准。
 - evaluation contract SHA：`7effc031c35a7dc95b68a0523d1a09a67787451fe4597f0188edc34f501493aa`。
 
