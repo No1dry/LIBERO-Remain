@@ -1,0 +1,124 @@
+{
+  "schema_version": "libero-remain-input-contract-fix-acceptance-v1",
+  "date": "2026-10-16",
+  "decision": "accepted_software_not_stage_closed",
+  "repository": "https://github.com/No1dry/LIBERO-Remain",
+  "pull_request": 5,
+  "tested_implementation": "ec5e119582245e0dde957d3e251020f8ebbb030e",
+  "frozen_source": "3433f487d38efe0a08e4c814e87412aad5aba9fe",
+  "git_tree": "d69cf653d7b30ad31b270c75c20de3a02cfebfc8",
+  "final_vs_tested_files": [
+    "collaboration/STATUS.md",
+    "collaboration/responses/008_round5.md"
+  ],
+  "production_files_changed_from_2cb": [
+    "benchmark/remaining_goals/finish/schema.py"
+  ],
+  "contract": {
+    "proprio_shapes": [
+      [
+        8
+      ],
+      [
+        1,
+        8
+      ]
+    ],
+    "input_schema": "remaining-finish-input-v1",
+    "pixel_rank": [
+      4,
+      5
+    ],
+    "batch": 1,
+    "real_pixel_shape_tested": [
+      1,
+      12,
+      224,
+      224
+    ],
+    "action_shape": [
+      8,
+      7
+    ],
+    "action_hidden_tokens": 56,
+    "model_preprocessing_unchanged": true
+  },
+  "tests": {
+    "local_full": {
+      "passed": 1833,
+      "skipped": 12,
+      "seconds": 59.19,
+      "junit_sha256": "a24697919c15e2282774360328bf810dda8aa391ec1a7f2ee6bd90c1fd14550d",
+      "skip_reasons": {
+        "optional_pinned_sim_sources_absent": 11,
+        "imageio_ffmpeg_absent": 1
+      }
+    },
+    "server_cpu_finish": {
+      "passed": 602,
+      "skipped": 0,
+      "seconds": 70.66,
+      "junit_sha256": "e82d75e25eb66eddf61c148b22cb8270f6f07d6c18ad1a7fa21444886ae71067",
+      "log_sha256": "087c302561bdfc15a053488a436018aae65cf0b374b7a777f8148ac544abd8c6"
+    },
+    "independent_cpu_reviews": [
+      {
+        "passed": 124,
+        "seconds": 15.02
+      },
+      {
+        "passed": 7,
+        "seconds": 2.94
+      }
+    ],
+    "new_tests": 67,
+    "real_model_or_sim_used": false
+  },
+  "deployment": {
+    "repo": "/HUBU-AI096/zp/ICML/LIBERO-Remain-stage04-finish-3433f48",
+    "runroot": "/HUBU-AI096/zp/ICML/stage04_finish_3433f48",
+    "source_files_verified": 262,
+    "frozen_deployment_files_verified": 11,
+    "source_archive_sha256": "130e746231472aa1fe597f5b1b4b30489817c67ae92dd07ff4b4813dc2312b12",
+    "deployment_archive_sha256": "ba679f5cbc565c9fc8a655fb447b0631fe7c803e3c74a09c53e748bfbf9141d5",
+    "runtime_sha256": "75f2a711a39c58a07715b3a280aeba26a29dfbba70caf87cc051520f0a3f9720",
+    "new_feature_output_absent": true
+  },
+  "reused_audit": {
+    "dir": "/HUBU-AI096/zp/ICML/stage04_finish_2cb1428/results/run01/audit",
+    "audit_sha256": "44d0ab96f910221b58f2bfc930c6e1a06db79f23f19755318cd6d34764bf8457",
+    "file_sha256": "294120c4c0a557a6211db1ed44c9d3a1a8915edcae1ad2e2a0611d98fb501dce",
+    "reuse_receipt_sha256": "d25eec418051d106a98f14e63d7b201b3505c50e6acdf6296452cb117fa00cd5",
+    "rows": 1313,
+    "known": 1261,
+    "unknown": 52,
+    "observations_verified": 1313,
+    "head_train": {
+      "negative": 1048,
+      "positive": 23,
+      "unknown": 44
+    },
+    "head_validation": {
+      "negative": 188,
+      "positive": 2,
+      "unknown": 8,
+      "positive_trajectory": "demo_38"
+    },
+    "validate_audit_new_source_passed": true,
+    "labels_regenerated": false
+  },
+  "current": {
+    "real_feature_retry_started_by_codex": false,
+    "real_head_training_done": false,
+    "real_parity_done": false,
+    "normal_stop_calibration_done": false,
+    "new_eval_scores": null,
+    "stage_closed": false,
+    "old_failed_feature_preserved": true,
+    "old_failed_actual_forward_count": "unknown"
+  },
+  "archive": {
+    "source_and_local_dirty_worktrees_preserved": true,
+    "delete_exact_list": []
+  }
+}

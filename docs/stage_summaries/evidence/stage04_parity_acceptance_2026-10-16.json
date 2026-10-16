@@ -1,0 +1,68 @@
+{
+  "status": "action_parity_accepted_read_only",
+  "source_commit": "3433f487d38efe0a08e4c814e87412aad5aba9fe",
+  "completed_inputs": 32,
+  "expected_inputs": 32,
+  "completion_percent": 100,
+  "bit_exact_inputs": 32,
+  "bit_exact_percent": 100,
+  "verified_real_forward_pairs": 32,
+  "declared_real_forward_calls": 64,
+  "max_abs_error": 0,
+  "tolerance": {
+    "atol": 0,
+    "rtol": 0
+  },
+  "distinct_state_hashes": 32,
+  "distinct_raw_observations": 32,
+  "distinct_model_input_hashes": 32,
+  "action_pair_npz_verified": 32,
+  "input_evidence_npz_verified": 32,
+  "copied_raw_observation_npz_verified": 32,
+  "selected_trajectories": [
+    "demo_35",
+    "demo_36",
+    "demo_37",
+    "demo_38",
+    "demo_39"
+  ],
+  "report_sha256": "e547e183d9d9d88da93de904cae2e3c20b367223dadbb1a2aa87e6f97f163993",
+  "selection_sha256": "d5055114a8def44a8cc62bbd9a89ece40704d0ee4c322999fe0a057952ecc5ba",
+  "audit_sha256": "44d0ab96f910221b58f2bfc930c6e1a06db79f23f19755318cd6d34764bf8457",
+  "head_artifact_sha256": "6636f7133943d551df31a14822df440b63c1b98c0b3ee95f4873019492512c7f",
+  "base_identity_sha256": "4601be2d7857e255cfde08ad06680428e01c49fb982614221f5bd04a92f39734",
+  "runtime_file_sha256": "75f2a711a39c58a07715b3a280aeba26a29dfbba70caf87cc051520f0a3f9720",
+  "original_shadow_action_bytes_equal": true,
+  "source_head_audit_runtime_all_bound": true,
+  "command_exit": 0,
+  "tee_exit": 0,
+  "files": [
+    {
+      "path": "/HUBU-AI096/zp/ICML/stage04_finish_3433f48/results/run01/parity/parity.json",
+      "bytes": 98970,
+      "sha256": "f334f78fa95193e7370e08322e6a11c2550217a2d4bf15e7f1545e0708dc812f"
+    },
+    {
+      "path": "/HUBU-AI096/zp/ICML/stage04_finish_3433f48/results/run01/parity/inputs.json",
+      "bytes": 87933,
+      "sha256": "216be3ff39462f1796887ba34b3de923cf215f4b40cbd8a6fd1c9c50793ba174"
+    },
+    {
+      "path": "/HUBU-AI096/zp/ICML/stage04_finish_3433f48/logs/run01/06_parity.log",
+      "bytes": 103053,
+      "sha256": "d30b152024653b64273294e555d4f8ceebc683c70379de58adfebc506105493a"
+    }
+  ],
+  "codex_model_forward_calls": 0,
+  "codex_head_inference": false,
+  "codex_simulation": false,
+  "next_normal_bank_output": "/HUBU-AI096/zp/ICML/stage04_finish_2cb1428/results/run01/normal_bank",
+  "next_normal_bank_output_absent": true,
+  "stop_capability_proven": false,
+  "scope": "32 fixed HDF head_validation inputs, not all possible states or rollouts",
+  "stage_closed": false,
+  "delete_exact_list": [],
+  "raw_acceptance_receipt_sha256": "344df3c6c6bf69bd43eb0ac04b36ea9c3c0993a27c774fe485363eef71f86f99",
+  "local_original_reports_and_log_SHA_match_server": true,
+  "all_pair_input_observation_npz_copied_locally": false
+}

@@ -1,0 +1,85 @@
+{
+  "status": "head_training_accepted_file_only",
+  "source_commit": "3433f487d38efe0a08e4c814e87412aad5aba9fe",
+  "training_finished": true,
+  "epochs_completed": 50,
+  "epochs_expected": 50,
+  "completion_percent": 100,
+  "first_epoch": {
+    "epoch": 1,
+    "training_weighted_bce": 1.3244473528739562,
+    "validation_bce": 0.044223397970199585
+  },
+  "last_epoch": {
+    "epoch": 50,
+    "training_weighted_bce": 0.001458570340484812,
+    "validation_bce": 0.0016702923458069563
+  },
+  "best_epoch": 46,
+  "best_validation_bce": 0.0015248957788571715,
+  "config": {
+    "seed": 7,
+    "learning_rate": 0.001,
+    "weight_decay": 0.0001,
+    "batch_size": 128,
+    "epochs": 50,
+    "device": "cpu"
+  },
+  "class_counts": {
+    "training_positive": 23,
+    "training_negative": 1048,
+    "validation_positive": 2,
+    "validation_negative": 188
+  },
+  "input_shapes": {
+    "training": [
+      1071,
+      4096
+    ],
+    "validation": [
+      190,
+      4096
+    ]
+  },
+  "pos_weight": 45.56521739130435,
+  "head_parameters": 532737,
+  "head_weights_all_finite_fp32": true,
+  "artifact_sha256": "6636f7133943d551df31a14822df440b63c1b98c0b3ee95f4873019492512c7f",
+  "cache_sha256": "5d09999ed6b91b1927eb02bf775d623d38064fbdca12503805a34ea01bcc8efc",
+  "full_log_lines": 1945,
+  "full_log_is_same_head_json": true,
+  "traceback_found": false,
+  "command_exit": 0,
+  "tee_exit": 0,
+  "source_cache_identities_and_all_file_hashes_match": true,
+  "files": [
+    {
+      "name": "training.json",
+      "bytes": 42245,
+      "sha256": "25139ad3b7def318243adbed52d909c68e3c4a5ee0e8f7a4956a00067d123a2c"
+    },
+    {
+      "name": "head.json",
+      "bytes": 79944,
+      "sha256": "c7d58703589f30476db39b9dd6969b3dfd4cb302525ce088f25fd3b890323232"
+    },
+    {
+      "name": "head.npz",
+      "bytes": 1970485,
+      "sha256": "cdb2f7099c9e24cb51af25181113059c914889de8e61c2585ca7534cea6ec164"
+    },
+    {
+      "name": "05_train.log",
+      "bytes": 80400,
+      "sha256": "03c713526aa0e113bdbd4ae2df4607e1c2dac3e67373eb8c2a9ed73c1a87cda9"
+    }
+  ],
+  "base_modules_present": false,
+  "base_weight_hashes_null_because_base_not_loaded": true,
+  "real_vla_or_head_inference_by_codex": false,
+  "training_or_simulation_by_codex": false,
+  "stop_capability_proven": false,
+  "next_stage": "user_launches_32_input_action_parity",
+  "stage_closed": false,
+  "delete_exact_list": []
+}
