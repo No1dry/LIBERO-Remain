@@ -1,5 +1,7 @@
 # Plan 4：统一FINISH接口与停止校准基线
 
+> 2026-10-16增补：009诊断已完成，用户同意版本化释放测量/校准修订及5条新增校准，累计模型rollout预算35。以下旧规格/进度保留为历史；新阶段以末节“2026-10-16”及任务010为准，不改写旧结果。
+
 初版：2026-10-12；修订：2026-10-14。阶段：Stage04。007软件已验收并部署4f76f49，用户source0_11四步真实预检通过；尚无head训练或新模型成绩。用户已明确批准两个来源域方案A，由008实施数据身份／审计改动后再启动真实audit。  
 分工：用户确认并启动真实实验；X实现代码与CPU/fake测试；Codex研究需求、非实验数据／文件准备、建议式审查、校验部署、完整命令及结果审查。
 
@@ -195,3 +197,19 @@ X的[需求审阅](https://github.com/No1dry/LIBERO-Remain/blob/75a3eeade994912e
 用户通过明确回复批准A：两个来源域、复用已下载数据，且承认物理祖源独立性未证明。本节和两域分组取代历史007 E节／本计划初版的统一source映射先决条件，其他FINISH/训练/metric合同不变。原初版及旧审计/失败证据保留。
 
 当前下一步：X按008实现与CPU/fake交付；Codex审查部署并给真实audit命令；用户启动audit，确认类覆盖/unknown后才进入feature与训练。已经完成的11预检不重复；若008违反范围修改hold才需重新讨论验证，不预先加实验。
+
+## 2026-10-16：用户确认版本化测量/校准修订与35条预算
+
+旧v1实验、uncalibrated报告及上述历史规格不重写。本增补只覆盖新阶段的测量、校准证据范围及预算；原模型/head/数据域/输入/动作/H520/W150/chunk8/K4/24步/20阈值与主评分要求不变。
+
+009最小诊断已由用户完成：292/292动作、293快照、37原观测/旧truth全部匹配，0 VLA/head调用；原工件完整备份。第280步保守球界-23.43mm，但记录的全部番茄/hand collision集合沿world-z分离下界≥14.72mm，pinch+14.68mm、无contact。此帧测量过松，不是把全部unknown判成功的理由，也不将原旧标签改写。
+
+用户已明确“同意版本化修订”：
+1. 显式opt-in release v2保留双pad held=False、其他contact=None、旧known True；仅对无contact且pinch>2mm的旧近手unknown，补充box/compiled-mesh在预注册world x/y/z轴上的整个collision集合分离证书。必须保守gap>2mm，否则unknown；不是精确距离API、不改物理或控制。
+2. 新校准保持完整证据/来源检查与first-hit规则；对完成truth的None求tau乐观/悲观边界，timely必须对所有允许补全稳健。关键首次真值或及时性不确定不能选候选；无关后续unknown单列覆盖，不自动整条否决。原算法和结果仍可读/复算。
+3. 版本及identity贯穿config/plan/evaluator/record/read/metrics/calibration/active；head仍是旧v1标签训练，不重标cache、不重训。默认legacy不静默切换，方法/头/校准规则错配或敏感性-only结果不能给active使用。
+4. **另采5条新版official-init35..39 shadow**，单个新批次记录v1/v2测量、派生2×2方法/规则敏感性但只新测量+新规则作正式校准。旧5条是探索性历史，不变成新版主数据；披露看过pilot后修订的来源。
+5. 累计模型rollout预算为**5旧+5新+10独立normal_test+15Remain=35**，最坏23450物理控制步；数据审计/特征/parity/292动作诊断另计。旧30条原计划保留历史，可选额外shadow仍须另批。normal_test40..49与Remain未用，不拿其挑规则或阈值。
+6. 阈值冻结仍不等于stop-capable；新增5条校准用户单独启动，之后10条normal active停止验证、15条Remain逐阶段启动。不因新版效果不足自动扩数据/改模型。
+
+实现由X按[任务010](https://github.com/No1dry/LIBERO-Remain/blob/main/collaboration/tasks/010_versioned_release_and_calibration.md)独立PR交代码/CPU-fake/实际命令；Codex审查部署，用户启动真实作业。009诊断范围完成不等于Stage04结束，当前旧calibrated=false/threshold=null仍保留；010 open、Stage04未closed。

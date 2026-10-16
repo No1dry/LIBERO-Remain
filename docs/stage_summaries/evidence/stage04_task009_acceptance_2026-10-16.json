@@ -1,0 +1,134 @@
+{
+  "date": "2026-10-16",
+  "decision": "accepted_software_and_file_plan_only",
+  "source_commit": "2c6dc4c20a12b4b894a3919d79b9bf810648332d",
+  "tested_implementation": "5410355436ef0f418f0c95c47293efbdce905b07",
+  "pr": 6,
+  "pr_open_unmerged": true,
+  "previous_pr5_merge": "3d361f44a9393638d41738d375004e8ea7794301",
+  "prior_production_equivalent_to": "3433f487d38efe0a08e4c814e87412aad5aba9fe",
+  "production_diff": [
+    "benchmark/remaining_goals/finish/release_audit.py",
+    "benchmark/remaining_goals/finish/release_audit_plan.py",
+    "benchmark/remaining_goals/finish/release_audit_native.py"
+  ],
+  "existing_environment_runner_release_calibration_training_metrics_unchanged": true,
+  "tests": {
+    "local_full": {
+      "passed": 1988,
+      "skipped": 12,
+      "seconds": 78.62,
+      "junit_sha256": "62ae0b57ccd47f89ee2c0c4fbb37d89983acf14aaa8dbf661123c143f71b4663",
+      "skips": {
+        "optional_pinned_sim_sources": 11,
+        "imageio_ffmpeg_missing": 1
+      }
+    },
+    "server_new_diagnostic": {
+      "passed": 155,
+      "skipped": 0,
+      "seconds": 39,
+      "junit_sha256": "f82ad562b13fd3b93df30f2f5007a84e9eb2325517d9fe4eeb3d5983d84779cb"
+    },
+    "independent_cpu_reviews": [
+      {
+        "passed": 92,
+        "seconds": 19.5
+      },
+      {
+        "passed": 63,
+        "seconds": 0.3
+      }
+    ]
+  },
+  "deployment": {
+    "repo": "/HUBU-AI096/zp/ICML/LIBERO-Remain-stage04-release-2c6dc4c",
+    "root": "/HUBU-AI096/zp/ICML/stage04_release_audit_2c6dc4c",
+    "source_files_verified": 293,
+    "private_files_verified": 4,
+    "git_tree": "d92cf2bc2017e96c0990436c4509f5ef9b78e4f4",
+    "source_archive_sha256": "88e163eea12048b809e7c9e3abaa67ff82750fb43fe16d40a7035c551c39b0e6",
+    "deployment_archive_sha256": "00561680e7009e7ddf217df89df4a43d54d52d5a848b0c485dffb11fe40ec22e"
+  },
+  "file_only_plan": {
+    "plan_sha256": "8bfc498562ef72c0432fa39aed0055ef1328e388f88af08cc27cddeaaec2ea3d",
+    "source_file_count": 1072,
+    "actions_identity": {
+      "dtype": "<f8",
+      "shape": [
+        292,
+        7
+      ],
+      "sha256": "33dee7b84fa13cdf374aaacfbd4298ef884936eae9ef9848ee6d2ff0844256b7"
+    },
+    "state_identity": {
+      "dtype": "<f8",
+      "shape": [
+        123
+      ],
+      "sha256": "df27ebe0a380a346819344d9d7c2afae8c72fa26dd7570dfa104ff78255e6bcf"
+    },
+    "initial_live_observation_hash": "b272f90ffc8338718f9408a78eb1ed0a6e4a09ba68b94561171f209f6fe2225a",
+    "files": [
+      {
+        "name": "01_plan.log",
+        "bytes": 539,
+        "sha256": "5585a78bbf4dd30323fa9bd1d8d834e1dd057704b5aa6053280e72113778c0bd"
+      },
+      {
+        "name": "actions.npz",
+        "bytes": 11664,
+        "sha256": "7473db4b6a03c00c4e06ae427a0e1ccd91faa7638b273785d2bde29594a89f72"
+      },
+      {
+        "name": "cpu_release.log",
+        "bytes": 261,
+        "sha256": "0fd47f7240e57e269b89601ddac70b28fbf364d1950f9b09ccac4dd65e542ce4"
+      },
+      {
+        "name": "cpu_release.xml",
+        "bytes": 21490,
+        "sha256": "f82ad562b13fd3b93df30f2f5007a84e9eb2325517d9fe4eeb3d5983d84779cb"
+      },
+      {
+        "name": "known_xml_asset_check.json",
+        "bytes": 128,
+        "sha256": "0d6691dc407898537450354c469957458465e34f846a84acd8677b7858a03ac3"
+      },
+      {
+        "name": "manifest.json",
+        "bytes": 385,
+        "sha256": "54af956166ac6b69bab59993c45073e57ec76c8ff8185bad20bf47437f84687b"
+      },
+      {
+        "name": "plan.json",
+        "bytes": 332059,
+        "sha256": "a99b5630c7f76a6860719600ff0f4326d7960ca1fe551df27ecc5fc173f626a4"
+      }
+    ]
+  },
+  "xml_asset_file_check": {
+    "original_xml_sha256": "dad2437d1c2f8cbff26232c252f241978ce7de02cc6e34da0267fc94f4607163",
+    "references": 89,
+    "unique_assets": 87,
+    "resolved": true,
+    "native_created": false
+  },
+  "budget": {
+    "episode": "basket_s035_00",
+    "max_recorded_actions": 292,
+    "max_snapshots": 293,
+    "original_query_comparisons": 37,
+    "begin_hold": false,
+    "initialization_and_internal_substeps_separately_counted": true,
+    "vla_head_processor_calls": 0
+  },
+  "real_native_run_started_by_codex": false,
+  "real_model_or_head_loaded_by_codex": false,
+  "native_diagnostic_output_absent": true,
+  "original_calibration": "capability_not_established",
+  "original_threshold": null,
+  "no_scores_or_labels_changed": true,
+  "stage_closed": false,
+  "delete_exact_list": []
+}

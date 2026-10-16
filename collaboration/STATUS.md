@@ -10,7 +10,7 @@
 
 ## 当前阶段
 
-Stage04 / [Plan4](../docs/experiment_plans/stage04_finish_protocol.md)：原5条shadow采集完整，停止校准仍未建立、阈值null。X的R10只读提案已由Codex[R11接受](reviews/008_round11.md)，用户已同意最小诊断；[009实现与CPU/fake交付](responses/009_round1.md)已提交，待Codex审查部署。仅35号0..292原动作前缀重执行，不加载VLA/head、不改原评分／协议，真实run仍由用户启动。主normal_active／Remain继续暂不运行；008/009/Stage04未closed。
+Stage04 / [Plan4](../docs/experiment_plans/stage04_finish_protocol.md)：009用户真实诊断完成/accepted，292/292动作和37/37原观测全部匹配；step280 collision几何分离≥14.72mm而旧球界重叠，测量保守性已定位。用户已同意[010版本化测量/校准修订](tasks/010_versioned_release_and_calibration.md)，不重训、保留旧结果、追加5新版校准、累计模型预算35。当前旧calibrated=false/threshold=null，normal_active/Remain未启动；009诊断范围closed，010 open、Stage04未closed。
 
 默认设计：冻结OFT动作网络，只训练小finish head；普通00数据分组训练／校准／独立测试，当前外部10/01/11留作测试；active与shadow分开，新协议H520/W150所有mask一致，FINISH后或超时后做真实物理保持，无GT许可停车。原始无FINISH模型仅历史参考，新主指标不把不支持写成0%。
 
@@ -20,8 +20,9 @@ Stage03的固定15条主pilot＋10条oracle诊断已完成；旧JSR主10=40%（2
 
 | 任务 | 状态 | 交付／裁决 |
 |---|---|---|
-| [009 最小释放测量诊断](tasks/009_release_observability_replay.md) | submitted，[PR #6](https://github.com/No1dry/LIBERO-Remain/pull/6) open/unmerged；真实run未启动 | [X交付](responses/009_round1.md)，实现5410355；全套1985 passed／15 skipped，新增155项全通过。独立plan/run、来源SHA复核、首差异停、typed侧录；只35号最多292动作，不改release/calibration |
-| [008 两来源域数据合同](tasks/008_finish_data_source_domains.md) | 原代码/采集accepted；PR #5已合并；校准未建立，未closed | main合并3d361f4，已审生产不变，保留R11/009文档；[X只读回复](https://github.com/No1dry/LIBERO-Remain/blob/54364ebb579d38a81d2d9396585d084cb9ac21da/collaboration/responses/008_round6.md)，原uncalibrated不改；转009最小诊断 |
+| [010 版本化释放测量与校准](tasks/010_versioned_release_and_calibration.md) | open，用户确认，待X实现/CPU-fake/独立PR | 保守轴投影证书补充+first-hit/鲁棒tau；旧版/模型/头不改，5新shadow后独立10normal与15Remain，累计模型35 |
+| [009 最小释放测量诊断](tasks/009_release_observability_replay.md) | closed（授权最小诊断范围完成）；PR #6代码accepted，未合并交流保留 | [真实验收R2](reviews/009_round2.md)：292/292（100%）、293快照、37/37hash（100%）一致、0NN；883文件完整本地SHA备份，旧球包络过松证据 |
+| [008 两来源域数据合同](tasks/008_finish_data_source_domains.md) | 原代码/采集accepted；校准未建立；R11提案accepted，未closed | [X只读回复](https://github.com/No1dry/LIBERO-Remain/blob/54364ebb579d38a81d2d9396585d084cb9ac21da/collaboration/responses/008_round6.md)；无生产diff，原uncalibrated不改；转009最小诊断 |
 | 001 指标与人工UIR | closed | PR #1已合并；交流仍保留供后续追踪 |
 | 002 venv路径修复 | closed | 同上；阶段总结与本地备份已核验 |
 | 003 正常00回归入口 | accepted，PR #2已合并 | main合并SHA 4a02c78c0b945c2df2f0748614fecdd1c5127f55；不在本轮伪造closed |
@@ -34,15 +35,15 @@ Stage03的固定15条主pilot＋10条oracle诊断已完成；旧JSR主10=40%（2
 
 ## 当前下一步
 
-**Codex审查[009交付](responses/009_round1.md)，验收后准备纯文件plan、部署并交用户真实run命令。** 实现`5410355436ef0f418f0c95c47293efbdce905b07`，独立分支`x/task009-release-observability`；本轮仅新诊断／测试／手册及协作文档，原生产路径未改。实际CLI与日志封装见[运行手册](../docs/finish_release_audit_runbook.md)。全套1985 passed／15 skipped，新增155项与既有FINISH602项全部通过。X未运行真实仿真／VLA／head／训练，尚无服务器部署或真实重执行结果。
+**X实现[010](tasks/010_versioned_release_and_calibration.md)，用户现阶段不用启动实验。** 用户已确认版本化修订和5条新增新版校准，累计模型rollout35；不是自动追加或重训。Plan4末节已增补，旧30条/旧uncalibrated结果原样保留。
 
-授权仍限basket_s035_00原normal-bank已settle初态、step1..292记录动作，0 VLA/head/processor，不追加296/W150/init37，不改release／unknown规则／阈值／评分或旧工件。CLI的plan纯文件，run先重核来源后沿用原reset/step；原query/旧truth/动作首差异即停并保留partial。CPU/fake不是物理认证，不因代码提交自动启动或追加实验。
+009真实run [R2 accepted/诊断范围closed](reviews/009_round2.md)：292/292动作、293旧truth、37/37原观测全一致，0NN；882清单+自身=883原工件完整本地SHA/typed核验。step280 hand/番茄全部collision集合world-z分离下界14.72884mm，pinch+14.68154mm、0hand-target contact，但旧球界-23.43283mm触发unknown。[结果/授权总结](../docs/stage_summaries/stage04_task009_result_and_revision_2026-10-16.md)／[证据](../docs/stage_summaries/evidence/stage04_task009_result_2026-10-16.json)。仅是可观测重放与该帧测量证书，不是counterfactual W150/停止能力证明。
 
-[R11接受提案](reviews/008_round11.md)，[长期授权/审查总结](../docs/stage_summaries/stage04_release_audit_proposal_accepted_2026-10-16.md)，[证据](../docs/stage_summaries/evidence/stage04_release_proposal_review_2026-10-16.json)。X回复HEAD54364ebb…相对实际3433f48无生产变更，无需本轮返修文档。Codex补核3350动作关联／6710个target release分支／3355聚合，旧规则不一致0。None假设补全的紧tau：35[263,292]、37[287,295]、38[241,250]、39[364,380]；后三条timely稳健，35仍不可判定，原calibrated=false／selected_threshold=null不变。这些补全不是新标签或主结果。
+010第一版保留v1安全分支，只补box/compiled-mesh三个world轴的保守分离证书；新校准保持完整证据/固定first-hit/20阈值/K4/24步，对tau不确定须稳健，timing_unknown不可选。默认legacy读写/旧head v1训练事实/网络和控制不改，方法/校准版本全链绑定；新5条同轨迹保存v1/v2事实，2×2派生对照不冒充正式阈值。
 
-服务器只读包/头文件确认MuJoCo2.3.7、robosuite1.4.0，无geomDistance符号；没有创建native或model。009须保持原reset/step/read顺序，query原始观测hash与旧truth/动作不匹配即停，新状态不冒充原完整native快照。292条控制步不隐藏初始化或内部substep。记录器evaluator-side，不进入模型／GT停车；第一版不实施更紧几何判据或协议v2/v3。
+新增5条official-init35..39由用户在代码验收部署后启动，再离线冻结新阈值、10条normal_test40..49独立停止验证、15条Remain；不得用后两组挑规则或调头。预算5旧+5新+10+15=35，旧5条仅探索性发现，披露事后修订。当前旧threshold仍null，主实验未运行，原任务/分数不改。
 
-[PR #5](https://github.com/No1dry/LIBERO-Remain/pull/5)已由X按R9及009明确授权合并为main `3d361f44a9393638d41738d375004e8ea7794301`，保留R11/009文档及已审生产实现。009以此main另开分支／PR，不自行合并。所有前序数据验收保留，normal_active/Remain未启动，不重训或重跑整批。等待Codex审查本轮交付，不重复已有真实命令；协议或范围再变另经用户确认。008/009/Stage04未closed，精确待删=[]。
+PR #6已审代码可由X合并并保留R2/010，Codex不代merge；010新分支/PR。009closed仅限最小诊断，007/008/010/Stage04仍未科研闭环；所有原始结果/失败partial/脏工作区及未合并交流保留，不清理，精确待删=[]。
 
 以下007部署与数据准备经过保留为历史，不重复已经完成的预检。
 
