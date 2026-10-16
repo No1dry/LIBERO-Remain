@@ -10,7 +10,7 @@
 
 ## 当前阶段
 
-Stage04 / [Plan4](../docs/experiment_plans/stage04_finish_protocol.md)：统一FINISH接口控制未学停止混淆。audit／完整features／50轮小头训练及用户06_parity均accepted；32/32固定输入动作逐bit一致（100%）、最大误差0。下一步用户[07_normal_bank官方初态准备](../docs/experiment_plans/stage04_normal_bank_runbook_2026-10-16.md)，之后普通停止校准和独立测试。尚未证明stop-capable，无新协议任务成功率，008／Stage04未closed。
+Stage04 / [Plan4](../docs/experiment_plans/stage04_finish_protocol.md)：统一FINISH接口控制未学停止混淆。audit／features／train／parity均accepted；用户15/15官方初态来源prepared（100%），Codex完成纯文件shadow计划。下一步用户[09_calibration_shadow五条普通采集](../docs/experiment_plans/stage04_calibration_shadow_runbook_2026-10-16.md)。尚未校准正式阈值或建立stop-capable，无新协议任务成功率，008／Stage04未closed。
 
 默认设计：冻结OFT动作网络，只训练小finish head；普通00数据分组训练／校准／独立测试，当前外部10/01/11留作测试；active与shadow分开，新协议H520/W150所有mask一致，FINISH后或超时后做真实物理保持，无GT许可停车。原始无FINISH模型仅历史参考，新主指标不把不支持写成0%。
 
@@ -20,7 +20,7 @@ Stage03的固定15条主pilot＋10条oracle诊断已完成；旧JSR主10=40%（2
 
 | 任务 | 状态 | 交付／裁决 |
 |---|---|---|
-| [008 两来源域数据合同](tasks/008_finish_data_source_domains.md) | 软件／audit／features／train／06_parity accepted；待用户07_normal_bank，未closed | 32/32动作逐bit一致（100%），零误差／零容差，原始action/input/obs/hash均核验；[验收总结](../docs/stage_summaries/stage04_parity_pass_2026-10-16.md)／[下一命令](../docs/experiment_plans/stage04_normal_bank_runbook_2026-10-16.md) |
+| [008 两来源域数据合同](tasks/008_finish_data_source_domains.md) | audit/features/train/parity/normal-bank及shadow文件计划accepted；待用户09_shadow，未closed | 15/15来源（100%）、state/obs/audit/registry全核验；计划只选official init35..39五条。[总结](../docs/stage_summaries/stage04_normal_bank_pass_2026-10-16.md)／[完整命令](../docs/experiment_plans/stage04_calibration_shadow_runbook_2026-10-16.md) |
 | 001 指标与人工UIR | closed | PR #1已合并；交流仍保留供后续追踪 |
 | 002 venv路径修复 | closed | 同上；阶段总结与本地备份已核验 |
 | 003 正常00回归入口 | accepted，PR #2已合并 | main合并SHA 4a02c78c0b945c2df2f0748614fecdd1c5127f55；不在本轮伪造closed |
@@ -33,11 +33,13 @@ Stage03的固定15条主pilot＋10条oracle诊断已完成；旧JSR主10=40%（2
 
 ## 当前下一步
 
-**06_parity通过，不重训／不重跑。** 32/32 fixed HDF validation输入完成且动作逐bit相同（100%），max error0、预定atol/rtol0、64次原／shadow配对forward、exit0/tee0。Codex逐文件验收32对actions、32实际inputs及32份观测，distinct state/obs/input hash各32，头6636f713…、audit44d0ab96…、base4601be2d…及runtime75f2a711…全部绑定。[总结与原始SHA](../docs/stage_summaries/stage04_parity_pass_2026-10-16.md)，[机器回执](../docs/stage_summaries/evidence/stage04_parity_acceptance_2026-10-16.json)。
+**07_normal_bank和08_shadow_plan通过，不重跑。** 用户15/15 init35..49 prepared（100%），所有state／obs／150步技术审计及官方init/index/SHA/BDDL/registry核验，1200settle+2250audit步、policy0；bank内容hash7275f774…。生产仍3433源码，数据目录按冻结job沿用旧2cb新子目录，未覆盖旧结果。
 
-**下一步用户启动[07_normal_bank](../docs/experiment_plans/stage04_normal_bank_runbook_2026-10-16.md)。** 新旧bank均缺、旧2cb整个目标目录确认不存在；从新3433 session，用旧2cb registry、init35..49，输出固定job JSON引用的旧2cb bank新目录，不覆盖旧文件、不改262源码/11冻结配置。实际生产代码仍3433，log在新3433 runroot。本步只仿真准备普通00来源、不运行VLA，不是新增15条模型rollout。
+Codex已完成纯文件dry-plan（无sim/VLA/头推理），严格选35..39五条normal_calibration、shadow、H520/W150/chunk8、双相机20fps；40..49留独立normal_test。plan SHA0c49836a7d5e5c82958362b441c10d44bc5fafaa5d8024de211909daaba4f4b6，head6636f713…／runtime75f2a711…不变。[验收总结](../docs/stage_summaries/stage04_normal_bank_pass_2026-10-16.md)、[机器回执](../docs/stage_summaries/evidence/stage04_normal_bank_acceptance_2026-10-16.json)。
 
-bank通过后Codex做文件核验／dry-plan，再交5条普通shadow校准命令，之后阈值冻结、10条normal active停止能力验证和15条Remain。Codex没有启动新sim／VLA／训练。不能由parity100%或低BCE宣称stop-capable，验证仅demo_38两正例等pilot限制不改。所有原始工件／脏工作区保留，PR本轮不自动合并，008／Stage04未closed，精确待删=[]。
+**下一步用户启动[09_calibration_shadow](../docs/experiment_plans/stage04_calibration_shadow_runbook_2026-10-16.md)**：finish_sim 09_calibration_shadow run，config新CFG/validation_shadow.json，out新OUT/validation_shadow；5条真实VLA+sim采集、最多3350物理步/330预测，视频开启。shadow只记录分数、不按FINISH停车，0.5仅placeholder，不是校准阈值；GT不成功早停/路由。主FINISH指标N/A，不把继续行动解释为接头失败。
+
+Codex未启动真实采集。用户完成后先核验数据，再按既定规则校准阈值，不足如实报告；通过后10条normal active独立停止验证、15条Remain主实验。尚未stop-capable、无新协议任务成功率。原始工件/失败partial/脏工作区全保留，本轮不自动合并PR，008／Stage04未closed，精确待删=[]。
 
 以下007部署与数据准备经过保留为历史，不重复已经完成的预检。
 

@@ -1,0 +1,105 @@
+{
+  "status": "normal_bank_and_shadow_plan_accepted_file_only",
+  "source_commit": "3433f487d38efe0a08e4c814e87412aad5aba9fe",
+  "source_count": 15,
+  "expected_sources": 15,
+  "preparation_completion_percent": 100,
+  "source_indices": [
+    35,
+    36,
+    37,
+    38,
+    39,
+    40,
+    41,
+    42,
+    43,
+    44,
+    45,
+    46,
+    47,
+    48,
+    49
+  ],
+  "normal_calibration_indices": [
+    35,
+    36,
+    37,
+    38,
+    39
+  ],
+  "normal_test_indices": [
+    40,
+    41,
+    42,
+    43,
+    44,
+    45,
+    46,
+    47,
+    48,
+    49
+  ],
+  "bank_content_hash": "7275f774c215afd4ac3d6d09b1e1f37e687b02e6a155266c3de2308b24e8ab47",
+  "registry_sha256": "f8706e9018e618566f53165b50b8e21e6347c089a500cbe3bc21c0930ff8edfe",
+  "work_counts": {
+    "settle_steps": 1200,
+    "technical_audit_steps": 2250,
+    "policy_steps": 0
+  },
+  "prepared_sources_state_observation_and_technical_audit_hashes_verified": 15,
+  "plan_sha256": "0c49836a7d5e5c82958362b441c10d44bc5fafaa5d8024de211909daaba4f4b6",
+  "selected_next_rollouts": 5,
+  "next_max_physical_steps": 3350,
+  "next_max_queries": 330,
+  "mode": "shadow",
+  "threshold_placeholder": 0.5,
+  "threshold_calibrated": false,
+  "video": {
+    "enabled": true,
+    "fps": 20,
+    "camera": "both",
+    "stride": 1
+  },
+  "configuration": {
+    "horizon": 520,
+    "retention_steps": 150,
+    "max_chunk_steps": 8
+  },
+  "head_sha256": "6636f7133943d551df31a14822df440b63c1b98c0b3ee95f4873019492512c7f",
+  "command_exit": 0,
+  "tee_exit": 0,
+  "files": [
+    {
+      "path": "/HUBU-AI096/zp/ICML/stage04_finish_2cb1428/results/run01/normal_bank/normal_bank.json",
+      "bytes": 1307571,
+      "sha256": "084e55537c25e515153e48624d807483b3348f9cee67db77425f69d5eaa6080c"
+    },
+    {
+      "path": "/HUBU-AI096/zp/ICML/stage04_finish_3433f48/logs/run01/07_normal_bank.log",
+      "bytes": 1310402,
+      "sha256": "2f276b6e1eb64cac91848d0d20683fae5e4c16c6ba14d2c72f76027ac5419e4a"
+    },
+    {
+      "path": "/HUBU-AI096/zp/ICML/stage04_finish_3433f48/results/run01/validation_shadow_plan/plan.json",
+      "bytes": 1291622,
+      "sha256": "78f0c809c66bc0eb106d932531f1b60c9e96e4df9cac11728eedd2eb4d58f1a6"
+    },
+    {
+      "path": "/HUBU-AI096/zp/ICML/stage04_finish_3433f48/logs/run01/08_shadow_plan.log",
+      "bytes": 1291995,
+      "sha256": "762809325dcd44f8cdf75c54cbe3f52cfa53f98c011003c237ed72b61cc369df"
+    }
+  ],
+  "codex_simulation": false,
+  "codex_model_or_head_inference": false,
+  "codex_training": false,
+  "next_real_run_started_by_codex": false,
+  "new_shadow_output_absent": true,
+  "stop_capability_proven": false,
+  "stage_closed": false,
+  "delete_exact_list": [],
+  "raw_acceptance_receipt_sha256": "6b0c43866e6838133f8add64903a2ec56e271503a859ecc505810186e647ba19",
+  "local_5_report_and_log_files_SHA_match_server": true,
+  "all_raw_state_observation_and_technical_audit_files_copied_locally": false
+}

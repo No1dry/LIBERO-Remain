@@ -1,3 +1,5 @@
+> 2026-10-16完成：本页07_normal_bank已由用户执行，15/15（100%）并经完整文件验收；Codex已完成08_shadow_plan。不要重复准备来源。下一步用[5条普通shadow采集手册](stage04_calibration_shadow_runbook_2026-10-16.md)。下文原命令保留为历史。
+
 # Stage04：动作parity通过后的普通official-init来源准备
 
 2026-10-16。只由用户启动07_normal_bank。此前audit、features、小头训练和32输入动作parity均完成，不重跑；冻结实际代码3433f487d38efe0a08e4c814e87412aad5aba9fe，原sim与assets不改。
