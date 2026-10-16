@@ -1,3 +1,5 @@
+> 2026-10-16完成：本页唯一292步诊断已由用户完成，37原观测/293旧truth全匹配并获R2验收。**不要重复此run。** 用户已确认[010版本化测量/校准修订](../../collaboration/tasks/010_versioned_release_and_calibration.md)；现在等待X实现，不直接active。以下命令保留历史。
+
 # Stage04 / 009：用户启动唯一init35释放诊断
 
 2026-10-16。软件验收后部署冻结2c6dc4c20a12b4b894a3919d79b9bf810648332d；原模型、release／校准／评分代码不改。本页只运行用户已同意的35号原动作前缀，不重训、不重跑5条、不执行normal_active／Remain。

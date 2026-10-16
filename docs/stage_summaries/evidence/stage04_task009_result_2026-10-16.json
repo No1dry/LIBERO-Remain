@@ -1,0 +1,364 @@
+{
+  "status": "user_replay_diagnostic_accepted_file_only_review",
+  "source_commit": "2c6dc4c20a12b4b894a3919d79b9bf810648332d",
+  "completed_control_steps": 292,
+  "expected_control_steps": 292,
+  "completion_percent": 100,
+  "snapshots_verified": 293,
+  "original_query_hash_matches": 37,
+  "expected_query_hashes": 37,
+  "query_match_percent": 100,
+  "truth_comparisons_matched": 293,
+  "source_run_first_mismatch": null,
+  "manifest_files_verified": 882,
+  "full_diagnostic_files_backed_up_locally": 883,
+  "archive_sha256": "379a73eaf41588a1d5832002ddcfdd9feff640ab884b69f2c107afc995b53708",
+  "manifest_sha256": "e62227052379ecb4196cd61b096f268c217fb52dc80dde63b4eb0b97dfe0c75a",
+  "summary_sha256": "88c334b81a57e6151a667d533e4c67f26bee66dc14e34d1a38e4649343cdc3cd",
+  "native_control_time_delta": 14.600000000000788,
+  "native_time0": 3.999999999999781,
+  "native_time_last": 18.60000000000057,
+  "native_calls": {
+    "count_scope": "Python calls to fixed MuJoCo entry points; internal C calls are not separately counted",
+    "phases": {
+      "initialization": {
+        "mj_forward": {
+          "calls": 12,
+          "failures": 0,
+          "wall_seconds": 0.1987769939005375,
+          "native_time_before": 0,
+          "native_time_after": 3.999999999999781,
+          "native_time_delta_sum": 0
+        },
+        "mj_step1": {
+          "calls": 2,
+          "failures": 0,
+          "wall_seconds": 0.006561022251844406,
+          "native_time_before": 0,
+          "native_time_after": 0,
+          "native_time_delta_sum": 0
+        }
+      },
+      "recorder": {
+        "mj_stateSize": {
+          "calls": 588,
+          "failures": 0,
+          "wall_seconds": 0.004544492810964584,
+          "native_time_before": null,
+          "native_time_after": null,
+          "native_time_delta_sum": 0
+        },
+        "mj_getState": {
+          "calls": 588,
+          "failures": 0,
+          "wall_seconds": 0.0027742087841033936,
+          "native_time_before": 3.999999999999781,
+          "native_time_after": 18.60000000000057,
+          "native_time_delta_sum": 0
+        }
+      },
+      "action": {
+        "mj_forward": {
+          "calls": 14891,
+          "failures": 0,
+          "wall_seconds": 2.5539187863469124,
+          "native_time_before": 3.999999999999781,
+          "native_time_after": 18.60000000000057,
+          "native_time_delta_sum": 0
+        },
+        "mj_step": {
+          "calls": 7300,
+          "failures": 0,
+          "wall_seconds": 1.3744988553225994,
+          "native_time_before": 3.999999999999781,
+          "native_time_after": 18.60000000000057,
+          "native_time_delta_sum": 14.600000000000788
+        }
+      }
+    },
+    "counts": {
+      "mj_step": 7300,
+      "mj_step1": 2,
+      "mj_step2": 0,
+      "mj_forward": 14903,
+      "mj_resetData": 0,
+      "mj_resetDataKeyframe": 0,
+      "mj_setState": 0,
+      "mj_collision": 0,
+      "mj_getState": 588,
+      "mj_stateSize": 588
+    },
+    "hooks_active": false
+  },
+  "zero_vla_head_processor": true,
+  "all_static_and_snapshot_readonly_fingerprints_matched": true,
+  "typed_artifacts_verified": 294,
+  "command_exit": 0,
+  "tee_exit": 0,
+  "key_frame_summary": [
+    {
+      "step": 0,
+      "goals": [
+        false,
+        false
+      ],
+      "released": true,
+      "native_time": 3.999999999999781,
+      "sauce_release": {
+        "role": "target",
+        "in_basket": false,
+        "released": true,
+        "release_evidence": {
+          "method": "panda-dualpad-contact-and-conservative-pinch-clearance-v1",
+          "clearance_margin_m": 0.002,
+          "dual_pad_grasp": false,
+          "any_gripper_contact": false,
+          "hand_sphere_clearance_m": 0.10697360259747915,
+          "pinch_capsule_clearance_m": 0.1385180848416055,
+          "reason": "no_contact_and_clear_of_hand_and_pinch_envelope"
+        }
+      },
+      "minimum_hand_pair": {
+        "target_id": 109,
+        "hand_id": 74,
+        "target_name": "tomato_sauce_1_g4",
+        "hand_name": "gripper0_hand_collision"
+      }
+    },
+    {
+      "step": 263,
+      "goals": [
+        true,
+        true
+      ],
+      "released": null,
+      "native_time": 17.150000000001373,
+      "sauce_release": {
+        "role": "target",
+        "in_basket": true,
+        "released": null,
+        "release_evidence": {
+          "method": "panda-dualpad-contact-and-conservative-pinch-clearance-v1",
+          "clearance_margin_m": 0.002,
+          "dual_pad_grasp": false,
+          "any_gripper_contact": false,
+          "hand_sphere_clearance_m": -0.06402809887688643,
+          "pinch_capsule_clearance_m": -0.026319895959356042,
+          "reason": "near_hand_or_inside_pinch_envelope"
+        }
+      },
+      "minimum_hand_pair": {
+        "target_id": 106,
+        "hand_id": 74,
+        "target_name": "tomato_sauce_1_g1",
+        "hand_name": "gripper0_hand_collision"
+      }
+    },
+    {
+      "step": 272,
+      "goals": [
+        true,
+        true
+      ],
+      "released": null,
+      "native_time": 17.600000000001124,
+      "sauce_release": {
+        "role": "target",
+        "in_basket": true,
+        "released": null,
+        "release_evidence": {
+          "method": "panda-dualpad-contact-and-conservative-pinch-clearance-v1",
+          "clearance_margin_m": 0.002,
+          "dual_pad_grasp": false,
+          "any_gripper_contact": false,
+          "hand_sphere_clearance_m": -0.04083448034997468,
+          "pinch_capsule_clearance_m": -0.0022288332097258074,
+          "reason": "near_hand_or_inside_pinch_envelope"
+        }
+      },
+      "minimum_hand_pair": {
+        "target_id": 106,
+        "hand_id": 74,
+        "target_name": "tomato_sauce_1_g1",
+        "hand_name": "gripper0_hand_collision"
+      }
+    },
+    {
+      "step": 280,
+      "goals": [
+        true,
+        true
+      ],
+      "released": null,
+      "native_time": 18.000000000000902,
+      "sauce_release": {
+        "role": "target",
+        "in_basket": true,
+        "released": null,
+        "release_evidence": {
+          "method": "panda-dualpad-contact-and-conservative-pinch-clearance-v1",
+          "clearance_margin_m": 0.002,
+          "dual_pad_grasp": false,
+          "any_gripper_contact": false,
+          "hand_sphere_clearance_m": -0.023432828897614985,
+          "pinch_capsule_clearance_m": 0.014681542347722397,
+          "reason": "near_hand_or_inside_pinch_envelope"
+        }
+      },
+      "minimum_hand_pair": {
+        "target_id": 110,
+        "hand_id": 74,
+        "target_name": "tomato_sauce_1_g5",
+        "hand_name": "gripper0_hand_collision"
+      }
+    },
+    {
+      "step": 288,
+      "goals": [
+        true,
+        true
+      ],
+      "released": null,
+      "native_time": 18.40000000000068,
+      "sauce_release": {
+        "role": "target",
+        "in_basket": true,
+        "released": null,
+        "release_evidence": {
+          "method": "panda-dualpad-contact-and-conservative-pinch-clearance-v1",
+          "clearance_margin_m": 0.002,
+          "dual_pad_grasp": false,
+          "any_gripper_contact": false,
+          "hand_sphere_clearance_m": -0.005745682404975569,
+          "pinch_capsule_clearance_m": 0.03216064700865462,
+          "reason": "near_hand_or_inside_pinch_envelope"
+        }
+      },
+      "minimum_hand_pair": {
+        "target_id": 110,
+        "hand_id": 74,
+        "target_name": "tomato_sauce_1_g5",
+        "hand_name": "gripper0_hand_collision"
+      }
+    },
+    {
+      "step": 292,
+      "goals": [
+        true,
+        true
+      ],
+      "released": true,
+      "native_time": 18.60000000000057,
+      "sauce_release": {
+        "role": "target",
+        "in_basket": true,
+        "released": true,
+        "release_evidence": {
+          "method": "panda-dualpad-contact-and-conservative-pinch-clearance-v1",
+          "clearance_margin_m": 0.002,
+          "dual_pad_grasp": false,
+          "any_gripper_contact": false,
+          "hand_sphere_clearance_m": 0.004440843786755536,
+          "pinch_capsule_clearance_m": 0.042216377565458,
+          "reason": "no_contact_and_clear_of_hand_and_pinch_envelope"
+        }
+      },
+      "minimum_hand_pair": {
+        "target_id": 110,
+        "hand_id": 74,
+        "target_name": "tomato_sauce_1_g5",
+        "hand_name": "gripper0_hand_collision"
+      }
+    }
+  ],
+  "codex_native_or_model_calls": 0,
+  "old_label_protocol_scores_unchanged": true,
+  "calibration_still_unestablished": true,
+  "stop_capability_proven": false,
+  "scope": "Observable replay prefix matches; historical invisible solver/controller state equality is not proven.",
+  "stage04_closed": false,
+  "delete_exact_list": [],
+  "user_approved_next_scope": {
+    "date": "2026-10-16",
+    "answer": "同意版本化修订",
+    "scope": "X implements versioned conservative release certificate + decision-relevant robust calibration; preserve legacy/no retrain; 5 additional new calibration rollouts user-started; total model-rollout budget 35"
+  },
+  "geometry_certificate": {
+    "analysis": "step280_replay_collision_world_z_projection_certificate",
+    "source_commit": "2c6dc4c20a12b4b894a3919d79b9bf810648332d",
+    "snapshot": 280,
+    "static_npz_sha256": "9cf8d6654735b949e67a97840b961659fab21e8b11d149a9a2daf41e08ce0626",
+    "native_npz_sha256": "b025d3251339def6e393529034adb2841b8ad1d196f243b4a2be88bfdc8b73cd",
+    "collision_projection_formula": "box: center_z +/- sum(abs(world_rotation_zrow)*halfsize); compiled mesh convex hull: min/max transformed vertex z",
+    "world_z_intervals": {
+      "hand": {
+        "geom_count": 5,
+        "types": [
+          6,
+          7
+        ],
+        "min_z": 0.6207082402955947,
+        "max_z": 0.7528502082475296
+      },
+      "alphabet_soup_1": {
+        "geom_count": 21,
+        "types": [
+          6
+        ],
+        "min_z": 0.4537587666536111,
+        "max_z": 0.5300111811051759
+      },
+      "tomato_sauce_1": {
+        "geom_count": 24,
+        "types": [
+          6
+        ],
+        "min_z": 0.5238854692998522,
+        "max_z": 0.6059793995932582
+      }
+    },
+    "world_z_gap_lower_bounds_m": {
+      "alphabet_soup_1": 0.09069705919041882,
+      "tomato_sauce_1": 0.014728840702336488
+    },
+    "conservative_rounded_down_gap_mm": {
+      "alphabet_soup_1": 90.69,
+      "tomato_sauce_1": 14.72
+    },
+    "old_sphere_min_pair": {
+      "hand_id": 74,
+      "hand_name": "gripper0_hand_collision",
+      "target_id": 110,
+      "target_name": "tomato_sauce_1_g5"
+    },
+    "old_sphere_pair_interval_m": {
+      "tomato_sauce_1_g5": [
+        0.5288171171640389,
+        0.6057837460066903
+      ],
+      "gripper0_hand_collision": [
+        0.6602851889425133,
+        0.7528502082475296
+      ]
+    },
+    "old_hand_sphere_clearance_m": -0.023432828897614985,
+    "old_pinch_clearance_m": 0.014681542347722397,
+    "original_contact_count": 29,
+    "target_hand_contact_pairs": 0,
+    "old_label": null,
+    "scope": "Saved replay collision groups at step280 only; positive projection gap is conservative separation, not exact closest distance or a new label.",
+    "no_native_or_head_or_model_calls": true,
+    "old_labels_scores_calibration_unchanged": true,
+    "collision_filter_diagnostics": {
+      "target_hand_pairs": 225,
+      "mask_compatible_pairs": 225,
+      "geoms_contype_values": [
+        0,
+        1
+      ],
+      "explicit_pair_count": 0,
+      "explicit_exclusions": 0
+    }
+  },
+  "task009_scope_completed": true
+}
