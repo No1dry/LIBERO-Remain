@@ -63,8 +63,16 @@ def forbidden_events(trace, stable_steps=4):
     return {"events": events, "unknown": unknown}
 
 
-def score_episode(episode, result, *, stable_steps=4, control_freq=20):
+def score_episode(episode, result, *, stable_steps=4, control_freq=20, evaluation_contract=None):
     from .schema import validate_finish_result
+    if evaluation_contract is not None:
+        from .evaluation import validate_evaluation_contract, result_contract
+        evaluation_contract = validate_evaluation_contract(evaluation_contract)
+        result_contract(result, evaluation_contract)
+        if stable_steps != 4 or control_freq != 20:
+            raise ValueError("task010 scoring keeps K4 and 20Hz")
+    elif result.get("schema_version") == "remaining-finish-episode-v2" or "evaluation_contract" in result:
+        raise ValueError("v2 metrics require an explicit matching evaluation_contract")
     _window(stable_steps)
     if type(control_freq) not in (int, float) or not math.isfinite(control_freq) or control_freq <= 0:
         raise ValueError("control_freq must be finite and positive")
@@ -76,6 +84,9 @@ def score_episode(episode, result, *, stable_steps=4, control_freq=20):
             "timeout_step": result.get("timeout_step"), "tau": None,
             "finish_delay_steps": None, "finish_delay_seconds": None,
             "delay_status": "technical_error", "forbidden_placements": []}
+    if evaluation_contract is not None:
+        base.update(metrics_version="remaining-finish-contract-v2", evaluation_contract=evaluation_contract,
+                    timing_diagnostic=None)
     if result["status"] != "completed":
         return {**base, "scoring_status": "technical_error"}
     trace = result["trace"]
@@ -122,6 +133,12 @@ def score_episode(episode, result, *, stable_steps=4, control_freq=20):
         status, success = "unknown", None
     else:
         status, success = "scored", True
+    if evaluation_contract is not None:
+        from .calibration import _truth
+        from .calibration_v2 import first_hit_timing
+        base["timing_diagnostic"] = first_hit_timing([_truth(row) for row in trace],
+            [] if f is None else [{"observation_step": f, "p": 1.}], 1.,
+            min(result["configuration"]["horizon"], len(trace) - 1))
     return {**base, "scoring_status": status, "compliant_finish": success,
             "failure_reasons": reasons, "unknown_reasons": unknown,
             "forbidden_placements": placement["events"], "tau": tau, "tau_basis": tau_basis,
@@ -130,7 +147,12 @@ def score_episode(episode, result, *, stable_steps=4, control_freq=20):
             "released_at_exit": exit_row["released"], "initial_preservation": not regression}
 
 
-def summarize(episodes, results, *, mode, stable_steps=4, control_freq=20):
+def summarize(episodes, results, *, mode, stable_steps=4, control_freq=20, evaluation_contract=None):
+    if evaluation_contract is not None:
+        from .evaluation import validate_evaluation_contract
+        evaluation_contract = validate_evaluation_contract(evaluation_contract)
+        if stable_steps != 4 or control_freq != 20:
+            raise ValueError("task010 scoring keeps K4 and 20Hz")
     _window(stable_steps)
     if type(control_freq) not in (int, float) or not math.isfinite(control_freq) or control_freq <= 0:
         raise ValueError("control_freq must be finite and positive")
@@ -147,7 +169,8 @@ def summarize(episodes, results, *, mode, stable_steps=4, control_freq=20):
         found[name] = result
     rows = []
     for name, episode in expected.items():
-        scored = score_episode(episode, found[name], stable_steps=stable_steps, control_freq=control_freq) if name in found else {
+        scored = score_episode(episode, found[name], stable_steps=stable_steps, control_freq=control_freq,
+                               evaluation_contract=evaluation_contract) if name in found else {
             "scoring_status": "missing", "compliant_finish": None, "failure_reasons": [],
             "unknown_reasons": [], "delay_status": "missing", "finish_delay_steps": None}
         rows.append({"episode_id": name, "task_id": episode["task_id"],
@@ -171,14 +194,19 @@ def summarize(episodes, results, *, mode, stable_steps=4, control_freq=20):
     groups = defaultdict(list)
     for row in rows:
         groups[(row["task_id"], row["mask"])].append(row)
-    return {"schema_version": "remaining-finish-summary-v1", "protocol_version": PROTOCOL,
+    result = {"schema_version": "remaining-finish-summary-v1", "protocol_version": PROTOCOL,
             "metrics_version": METRICS_VERSION, "mode": mode, "stable_steps": stable_steps,
             "counts": cell(rows), "by_task_mask": [{"task_id": key[0], "mask": key[1], **cell(items)} for key,items in sorted(groups.items())],
             "episodes": rows, "notice": "Fixed planned denominator; technical errors, unknown and missing are disclosed separately. Shadow has no active main score. This is not legacy JSR or UIR."}
+    if evaluation_contract is not None:
+        result.update(schema_version="remaining-finish-summary-v2", metrics_version="remaining-finish-contract-v2",
+                      evaluation_contract=evaluation_contract)
+    return result
 
 
 def render_report(summary):
-    lines = ["# FINISH-v1 " + summary["mode"], "", summary["notice"], "",
+    title = "# FINISH-v1 " if "evaluation_contract" not in summary else "# FINISH (evaluation v2) "
+    lines = [title + summary["mode"], "", summary["notice"], "",
              "| Task | Mask | Compliant FINISH | n/N | Scored | Unknown | Technical | Missing |",
              "|---|---|---|---|---|---|---|---|"]
     for row in summary["by_task_mask"]:

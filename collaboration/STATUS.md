@@ -10,7 +10,7 @@
 
 ## 当前阶段
 
-Stage04 / [Plan4](../docs/experiment_plans/stage04_finish_protocol.md)：009用户真实诊断完成/accepted，292/292动作和37/37原观测全部匹配；step280 collision几何分离≥14.72mm而旧球界重叠，测量保守性已定位。用户已同意[010版本化测量/校准修订](tasks/010_versioned_release_and_calibration.md)，不重训、保留旧结果、追加5新版校准、累计模型预算35。当前旧calibrated=false/threshold=null，normal_active/Remain未启动；009诊断范围closed，010 open、Stage04未closed。
+Stage04 / [Plan4](../docs/experiment_plans/stage04_finish_protocol.md)：009用户真实诊断完成/accepted，292/292动作和37/37原观测全部匹配；step280 collision几何分离≥14.72mm而旧球界重叠，测量保守性已定位。用户已同意[010版本化测量/校准修订](tasks/010_versioned_release_and_calibration.md)，不重训、保留旧结果、追加5新版校准、累计模型预算35。当前旧calibrated=false/threshold=null，normal_active/Remain未启动；009诊断范围closed，010代码submitted、待审查与外部fixture核验，Stage04未closed。
 
 默认设计：冻结OFT动作网络，只训练小finish head；普通00数据分组训练／校准／独立测试，当前外部10/01/11留作测试；active与shadow分开，新协议H520/W150所有mask一致，FINISH后或超时后做真实物理保持，无GT许可停车。原始无FINISH模型仅历史参考，新主指标不把不支持写成0%。
 
@@ -20,8 +20,8 @@ Stage03的固定15条主pilot＋10条oracle诊断已完成；旧JSR主10=40%（2
 
 | 任务 | 状态 | 交付／裁决 |
 |---|---|---|
-| [010 版本化释放测量与校准](tasks/010_versioned_release_and_calibration.md) | open，用户确认，待X实现/CPU-fake/独立PR | 保守轴投影证书补充+first-hit/鲁棒tau；旧版/模型/头不改，5新shadow后独立10normal与15Remain，累计模型35 |
-| [009 最小释放测量诊断](tasks/009_release_observability_replay.md) | closed（授权最小诊断范围完成）；PR #6代码accepted，未合并交流保留 | [真实验收R2](reviews/009_round2.md)：292/292（100%）、293快照、37/37hash（100%）一致、0NN；883文件完整本地SHA备份，旧球包络过松证据 |
+| [010 版本化释放测量与校准](tasks/010_versioned_release_and_calibration.md) | submitted，[PR #7](https://github.com/No1dry/LIBERO-Remain/pull/7)未合并，待Codex审查；实现4521c53 | [X首轮交付](responses/010_round1.md)／[运行手册](../docs/finish_versioned_release_runbook.md)；全库2115 passed/16 skipped（新增130 passed/1外部fixture skip）。原009实数据外部fixture待补核，旧版/模型/头不改，累计模型预算35，未启动真实阶段 |
+| [009 最小释放测量诊断](tasks/009_release_observability_replay.md) | closed（授权最小诊断范围完成）；accepted PR #6已合并为1906294，交流保留 | [真实验收R2](reviews/009_round2.md)：292/292（100%）、293快照、37/37hash（100%）一致、0NN；883文件完整本地SHA备份，旧球包络过松证据 |
 | [008 两来源域数据合同](tasks/008_finish_data_source_domains.md) | 原代码/采集accepted；校准未建立；R11提案accepted，未closed | [X只读回复](https://github.com/No1dry/LIBERO-Remain/blob/54364ebb579d38a81d2d9396585d084cb9ac21da/collaboration/responses/008_round6.md)；无生产diff，原uncalibrated不改；转009最小诊断 |
 | 001 指标与人工UIR | closed | PR #1已合并；交流仍保留供后续追踪 |
 | 002 venv路径修复 | closed | 同上；阶段总结与本地备份已核验 |
@@ -35,7 +35,7 @@ Stage03的固定15条主pilot＋10条oracle诊断已完成；旧JSR主10=40%（2
 
 ## 当前下一步
 
-**X实现[010](tasks/010_versioned_release_and_calibration.md)，用户现阶段不用启动实验。** 用户已确认版本化修订和5条新增新版校准，累计模型rollout35；不是自动追加或重训。Plan4末节已增补，旧30条/旧uncalibrated结果原样保留。
+**Codex审查X的[010实现交付](responses/010_round1.md)，用户现阶段不用启动实验。** 新130项CPU/fake通过；X本机没有009原始NPZ，已提供固定SHA外部fixture测试，需保存备份的Codex只读补核，不能把该skip算成实测通过。用户已确认版本化修订和5条新增新版校准，累计模型rollout35；不是自动追加或重训。Plan4末节已增补，旧30条/旧uncalibrated结果原样保留。
 
 009真实run [R2 accepted/诊断范围closed](reviews/009_round2.md)：292/292动作、293旧truth、37/37原观测全一致，0NN；882清单+自身=883原工件完整本地SHA/typed核验。step280 hand/番茄全部collision集合world-z分离下界14.72884mm，pinch+14.68154mm、0hand-target contact，但旧球界-23.43283mm触发unknown。[结果/授权总结](../docs/stage_summaries/stage04_task009_result_and_revision_2026-10-16.md)／[证据](../docs/stage_summaries/evidence/stage04_task009_result_2026-10-16.json)。仅是可观测重放与该帧测量证书，不是counterfactual W150/停止能力证明。
 
@@ -43,7 +43,7 @@ Stage03的固定15条主pilot＋10条oracle诊断已完成；旧JSR主10=40%（2
 
 新增5条official-init35..39由用户在代码验收部署后启动，再离线冻结新阈值、10条normal_test40..49独立停止验证、15条Remain；不得用后两组挑规则或调头。预算5旧+5新+10+15=35，旧5条仅探索性发现，披露事后修订。当前旧threshold仍null，主实验未运行，原任务/分数不改。
 
-PR #6已审代码可由X合并并保留R2/010，Codex不代merge；010新分支/PR。009closed仅限最小诊断，007/008/010/Stage04仍未科研闭环；所有原始结果/失败partial/脏工作区及未合并交流保留，不清理，精确待删=[]。
+PR #6已按010授权由X合并为main `190629495001df9cf53e08d2f5c501ca22a9e7b5`，保留R2/010；010从此独立分支交付，X不合并010。009closed仅限最小诊断，007/008/010/Stage04仍未科研闭环；所有原始结果/失败partial/脏工作区及交流保留，不清理，精确待删=[]。
 
 以下007部署与数据准备经过保留为历史，不重复已经完成的预检。
 
