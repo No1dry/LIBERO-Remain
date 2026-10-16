@@ -1,0 +1,218 @@
+{
+  "status": "read_only_proposal_review",
+  "frozen_source": "3433f487d38efe0a08e4c814e87412aad5aba9fe",
+  "response_commit": "54364ebb579d38a81d2d9396585d084cb9ac21da",
+  "response_scope": "documents_only_no_production_diff",
+  "original_calibration_sha256": "ac4cd37c46ae84df2d73bf635998a4faada8dc1dfec3e6f54cb38a018b87043f",
+  "original_calibrated": false,
+  "original_threshold": null,
+  "action_ledger_rows_verified": 3350,
+  "query_count_verified": 330,
+  "episodes": [
+    {
+      "episode_id": "basket_s035_00",
+      "action_count": 670,
+      "query_count": 66,
+      "first_hit99": 280,
+      "original_candidate99": {
+        "episode_id": "basket_s035_00",
+        "first_crossing_step": 280,
+        "tau": 292,
+        "current_state_correct": null,
+        "timely": false,
+        "delay_steps": null
+      },
+      "truth_completion_bounds": [
+        {
+          "unknown_replacement": true,
+          "tau": 263,
+          "first_hit_correct": true,
+          "delay": 17,
+          "timely": true
+        },
+        {
+          "unknown_replacement": false,
+          "tau": 292,
+          "first_hit_correct": false,
+          "delay": -12,
+          "timely": false
+        }
+      ],
+      "original_video_path": "videos/0000.mp4",
+      "video_seconds_first_hit": 14,
+      "query_at_first_hit": 36
+    },
+    {
+      "episode_id": "basket_s036_00",
+      "action_count": 670,
+      "query_count": 66,
+      "first_hit99": null,
+      "original_candidate99": {
+        "episode_id": "basket_s036_00",
+        "first_crossing_step": null,
+        "tau": null,
+        "current_state_correct": null,
+        "timely": false,
+        "delay_steps": null
+      },
+      "truth_completion_bounds": [
+        {
+          "unknown_replacement": true,
+          "tau": null,
+          "first_hit_correct": null,
+          "delay": null,
+          "timely": false
+        },
+        {
+          "unknown_replacement": false,
+          "tau": null,
+          "first_hit_correct": null,
+          "delay": null,
+          "timely": false
+        }
+      ],
+      "original_video_path": "videos/0001.mp4",
+      "video_seconds_first_hit": null,
+      "query_at_first_hit": null
+    },
+    {
+      "episode_id": "basket_s037_00",
+      "action_count": 670,
+      "query_count": 66,
+      "first_hit99": 296,
+      "original_candidate99": {
+        "episode_id": "basket_s037_00",
+        "first_crossing_step": 296,
+        "tau": 295,
+        "current_state_correct": true,
+        "timely": true,
+        "delay_steps": 1
+      },
+      "truth_completion_bounds": [
+        {
+          "unknown_replacement": true,
+          "tau": 287,
+          "first_hit_correct": true,
+          "delay": 9,
+          "timely": true
+        },
+        {
+          "unknown_replacement": false,
+          "tau": 295,
+          "first_hit_correct": true,
+          "delay": 1,
+          "timely": true
+        }
+      ],
+      "original_video_path": "videos/0002.mp4",
+      "video_seconds_first_hit": 14.8,
+      "query_at_first_hit": 38
+    },
+    {
+      "episode_id": "basket_s038_00",
+      "action_count": 670,
+      "query_count": 66,
+      "first_hit99": 256,
+      "original_candidate99": {
+        "episode_id": "basket_s038_00",
+        "first_crossing_step": 256,
+        "tau": 250,
+        "current_state_correct": true,
+        "timely": true,
+        "delay_steps": 6
+      },
+      "truth_completion_bounds": [
+        {
+          "unknown_replacement": true,
+          "tau": 241,
+          "first_hit_correct": true,
+          "delay": 15,
+          "timely": true
+        },
+        {
+          "unknown_replacement": false,
+          "tau": 250,
+          "first_hit_correct": true,
+          "delay": 6,
+          "timely": true
+        }
+      ],
+      "original_video_path": "videos/0003.mp4",
+      "video_seconds_first_hit": 12.8,
+      "query_at_first_hit": 33
+    },
+    {
+      "episode_id": "basket_s039_00",
+      "action_count": 670,
+      "query_count": 66,
+      "first_hit99": 384,
+      "original_candidate99": {
+        "episode_id": "basket_s039_00",
+        "first_crossing_step": 384,
+        "tau": 380,
+        "current_state_correct": true,
+        "timely": true,
+        "delay_steps": 4
+      },
+      "truth_completion_bounds": [
+        {
+          "unknown_replacement": true,
+          "tau": 364,
+          "first_hit_correct": true,
+          "delay": 20,
+          "timely": true
+        },
+        {
+          "unknown_replacement": false,
+          "tau": 380,
+          "first_hit_correct": true,
+          "delay": 4,
+          "timely": true
+        }
+      ],
+      "original_video_path": "videos/0004.mp4",
+      "video_seconds_first_hit": 19.2,
+      "query_at_first_hit": 49
+    }
+  ],
+  "caveats": [
+    "None substitutions are hypothetical bound calculations, not new release labels.",
+    "X lower bounds are conservative enclosing bounds; raw-data tight bounds recorded here need no reply rework.",
+    "Contact/geometry/native replay remains unperformed; no exact-state equivalence is certified.",
+    "292 recorded actions exclude separate reset/init native calls; replay does not certify K4 at292 or W150.",
+    "Model/test/main-score/protocol changes are not authorized by proposal acceptance."
+  ],
+  "native_or_model_or_head_calls": 0,
+  "training": false,
+  "old_data_changed": false,
+  "future_implementation_requires_user_confirmation": false,
+  "stage_closed": false,
+  "delete_exact_list": [],
+  "release_branch_audit": {
+    "target_records": 6710,
+    "frame_aggregations": 3355,
+    "release_branch_mismatches": 0,
+    "native_calls": 0
+  },
+  "user_approval": {
+    "date": "2026-10-16",
+    "answer": "同意最小诊断",
+    "scope": "X implements only init35<=292 recorded-action diagnostic; user starts after review; no VLA/head/protocol changes"
+  },
+  "beyond_approved_diagnostic_scope_requires_confirmation": true,
+  "native_execution_still_user_started": true,
+  "server_dependency_file_check": {
+    "mujoco_package": "2.3.7",
+    "robosuite_package": "1.4.0",
+    "mujoco_header_sha256": "6d98b6241909d7eb8c9976fda927a4fa30af518f8f2a3af0383e07bed0cb6c79",
+    "mjdata_header_sha256": "ece3613aeeeecbc00288e79827b5b49ca57fe9dd033e81722206751e2c7ca9ba",
+    "header_has_geomDistance": false,
+    "state_functions_present": [
+      "mj_stateSize",
+      "mj_getState",
+      "mj_setState",
+      "mj_contactForce"
+    ],
+    "native_runtime_or_binding_instantiated": false
+  }
+}
