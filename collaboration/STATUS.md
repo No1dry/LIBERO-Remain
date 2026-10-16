@@ -10,7 +10,7 @@
 
 ## 当前阶段
 
-Stage04 / [Plan4](../docs/experiment_plans/stage04_finish_protocol.md)：原5条shadow采集完整，停止校准仍未建立、阈值null。X的R10只读提案已由Codex[R11接受](reviews/008_round11.md)，用户已同意最小诊断；[009](tasks/009_release_observability_replay.md)由X实现仅35号0..292原动作前缀重执行，不加载VLA/head、不改原评分／协议，用户在验收部署后亲自启动。主normal_active／Remain继续暂不运行；008/009/Stage04未closed。
+Stage04 / [Plan4](../docs/experiment_plans/stage04_finish_protocol.md)：原停止校准未建立、threshold=null。009最小释放诊断[软件accepted](reviews/009_round1.md)，新2c6dc4c源码已部署，1072源文件的292步纯文件计划已就绪；下一步用户只启动[唯一02_run](../docs/experiment_plans/stage04_task009_server_runbook_2026-10-16.md)，无VLA/head/processor、不改旧规则/分数。normal_active/Remain未启动；009/Stage04未closed。
 
 默认设计：冻结OFT动作网络，只训练小finish head；普通00数据分组训练／校准／独立测试，当前外部10/01/11留作测试；active与shadow分开，新协议H520/W150所有mask一致，FINISH后或超时后做真实物理保持，无GT许可停车。原始无FINISH模型仅历史参考，新主指标不把不支持写成0%。
 
@@ -20,7 +20,7 @@ Stage03的固定15条主pilot＋10条oracle诊断已完成；旧JSR主10=40%（2
 
 | 任务 | 状态 | 交付／裁决 |
 |---|---|---|
-| [009 最小释放测量诊断](tasks/009_release_observability_replay.md) | open，用户确认，待X实现/CPU-fake/独立PR | 只35号原bank初态，最多292记录动作、293快照，初始化/native substep另计；0 VLA/head/processor调用，不改release/calibration/旧分数 |
+| [009 最小释放测量诊断](tasks/009_release_observability_replay.md) | accepted（软件/纯文件plan），PR #6 open/unmerged；等待用户真实run，未closed | final2c6dc4c；本地1988 passed/12 skip、服务器155 passed/0skip；293源码/4配置已核，292动作/293快照/1072源文件plan就绪；[裁决](reviews/009_round1.md)／[命令](../docs/experiment_plans/stage04_task009_server_runbook_2026-10-16.md) |
 | [008 两来源域数据合同](tasks/008_finish_data_source_domains.md) | 原代码/采集accepted；校准未建立；R11提案accepted，未closed | [X只读回复](https://github.com/No1dry/LIBERO-Remain/blob/54364ebb579d38a81d2d9396585d084cb9ac21da/collaboration/responses/008_round6.md)；无生产diff，原uncalibrated不改；转009最小诊断 |
 | 001 指标与人工UIR | closed | PR #1已合并；交流仍保留供后续追踪 |
 | 002 venv路径修复 | closed | 同上；阶段总结与本地备份已核验 |
@@ -34,13 +34,13 @@ Stage03的固定15条主pilot＋10条oracle诊断已完成；旧JSR主10=40%（2
 
 ## 当前下一步
 
-**X开始[009](tasks/009_release_observability_replay.md)独立诊断实现。** 用户已明确“同意最小诊断”：仅basket_s035_00原normal-bank已settle初态、step1..292记录动作，0 VLA/head/processor，不追加296/W150/init37，不改release／unknown规则／阈值／评分或旧工件。Codex审查部署后给实际命令，仍由用户启动；当前还没有新诊断CLI可执行。
+**009软件审查通过并已部署，无本轮返修。用户现在只启动[02_run最小诊断](../docs/experiment_plans/stage04_task009_server_runbook_2026-10-16.md)。** 新源码/HUBU-AI096/zp/ICML/LIBERO-Remain-stage04-release-2c6dc4c，新根/HUBU-AI096/zp/ICML/stage04_release_audit_2c6dc4c；293 Git blob/SHA及4配置核验。本地全套1988 passed/12环境skip、服务器155新诊断passed/0skip，两路独立CPUfake复核无明确阻塞。
 
-[R11接受提案](reviews/008_round11.md)，[长期授权/审查总结](../docs/stage_summaries/stage04_release_audit_proposal_accepted_2026-10-16.md)，[证据](../docs/stage_summaries/evidence/stage04_release_proposal_review_2026-10-16.json)。X回复HEAD54364ebb…相对实际3433f48无生产变更，无需本轮返修文档。Codex补核3350动作关联／6710个target release分支／3355聚合，旧规则不一致0。None假设补全的紧tau：35[263,292]、37[287,295]、38[241,250]、39[364,380]；后三条timely稳健，35仍不可判定，原calibrated=false／selected_threshold=null不变。这些补全不是新标签或主结果。
+Codex已完成纯文件01_plan：status=plan_ready、exit0/tee0，内部SHA8bfc498562ef72c0432fa39aed0055ef1328e388f88af08cc27cddeaaec2ea3d，1072原文件、292×7原float64动作逐bit匹配，初态为原已settle bank；最大293快照、原query0..288共37对照，292不query。旧XML dad2437d…89引用/87资产纯文件检查通过。Codex没有native/研究model/head/processor/训练调用。[总结](../docs/stage_summaries/stage04_task009_software_acceptance_2026-10-16.md)、[机器证据](../docs/stage_summaries/evidence/stage04_task009_acceptance_2026-10-16.json)、[R1裁决](reviews/009_round1.md)。
 
-服务器只读包/头文件确认MuJoCo2.3.7、robosuite1.4.0，无geomDistance符号；没有创建native或model。009须保持原reset/step/read顺序，query原始观测hash与旧truth/动作不匹配即停，新状态不冒充原完整native快照。292条控制步不隐藏初始化或内部substep。记录器evaluator-side，不进入模型／GT停车；第一版不实施更紧几何判据或协议v2/v3。
+用户从新session执行release_diag 02_run run，输入新DIAG_PLAN、输出新DIAG_ROOT/run，日志logs/02_run.log；不再做plan，不重复旧实验。首差异保存并停，失败保partial、不原地重跑、放宽容差或改协议。292控制步与初始化/内部native substep另计，不追加293..296、FINISH/W150/init37。诊断只记录新重执行状态，不能把它当原完整checkpoint或新释放真值/成功率。
 
-PR #5已审代码可按R9由X合并并保留最新main的R11/009文档，Codex不代合并；009另开PR。所有前序数据验收保留，normal_active/Remain未启动，不重训或重跑整批。用户当前等待X交付，不需重复已有命令；协议或范围再变另经用户确认。008/009/Stage04未closed，精确待删=[]。
+PR #5由X合并3d361f4且原生产等价3433f48，PR #6本轮不自动merge。原calibrated=false/threshold=null和全部历史保留；正常active/Remain未开始，不重训。009软件accepted未科研closed，007/008/009/Stage04仍开放，精确待删=[]。
 
 以下007部署与数据准备经过保留为历史，不重复已经完成的预检。
 
