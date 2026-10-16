@@ -231,9 +231,22 @@ def _release(env, inner, gripper, obj):
         return None, evidence
 
 
+def _contact_filter_status():
+    """Read an already-loaded callback getter; never import/create native state."""
+    import sys
+    backend = sys.modules.get("mujoco")
+    getter = getattr(backend, "get_mjcb_contactfilter", None)
+    if not callable(getter):
+        return "unverified"
+    try:
+        return "absent" if getter() is None else "present"
+    except Exception:
+        return "unverified"
+
+
 class BasketContract:
     """Evaluator-only physical facts for the fixed two-object basket task."""
-    def __init__(self, env):
+    def __init__(self, env, *, evaluation_contract=None):
         self.env, self.inner = env, _task_environment(env)
         official = sorted(_predicate(p) for p in self.inner.parsed_problem["goal_state"])
         expected = sorted(("in", name, REGION) for name in TARGETS)
@@ -250,6 +263,21 @@ class BasketContract:
         self.objects, self.fixtures = objects, fixtures
         self.hold = PandaPoseHold(env)
         self.gripper = self.hold.gripper
+        self.evaluation_contract = None
+        self.geometry_observer = None
+        if evaluation_contract is not None:
+            from .evaluation import validate_evaluation_contract
+            from .release_geometry import GeometryObserver
+            self.evaluation_contract = validate_evaluation_contract(evaluation_contract)
+            measured = {name: obj for name, obj in objects.items()
+                        if name != CONTAINER and getattr(obj, "joints", None)}
+            self.geometry_observer = GeometryObserver(env, measured, self.gripper,
+                                                       contact_filter_getter=_contact_filter_status)
+
+    def measurement_static(self):
+        if self.geometry_observer is None:
+            raise RuntimeError("release geometry requires explicit evaluation v2")
+        return deepcopy(self.geometry_observer.static)
 
     def evaluator_state(self):
         facts = {}
@@ -267,14 +295,23 @@ class BasketContract:
                                "release_evidence": {"method": RELEASE_VERSION, "reason": "excluded_container_or_fixture_role"}}
         states = [facts[name]["released"] for name in TARGETS]
         released = False if any(value is False for value in states) else True if all(value is True for value in states) else None
-        return {"goals": [facts[name]["in_basket"] for name in TARGETS], "released": released, "objects": facts,
-                "release_evidence": {"method": RELEASE_VERSION, "targets": {name: facts[name]["release_evidence"] for name in TARGETS}}}
+        truth = {"goals": [facts[name]["in_basket"] for name in TARGETS], "released": released, "objects": facts,
+                 "release_evidence": {"method": RELEASE_VERSION, "targets": {name: facts[name]["release_evidence"] for name in TARGETS}}}
+        if self.geometry_observer is not None:
+            from .release_geometry import measurement_frame
+            return measurement_frame(truth, self.evaluation_contract, self.geometry_observer.static,
+                                     self.geometry_observer.pose())
+        return truth
 
 
 class FinishLiberoEnv(LiberoGoalEnv):
     def __init__(self, config):
         if "hold_action" in config or "hold_contract" in config:
             raise ValueError("FINISH requires its versioned physical hold, not a constant-action override")
+        self.evaluation_contract = None
+        if "evaluation_contract" in config:
+            from .evaluation import validate_evaluation_contract
+            self.evaluation_contract = validate_evaluation_contract(config["evaluation_contract"])
         super().__init__(config)
         self.finish_contract = None
 
@@ -284,7 +321,7 @@ class FinishLiberoEnv(LiberoGoalEnv):
         if episode.get("suite") != profile["suite"] or episode.get("task_name") != profile["name"]:
             raise ValueError("FINISH-v1 only supports the fixed LIBERO-10 basket task")
         observation = super().reset(episode)
-        self.finish_contract = BasketContract(self.env)
+        self.finish_contract = BasketContract(self.env, evaluation_contract=self.evaluation_contract)
         return observation
 
     def evaluator_state(self):
@@ -293,7 +330,14 @@ class FinishLiberoEnv(LiberoGoalEnv):
         truth = self.finish_contract.evaluator_state()
         # Preserve source group order; the contract's target identities are fixed.
         truth["goals"] = self.goal_values()
+        if self.evaluation_contract is not None:
+            truth["measurement"]["legacy"]["goals"] = truth["goals"].copy()
         return truth
+
+    def measurement_static(self):
+        if not self._ready or self.finish_contract is None:
+            raise RuntimeError("successful FINISH reset is required")
+        return self.finish_contract.measurement_static()
 
     def begin_hold(self):
         if not self._ready or self.finish_contract is None:

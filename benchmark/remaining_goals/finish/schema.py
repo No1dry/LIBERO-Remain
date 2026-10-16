@@ -173,7 +173,7 @@ def validate_policy_result(value):
             **validate_decision(value), "input_evidence": validate_input_evidence(value["input_evidence"])}
 
 
-def validate_evaluator_state(value, goal_count):
+def validate_evaluator_state(value, goal_count, *, evaluation_contract=None, measurement_static=None):
     if not isinstance(value, dict) or not {"goals", "released", "objects"}.issubset(value):
         raise ValueError("evaluator_state requires goals, released and objects")
     output = deepcopy(value)
@@ -195,6 +195,13 @@ def validate_evaluator_state(value, goal_count):
         if not isinstance(item.get("release_evidence"), dict):
             raise ValueError("object release requires explicit physical evidence")
     json_bytes(output)
+    if evaluation_contract is not None:
+        from .evaluation import validate_evaluation_contract
+        from .release_geometry import validate_measurement_frame
+        contract = validate_evaluation_contract(evaluation_contract)
+        validate_measurement_frame(output, contract, measurement_static)
+    elif "measurement" in output:
+        raise ValueError("legacy evaluator cannot silently consume versioned measurement")
     return output
 
 
@@ -206,7 +213,9 @@ def _action(value):
 
 
 def _validate_result(result, episode):
-    if result.get("schema_version") != RESULT_SCHEMA or result.get("protocol_version") != PROTOCOL:
+    from .evaluation import result_contract
+    contract = result_contract(result)
+    if result.get("protocol_version") != PROTOCOL:
         raise ValueError("not a FINISH-v1 episode; legacy scores/STOP records cannot be mixed")
     mode, status = result["mode"], result["status"]
     if mode not in {"active", "shadow"} or status not in {"completed", "runtime_error"}:
@@ -230,13 +239,26 @@ def _validate_result(result, episode):
     if not isinstance(initial, list) or not initial or any(type(item) is not bool for item in initial):
         raise ValueError("invalid source mask")
     if episode is not None:
-        for key in ("episode_id", "instruction", "initial_mask"):
+        source_keys = ("episode_id", "instruction", "initial_mask")
+        if contract is not None:
+            source_keys += ("state_sha256", "task_id", "seed")
+        for key in source_keys:
             if result.get(key) != episode[key]:
                 raise ValueError("FINISH result belongs to a different source episode/instruction")
+    if contract is not None and (trace or status == "completed"):
+        from .release_geometry import validate_measurement_static
+        validate_measurement_static(result.get("measurement_static"))
+        if (result["measurement_static"]["compiled_model_xml_sha256"] != result.get("model_xml_sha256")
+                or episode is not None and result.get("model_xml_sha256") != episode.get("model_xml_sha256")):
+            raise ValueError("measurement static XML differs from the frozen source episode")
     for step, row in enumerate(trace):
         if type(row.get("step")) is not int or row["step"] != step:
             raise ValueError("FINISH trace must be a continuous prefix starting at zero")
-        validate_evaluator_state({key: row[key] for key in ("goals", "released", "objects")}, len(initial))
+        fields = ("goals", "released", "objects", "release_evidence", "measurement") if contract is not None else ("goals", "released", "objects")
+        validate_evaluator_state({key: row[key] for key in fields}, len(initial),
+            **({"evaluation_contract": contract, "measurement_static": result.get("measurement_static")} if contract is not None else {}))
+        if contract is None and "measurement" in row:
+            raise ValueError("legacy trace cannot carry silently upgraded release evidence")
         if step == 0:
             if row.get("action") is not None or row.get("action_kind") != "initial":
                 raise ValueError("step zero is the pre-action state")

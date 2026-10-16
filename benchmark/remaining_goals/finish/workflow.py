@@ -10,6 +10,8 @@ import uuid
 
 from .data import read_json, canonical_hash, _contained, validate_split
 from .schema import PROTOCOL
+from .evaluation import (JOB_SCHEMA_V3, PLAN_SCHEMA_V3, RUN_SCHEMA_V3, CALIBRATION_SCHEMA_V3,
+                         validate_evaluation_contract, budget_plan)
 
 RUN_SCHEMA = "remaining-finish-run-v1"
 BANK_SCHEMA = "remaining-finish-normal-bank-v1"
@@ -261,12 +263,18 @@ def _validate_normal_preparation(root, report_path, report, episode, index, envi
 def dry_plan(config):
     """No simulator imports, checkpoint deserialization, prediction or training."""
     version = config.get("schema_version")
-    if version not in {"remaining-finish-job-v1", "remaining-finish-job-v2"}:
+    if version not in {"remaining-finish-job-v1", "remaining-finish-job-v2", JOB_SCHEMA_V3}:
         raise ValueError("unsupported finish job config")
-    two_domains = version == "remaining-finish-job-v2"
+    versioned = version == JOB_SCHEMA_V3
+    contract = validate_evaluation_contract(config.get("evaluation_contract")) if versioned else None
+    if not versioned and "evaluation_contract" in config:
+        raise ValueError("legacy job cannot silently select a new evaluation contract")
+    two_domains = version in {"remaining-finish-job-v2", JOB_SCHEMA_V3}
     purpose = config["purpose"]
     if purpose not in PURPOSES:
         raise ValueError("invalid finish purpose")
+    if versioned and purpose == "remain_shadow":
+        raise ValueError("task010 budget authorizes new calibration, normal active and Remain active only")
     mode, split_name = PURPOSES[purpose]
     registry, source_id, members = None, None, None
     if two_domains:
@@ -330,12 +338,16 @@ def dry_plan(config):
     threshold, calibration = 0.5, None
     if mode == "active":
         calibration = read_json(config["calibration"])
-        expected_schema = "remaining-finish-calibration-v2" if two_domains else "remaining-finish-calibration-v1"
+        expected_schema = CALIBRATION_SCHEMA_V3 if versioned else "remaining-finish-calibration-v2" if two_domains else "remaining-finish-calibration-v1"
         if (calibration.get("schema_version") != expected_schema or
                 calibration.get("calibration_sha256") != canonical_hash({k:v for k,v in calibration.items() if k != "calibration_sha256"}) or
                 calibration.get("calibrated") is not True or
                 calibration.get("binding", {}).get("head_sha256") != head["artifact_sha256"]):
             raise ValueError("active requires this head's complete useful normal-validation calibration")
+        if versioned:
+            _validate_active_calibration(calibration, contract, source_id)
+        elif "evaluation_contract" in calibration or calibration.get("sensitivity_only") is True:
+            raise ValueError("legacy active cannot consume versioned or sensitivity calibration")
         if two_domains:
             expected_members = registry_members(registry, EVAL_DOMAIN, "normal_calibration")
             if (calibration.get("source_identity") != source_id
@@ -373,20 +385,82 @@ def dry_plan(config):
                         "Legacy Remain index, saved edited states, model XML, BDDL and source/replay evidence are validated. Registered raw init state identity is an index association, not a claim that edited/saved state equals raw init or a retroactive pre-settle provenance record."))
     else:
         plan["split"] = split
+    if versioned:
+        plan.update(schema_version=PLAN_SCHEMA_V3, evaluation_contract=deepcopy(contract), budget_revision=budget_plan())
+        plan["environment_config"]["evaluation_contract"] = deepcopy(contract)
+        _validate_plan_evaluation(plan)
     plan["plan_sha256"] = canonical_hash(plan)
     return plan
 
 
+def _validate_active_calibration(report, contract, source_id):
+    """A derived table or a mismatched observer is never an active threshold."""
+    if (validate_evaluation_contract(report.get("evaluation_contract")) != contract
+            or report.get("release_method") != contract["release_method"]
+            or report.get("calibration_rule") != contract["calibration_rule"]
+            or report.get("thresholds") != contract["thresholds"]
+            or report.get("sensitivity_only") is not False or report.get("active_eligible") is not True
+            or report.get("validation_evidence_valid") is not True
+            or report.get("status") != "candidate_threshold_frozen"
+            or report.get("binding", {}).get("evaluation_contract_sha256") != contract["contract_sha256"]
+            or report.get("binding", {}).get("source_identity_sha256") != canonical_hash(source_id)):
+        raise ValueError("active requires a formally bound task010 calibration, never sensitivity-only data")
+    threshold = report.get("selected_threshold")
+    if type(threshold) not in (int, float) or threshold not in contract["thresholds"]:
+        raise ValueError("active calibration has no valid frozen threshold; no fallback")
+    if report.get("timely_steps") != 24 or report.get("confirmation_steps") != 4:
+        raise ValueError("active calibration timing rule differs from task010")
+    candidates = report.get("candidates")
+    if not isinstance(candidates, list) or [item.get("threshold") for item in candidates] != contract["thresholds"]:
+        raise ValueError("active calibration is missing its full frozen threshold search")
+    feasible = [item for item in candidates if item.get("premature") == 0
+                and item.get("unknown_first_hit") == 0 and item.get("timing_unknown") == 0]
+    chosen = max(feasible, key=lambda row: (row.get("robust_timely", -1), row["threshold"])) if feasible else None
+    if (report.get("expected") != 5 or report.get("completed") != 5 or report.get("errors") != 0
+            or report.get("missing") != 0 or report.get("issues") != []
+            or chosen is None or chosen.get("robust_timely", 0) <= 0 or chosen["threshold"] != threshold):
+        raise ValueError("active calibration selected no useful robust candidate on all five sources")
+
+
+def _validate_plan_evaluation(plan):
+    if plan.get("schema_version") != PLAN_SCHEMA_V3:
+        if ("evaluation_contract" in plan or "budget_revision" in plan
+                or "evaluation_contract" in plan.get("environment_config", {})
+                or "evaluation_contract" in plan.get("config", {})):
+            raise ValueError("legacy plan cannot silently upgrade its measurement contract")
+        return None
+    contract = validate_evaluation_contract(plan.get("evaluation_contract"))
+    if (plan["config"].get("schema_version") != JOB_SCHEMA_V3
+            or plan["config"].get("evaluation_contract") != contract
+            or plan["environment_config"].get("evaluation_contract") != contract
+            or plan.get("budget_revision") != budget_plan()
+            or plan.get("purpose") == "remain_shadow"):
+        raise ValueError("versioned job/plan/environment/budget contracts differ")
+    if "evaluation_contract" in plan["policy_config"] or "measurement" in plan["policy_config"]:
+        raise ValueError("evaluator contract must stay outside policy configuration")
+    threshold = plan.get("threshold")
+    if (type(threshold) not in (int, float) or threshold not in contract["thresholds"]
+            or plan["policy_config"].get("finish", {}).get("threshold") != threshold
+            or plan["mode"] == "shadow" and threshold != 0.5):
+        raise ValueError("frozen plan and policy threshold differ")
+    return contract
+
+
 def evidence_identity(metadata, episode):
-    return {**{k: metadata[k] for k in ("run_id", "run_config_sha256", "manifest_hash", "mode", "head_sha256")},
+    identity = {**{k: metadata[k] for k in ("run_id", "run_config_sha256", "manifest_hash", "mode", "head_sha256")},
             "protocol_version": PROTOCOL, "episode_id": episode["episode_id"],
             "state_sha256": episode["state_sha256"], **metadata["configuration"]}
+    if metadata.get("schema_version") == RUN_SCHEMA_V3:
+        identity["evaluation_contract"] = validate_evaluation_contract(metadata.get("evaluation_contract"))
+        identity["threshold"] = metadata["plan"]["threshold"]
+    return identity
 
 
 def _identity_fields(plan):
     common = ("manifest_hash", "mode", "purpose", "head_sha256", "configuration", "episodes")
-    return common + (("source_identity", "eval_domain", "eval_role", "eval_members", "ancestry_independence")
-                     if plan.get("schema_version") == "remaining-finish-plan-v2" else ("split",))
+    fields = common + (("source_identity", "eval_domain", "eval_role", "eval_members", "ancestry_independence")
+                     if plan.get("schema_version") in {"remaining-finish-plan-v2", PLAN_SCHEMA_V3} else ("split",))
+    return fields + (("evaluation_contract", "budget_revision") if plan.get("schema_version") == PLAN_SCHEMA_V3 else ())
 
 
 def _validate_plan_domains(plan):
@@ -423,6 +497,8 @@ def _normal_capability(summary, purpose):
     def complete(row):
         return bool(row.get("goals_at_exit")) and all(row["goals_at_exit"]) and row.get("released_at_exit") is True
     def timely(row):
+        if "evaluation_contract" in summary:
+            return complete(row) and (row.get("timing_diagnostic") or {}).get("timely") is True
         delay = row.get("finish_delay_steps")
         return complete(row) and row.get("delay_status") == "observed" and delay is not None and 0 <= delay <= 24
     def count(predicate):
@@ -442,6 +518,11 @@ def _normal_capability(summary, purpose):
         "unknown": summary["counts"]["unknown"], "technical_error": summary["counts"]["technical_error"],
         "missing": summary["counts"]["missing"],
         "notice": "All proportions use the fixed normal-test N. Completion at exit requires every goal and known release; correct timing alone does not assert hold compliance. The 90% completion / 10% premature pilot guidance is not a software acceptance gate or automatic Remain block."}
+    if "evaluation_contract" in summary:
+        summary["ordinary_stopping_capability"].update(
+            evaluation_contract=deepcopy(summary["evaluation_contract"]),
+            timing_unknown=count(lambda row: (row.get("timing_diagnostic") or {}).get("timing_unknown") is True),
+            timely_rule="first-hit correct and timely under every permitted unknown completion")
     return summary
 
 
@@ -479,7 +560,7 @@ def run(config, output, *, policy_factory=None, env_factory=None, recorder_facto
     from .metrics import summarize
     out = Path(output).resolve()
     out.mkdir(parents=True, exist_ok=False)
-    metadata = {"schema_version": RUN_SCHEMA_V2 if plan.get("schema_version") == "remaining-finish-plan-v2" else RUN_SCHEMA, "protocol_version": PROTOCOL,
+    metadata = {"schema_version": RUN_SCHEMA_V3 if plan.get("schema_version") == PLAN_SCHEMA_V3 else RUN_SCHEMA_V2 if plan.get("schema_version") == "remaining-finish-plan-v2" else RUN_SCHEMA, "protocol_version": PROTOCOL,
                 "run_id": uuid.uuid4().hex, "run_config_sha256": plan["plan_sha256"],
                 **{k:deepcopy(plan[k]) for k in _identity_fields(plan)},
                 "plan": plan, "status": "running", "results": [], "error": None,
@@ -521,7 +602,9 @@ def run(config, output, *, policy_factory=None, env_factory=None, recorder_facto
                         attempt["video"] = {"status": "video_error", "error": f"{type(error).__name__}: {error}"}
                 raise
             phase = attempt["phase"] = "rollout"
-            result = run_finish_episode(env, policy, episode, mode=plan["mode"], recorder=recorder, evidence=evidence, **plan["configuration"])
+            result = run_finish_episode(env, policy, episode, mode=plan["mode"], recorder=recorder, evidence=evidence,
+                **plan["configuration"], **({"evaluation_contract": plan["evaluation_contract"],
+                    "expected_threshold": plan["threshold"]} if "evaluation_contract" in plan else {}))
             # Persist before offline checks: a video/evidence verification failure
             # must not erase the actual executed actions or captured inputs.
             relative = f"raw/{key}.json"
@@ -573,7 +656,8 @@ def run(config, output, *, policy_factory=None, env_factory=None, recorder_facto
                         metadata.update(error=error, error_phase="resource_close")
                     metadata["interrupted"] = metadata["interrupted"] or isinstance(exc, (KeyboardInterrupt, SystemExit))
         write_json(out/"run.json", metadata, update=True)
-    summary = summarize(plan["episodes"], results, mode=plan["mode"])
+    summary = summarize(plan["episodes"], results, mode=plan["mode"],
+        **({"evaluation_contract": plan["evaluation_contract"]} if "evaluation_contract" in plan else {}))
     summary["workflow_status"] = metadata["status"]
     summary["unverified_raw_results"] = [r["episode_id"] for r in metadata["results"] if r["validation"]["status"] == "error"]
     summary["notice"] += " Unverified raw results, if present, are technical failures in this diagnostic summary; offline scoring rejects them."
@@ -589,17 +673,21 @@ def read_run(directory):
     from .schema import validate_finish_result
     directory = Path(directory)
     metadata = read_json(directory/"run.json")
-    if metadata.get("schema_version") not in {RUN_SCHEMA, RUN_SCHEMA_V2} or metadata.get("protocol_version") != PROTOCOL:
+    if metadata.get("schema_version") not in {RUN_SCHEMA, RUN_SCHEMA_V2, RUN_SCHEMA_V3} or metadata.get("protocol_version") != PROTOCOL:
         raise ValueError("unsupported/mixed run schema; legacy STOP is not FINISH")
     plan = metadata["plan"]
     if plan["plan_sha256"] != canonical_hash({k:v for k,v in plan.items() if k != "plan_sha256"}) or metadata["run_config_sha256"] != plan["plan_sha256"]:
         raise ValueError("run plan hash mismatch")
-    if metadata["schema_version"] == RUN_SCHEMA_V2:
-        if plan.get("schema_version") != "remaining-finish-plan-v2":
+    contract = _validate_plan_evaluation(plan)
+    if metadata["schema_version"] in {RUN_SCHEMA_V2, RUN_SCHEMA_V3}:
+        expected_plan = PLAN_SCHEMA_V3 if metadata["schema_version"] == RUN_SCHEMA_V3 else "remaining-finish-plan-v2"
+        if plan.get("schema_version") != expected_plan:
             raise ValueError("two-domain run cannot contain a legacy plan")
         _validate_plan_domains(plan)
     elif plan.get("schema_version") != "remaining-finish-plan-v1":
         raise ValueError("legacy run cannot contain a two-domain plan")
+    if metadata["schema_version"] != RUN_SCHEMA_V3 and ("evaluation_contract" in metadata or "budget_revision" in metadata):
+        raise ValueError("legacy run metadata cannot contain a new evaluation contract")
     for key in _identity_fields(plan):
         if metadata[key] != plan[key]:
             raise ValueError("run metadata differs from frozen plan")
@@ -619,6 +707,10 @@ def read_run(directory):
         if reference.get("validation", {}).get("status") in {"error", "pending"}:
             raise ValueError("unverified raw FINISH result retained for diagnosis; cannot rescore")
         validate_finish_result(result, expected[name])
+        from .evaluation import result_contract
+        actual_contract = result_contract(result, contract)
+        if actual_contract != contract:
+            raise ValueError("result and run measurement versions differ")
         validate_finish_evidence(directory, result, expected[name], evidence_identity(metadata, expected[name]))
         video = result.get("video", {})
         if result["status"] == "completed" and video.get("status") != "saved":
@@ -645,7 +737,8 @@ def rescore(directory, output, *, stable_steps=4):
     metadata, results = read_run(directory)
     out = _derived_output(directory, output)
     out.mkdir(parents=True, exist_ok=False)
-    summary = summarize(metadata["episodes"], results, mode=metadata["mode"], stable_steps=stable_steps)
+    summary = summarize(metadata["episodes"], results, mode=metadata["mode"], stable_steps=stable_steps,
+        **({"evaluation_contract": metadata["evaluation_contract"]} if "evaluation_contract" in metadata else {}))
     _normal_capability(summary, metadata["purpose"])
     summary["workflow_status"] = metadata["status"]
     summary["source_run_sha256"] = file_sha(Path(directory)/"run.json")
@@ -659,11 +752,12 @@ def calibrate(directory, output):
     metadata, results = read_run(directory)
     if metadata["purpose"] != "validation_shadow":
         raise ValueError("calibration uses only the planned normal-validation shadow run")
-    if metadata["schema_version"] == RUN_SCHEMA_V2:
+    if metadata["schema_version"] in {RUN_SCHEMA_V2, RUN_SCHEMA_V3}:
         episodes = [{"episode_id": e["episode_id"], "initial_state_index": e["initial_state_index"],
                      "eval_source": deepcopy(e["eval_source"])} for e in metadata["episodes"]]
         report = calibrate_threshold(episodes, results, source_registry=metadata["plan"]["source_registry"],
-                                     split_identity=metadata["source_identity"])
+            split_identity=metadata["source_identity"],
+            **({"evaluation_contract": metadata["evaluation_contract"]} if "evaluation_contract" in metadata else {}))
     else:
         episodes = [{"episode_id":e["episode_id"], "source_index":e["initial_state_index"], "split":"validation"}
                     for e in metadata["episodes"]]
@@ -671,9 +765,34 @@ def calibrate(directory, output):
                                      split_identity=metadata["plan"]["head_split_identity"])
     report["binding"] = {"head_sha256": metadata["head_sha256"], "run_id": metadata["run_id"],
                          "source_run_sha256": file_sha(Path(directory)/"run.json")}
+    if metadata["schema_version"] == RUN_SCHEMA_V3:
+        report["binding"].update(evaluation_contract_sha256=metadata["evaluation_contract"]["contract_sha256"],
+                                 source_identity_sha256=canonical_hash(metadata["source_identity"]))
     report.pop("calibration_sha256", None)
     report["calibration_sha256"] = canonical_hash(report)
     out = _derived_output(directory, output)
     out.mkdir(parents=True, exist_ok=False)
     write_json(out/"calibration.json", report)
+    return report
+
+
+def sensitivity(directory, output):
+    """Derived 2x2 table from one fully verified new five-episode shadow run."""
+    from .calibration_v2 import sensitivity_table
+    metadata, results = read_run(directory)
+    if metadata["schema_version"] != RUN_SCHEMA_V3 or metadata["purpose"] != "validation_shadow":
+        raise ValueError("sensitivity requires the new task010 normal-calibration shadow evidence")
+    episodes = [{"episode_id": e["episode_id"], "initial_state_index": e["initial_state_index"],
+                 "eval_source": deepcopy(e["eval_source"])} for e in metadata["episodes"]]
+    report = sensitivity_table(episodes, results, evaluation_contract=metadata["evaluation_contract"],
+                              source_registry=metadata["plan"]["source_registry"], split_identity=metadata["source_identity"])
+    report["binding"] = {"head_sha256": metadata["head_sha256"], "run_id": metadata["run_id"],
+                         "source_run_sha256": file_sha(Path(directory)/"run.json"),
+                         "evaluation_contract_sha256": metadata["evaluation_contract"]["contract_sha256"],
+                         "source_identity_sha256": canonical_hash(metadata["source_identity"])}
+    report.pop("sensitivity_sha256", None)
+    report["sensitivity_sha256"] = canonical_hash(report)
+    out = _derived_output(directory, output)
+    out.mkdir(parents=True, exist_ok=False)
+    write_json(out/"sensitivity.json", report)
     return report

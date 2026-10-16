@@ -78,7 +78,7 @@ def _first_stable(truth, horizon, confirmation_steps):
 
 def calibrate_threshold(episodes, results, *, thresholds=THRESHOLDS, timely_steps=24,
                         confirmation_steps=4, expected_validation_sources=None, split_identity=None,
-                        source_registry=None):
+                        source_registry=None, evaluation_contract=None):
     """Search first p>=threshold on a fixed expected normal-validation population.
 
     With source_registry, each episode explicitly carries its official-init
@@ -90,8 +90,17 @@ def calibrate_threshold(episodes, results, *, thresholds=THRESHOLDS, timely_step
     crossing means stopping capability remains unestablished. Active independent
     testing remains required for every threshold, including a good shadow one.
     """
+    if evaluation_contract is not None:
+        from .calibration_v2 import calibrate_v2
+        return calibrate_v2(episodes, results, thresholds=thresholds, timely_steps=timely_steps,
+                            confirmation_steps=confirmation_steps, expected_validation_sources=expected_validation_sources,
+                            split_identity=split_identity, source_registry=source_registry,
+                            evaluation_contract=evaluation_contract)
     if not isinstance(episodes, list) or not episodes or not isinstance(results, list):
         raise ValueError("calibration needs expected episodes and result lists")
+    if any(isinstance(result, dict) and (result.get("schema_version") == "remaining-finish-episode-v2"
+               or "evaluation_contract" in result) for result in results):
+        raise ValueError("v2 calibration results require an explicit matching evaluation_contract")
     if type(timely_steps) is not int or timely_steps < 0 or type(confirmation_steps) is not int or confirmation_steps < 1:
         raise ValueError("invalid calibration timing contract")
     thresholds = list(thresholds)

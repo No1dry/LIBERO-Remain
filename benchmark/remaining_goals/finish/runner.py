@@ -13,7 +13,8 @@ from .schema import (PROTOCOL, RESULT_SCHEMA, integer, input_sha256, json_bytes,
 
 
 def run_finish_episode(env, policy, episode, *, mode="active", horizon=520,
-                       retention_steps=150, max_chunk_steps=8, recorder=None, evidence=None):
+                       retention_steps=150, max_chunk_steps=8, recorder=None, evidence=None,
+                       evaluation_contract=None, expected_threshold=None):
     """Run all masks under the same H budget; FINISH and timeout both hold W.
 
     Only raw whitelisted observations and the original instruction reach the
@@ -22,6 +23,8 @@ def run_finish_episode(env, policy, episode, *, mode="active", horizon=520,
     Optional video/evidence failures are technical errors in this new protocol.
     """
     started = perf_counter()
+    from .evaluation import optional_contract, RESULT_SCHEMA_V2
+    contract = optional_contract(evaluation_contract)
     result = {key: deepcopy(episode.get(key)) for key in (
         "episode_id", "task_id", "suite", "task_name", "instruction", "initial_mask", "seed", "state_sha256")}
     result.update(schema_version=RESULT_SCHEMA, protocol_version=PROTOCOL, mode=mode,
@@ -29,6 +32,9 @@ def run_finish_episode(env, policy, episode, *, mode="active", horizon=520,
                   status="runtime_error", error=None, error_phase=None, exit_reason=None,
                   finish_step=None, timeout_step=None, n_steps=0, policy_queries=0,
                   hold_contract=None, trace=[], queries=[], executed_actions=[])
+    if contract is not None:
+        result.update(schema_version=RESULT_SCHEMA_V2, evaluation_contract=contract, measurement_static=None,
+                      model_xml_sha256=episode.get("model_xml_sha256"))
     phase, pending = "validate_episode", None
 
     def checkpoint():
@@ -40,7 +46,8 @@ def run_finish_episode(env, policy, episode, *, mode="active", horizon=520,
             recorder.capture(deepcopy(raw), step=step)
 
     def snapshot(action, kind, cause=None, sequence=None, index=None):
-        truth = validate_evaluator_state(env.evaluator_state(), len(episode["initial_mask"]))
+        truth = validate_evaluator_state(env.evaluator_state(), len(episode["initial_mask"]),
+            **({"evaluation_contract": contract, "measurement_static": result["measurement_static"]} if contract is not None else {}))
         # Evaluator extras cannot replace the control ledger's authoritative fields.
         row = {**truth, "step": result["n_steps"], "action": deepcopy(action), "action_kind": kind,
                "hold_cause": cause, "query_sequence": sequence, "chunk_index": index}
@@ -87,6 +94,14 @@ def run_finish_episode(env, policy, episode, *, mode="active", horizon=520,
             evidence.begin_episode(deepcopy(episode), mode=mode, configuration=deepcopy(result["configuration"]))
         phase = "env_reset"
         raw = env.reset(deepcopy(episode))
+        if contract is not None:
+            phase = "measurement_static"
+            from .release_geometry import validate_measurement_static
+            result["measurement_static"] = deepcopy(env.measurement_static())
+            validate_measurement_static(result["measurement_static"])
+            if result["measurement_static"]["compiled_model_xml_sha256"] != result["model_xml_sha256"]:
+                raise ValueError("measurement static XML differs from the frozen source episode")
+            json_bytes(result["measurement_static"])
         phase = "video_capture"
         capture(raw, 0)
         phase = "observation"
@@ -113,6 +128,8 @@ def run_finish_episode(env, policy, episode, *, mode="active", horizon=520,
             raw_prediction = policy.predict(observation, instruction)
             phase = "validate_policy_result"
             prediction = validate_policy_result(raw_prediction)
+            if expected_threshold is not None and prediction["threshold"] != expected_threshold:
+                raise ValueError("policy threshold differs from the frozen evaluation plan")
             if fixed_head is None:
                 fixed_head, fixed_threshold = prediction["head_identity"], prediction["threshold"]
             if prediction["head_identity"] != fixed_head or prediction["threshold"] != fixed_threshold:
@@ -146,11 +163,11 @@ def run_finish_episode(env, policy, episode, *, mode="active", horizon=520,
                 observation = apply(action, "policy", sequence=sequence, index=index)
             # The next query is allowed only after this accepted prefix is exhausted.
         phase = "begin_hold"
-        contract = env.begin_hold()
-        if not isinstance(contract, dict) or not contract:
+        hold_contract = env.begin_hold()
+        if not isinstance(hold_contract, dict) or not hold_contract:
             raise ValueError("begin_hold must declare its explicit controller contract")
-        json_bytes(contract)
-        result["hold_contract"] = deepcopy(contract)
+        json_bytes(hold_contract)
+        result["hold_contract"] = deepcopy(hold_contract)
         for _ in range(retention_steps):
             phase = "hold_action"
             action = _actions(env.hold_action(), hold=True)

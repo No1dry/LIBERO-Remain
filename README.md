@@ -10,6 +10,8 @@ LIBERO-Remain 是 Learning_Not_to_Act 的可复用评测套件。仓库改名和
 
 Stage04 新增独立 **FINISH-v1**：basket / 冻结 SOG10 OFT 的只读 action-token 特征与小停止头、主动／shadow 评测、物理保持、自动禁止投放判定、实际输入与录像证据。008将HDF头训练轨迹与official init评测初态分为两个明确来源域，实际文件与分组身份贯穿audit/cache/head/calibration/job；物理祖源独立性仍未证明。入口 `python -m benchmark.remaining_goals.finish.cli --help`；新实验完整逐步命令见 [两来源域runbook](docs/finish_two_domains_runbook.md)，[007旧手册](docs/finish_v1_runbook.md)保留追踪。所有真实实验由用户启动；旧评测入口、JSR/UIR 和历史结果保持原协议。
 
+010在观察旧pilot后显式注册新的释放测量与first-hit／鲁棒tau校准，旧默认、旧结果和原head训练合同保留。新5条shadow沿用已准备初态，累计模型预算35；配置、版本表与独立运行命令见[版本化测量与校准手册](docs/finish_versioned_release_runbook.md)。软件实现不代表已建立停止能力，真实阶段须待审查部署后由用户逐项启动。
+
 ## 当前范围
 
 | 内容 | 状态 |
