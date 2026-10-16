@@ -1,3 +1,5 @@
+> 2026-10-16结果：本页5条shadow已由用户完整执行；既定离线校准尚未建立，selected_threshold=null。**不要重复本命令或直接进入active。** 当前进入[R10释放测量审计](../../collaboration/reviews/008_round10.md)，详见[结果总结](../stage_summaries/stage04_shadow_calibration_unestablished_2026-10-16.md)。下文仅历史。
+
 # Stage04：5条普通任务shadow停止校准采集
 
 2026-10-16。15个官方初态来源及纯文件08_shadow_plan均已accepted；实际实验仍由用户亲自启动，Codex未创建sim／运行VLA。前序audit／features／head训练／parity／normal-bank均完成，不重跑。
