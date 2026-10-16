@@ -20,7 +20,7 @@ Stage03的固定15条主pilot＋10条oracle诊断已完成；旧JSR主10=40%（2
 
 | 任务 | 状态 | 交付／裁决 |
 |---|---|---|
-| [009 最小释放测量诊断](tasks/009_release_observability_replay.md) | submitted，待Codex审查；真实run未启动 | [X交付](responses/009_round1.md)，实现5410355；全套1985 passed／15 skipped，新增155项全通过。独立plan/run、来源SHA复核、首差异停、typed侧录；只35号最多292动作，不改release/calibration |
+| [009 最小释放测量诊断](tasks/009_release_observability_replay.md) | submitted，[PR #6](https://github.com/No1dry/LIBERO-Remain/pull/6) open/unmerged；真实run未启动 | [X交付](responses/009_round1.md)，实现5410355；全套1985 passed／15 skipped，新增155项全通过。独立plan/run、来源SHA复核、首差异停、typed侧录；只35号最多292动作，不改release/calibration |
 | [008 两来源域数据合同](tasks/008_finish_data_source_domains.md) | 原代码/采集accepted；PR #5已合并；校准未建立，未closed | main合并3d361f4，已审生产不变，保留R11/009文档；[X只读回复](https://github.com/No1dry/LIBERO-Remain/blob/54364ebb579d38a81d2d9396585d084cb9ac21da/collaboration/responses/008_round6.md)，原uncalibrated不改；转009最小诊断 |
 | 001 指标与人工UIR | closed | PR #1已合并；交流仍保留供后续追踪 |
 | 002 venv路径修复 | closed | 同上；阶段总结与本地备份已核验 |

@@ -10,7 +10,7 @@
 | 已审PR #5的合并head | `7d4ad719f92e356239a5d1bff6616534ba75a3f1` |
 | PR #5合入main／009分支基准 | `3d361f44a9393638d41738d375004e8ea7794301` |
 | 本轮已测试实现 | `5410355436ef0f418f0c95c47293efbdce905b07` |
-| 最终交付 | 相对已测试实现仅增加本回复与STATUS；完整最终SHA及独立PR在PR正文登记并核验 |
+| 最终交付 | [独立PR #6](https://github.com/No1dry/LIBERO-Remain/pull/6)，open/unmerged；相对已测试实现仅增加本回复与STATUS，完整最终SHA在PR正文登记并核验 |
 
 [PR #5](https://github.com/No1dry/LIBERO-Remain/pull/5)已按R9 accepted及009明确授权合并，保留最新main的R11／009文档，已审生产代码不变。本轮独立分支为`x/task009-release-observability`，不自行合并009。
 
