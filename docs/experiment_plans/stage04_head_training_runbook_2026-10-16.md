@@ -1,3 +1,5 @@
+> 2026-10-16完成记录：用户已完成本页05_train，50/50轮（100%）、status=finished，Codex已核验全部日志和头工件。**勿重复训练**。notice是正常输出，不是失败；现在使用[动作parity命令](../stage_summaries/stage04_head_training_pass_2026-10-16.md)。以下原命令仅保留为历史。
+
 # Stage04：已验收特征缓存上的FINISH小头训练
 
 2026-10-16。仅用户启动05_train；不串联parity、校准或eval。冻结源码3433f487d38efe0a08e4c814e87412aad5aba9fe。04_features及原audit已完成，不重跑，不覆盖旧失败。

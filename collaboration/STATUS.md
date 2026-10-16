@@ -10,7 +10,7 @@
 
 ## 当前阶段
 
-Stage04 / [Plan4](../docs/experiment_plans/stage04_finish_protocol.md)：统一FINISH接口控制未学停止混淆。R9软件accepted后，用户3433f48特征重导出1261/1261完成（100%），Codex已逐文件验收全部cache。原audit仍复用；下一步用户启动[05_train小头训练](../docs/experiment_plans/stage04_head_training_runbook_2026-10-16.md)，不重做audit/features。当前无真实训练完成／parity／停止校准或新模型评分，008／Stage04未closed。
+Stage04 / [Plan4](../docs/experiment_plans/stage04_finish_protocol.md)：统一FINISH接口控制未学停止混淆。原audit、1261/1261特征和用户05_train均accepted；50/50轮完成（100%），head artifact6636f713…，最佳epoch46／普通val BCE0.001525。下一步用户启动[32输入动作parity](../docs/stage_summaries/stage04_head_training_pass_2026-10-16.md)，不重训。尚未证明普通停止能力或给出新模型成功率，008／Stage04未closed。
 
 默认设计：冻结OFT动作网络，只训练小finish head；普通00数据分组训练／校准／独立测试，当前外部10/01/11留作测试；active与shadow分开，新协议H520/W150所有mask一致，FINISH后或超时后做真实物理保持，无GT许可停车。原始无FINISH模型仅历史参考，新主指标不把不支持写成0%。
 
@@ -20,7 +20,7 @@ Stage03的固定15条主pilot＋10条oracle诊断已完成；旧JSR主10=40%（2
 
 | 任务 | 状态 | 交付／裁决 |
 |---|---|---|
-| [008 两来源域数据合同](tasks/008_finish_data_source_domains.md) | R9软件／真实audit／完整features accepted；待用户05_train，未closed | 3433f48重试1261/1261（100%），4096维FP32；1071train/190val，unknown52排除，全部输入hash/NPZ/label/source核验；[验收总结](../docs/stage_summaries/stage04_feature_export_pass_2026-10-16.md)／[训练命令](../docs/experiment_plans/stage04_head_training_runbook_2026-10-16.md) |
+| [008 两来源域数据合同](tasks/008_finish_data_source_domains.md) | 软件／audit／features／05_train accepted；待用户06_parity，未closed | 50/50轮finished、exit0/tee0，head6636f713…／best epoch46，全部日志／NPZ／来源hash核验；不是训练失败。[验收与下一命令](../docs/stage_summaries/stage04_head_training_pass_2026-10-16.md) |
 | 001 指标与人工UIR | closed | PR #1已合并；交流仍保留供后续追踪 |
 | 002 venv路径修复 | closed | 同上；阶段总结与本地备份已核验 |
 | 003 正常00回归入口 | accepted，PR #2已合并 | main合并SHA 4a02c78c0b945c2df2f0748614fecdd1c5127f55；不在本轮伪造closed |
@@ -33,11 +33,11 @@ Stage03的固定15条主pilot＋10条oracle诊断已完成；旧JSR主10=40%（2
 
 ## 当前下一步
 
-**04_features已完成并accepted，不重跑audit或features。下一步用户亲自启动05_train。** 新冻结3433f487d38efe0a08e4c814e87412aad5aba9fe的本次1261次forward全部完成，exit0/tee0；1261×4096 float32 cache已通过Codex完整load_feature_cache、1313观测／1261输入NPZ及来源／标签／角色／dtype／hash复核。cache SHA5d09999ed6b91b1927eb02bf775d623d38064fbdca12503805a34ea01bcc8efc，绑定原audit44d0ab96…和原base4601be2d…；262源码／11部署文件不变。
+**用户05_train已成功，勿重训。** Codex读取完整1945行日志与training.json/head.json/head.npz，status=finished／50/50轮（100%）／exit0tee0，无错误；artifact6636f7133943d551df31a14822df440b63c1b98c0b3ee95f4873019492512c7f、权重cdb2f709…及来源／实现／文件hash核验。notice只说明未加载或训练原VLA，不是错误。最佳epoch46，普通验证BCE0.0015249；低BCE不代表真实停止泛化，验证正例仍仅demo_38两帧。
 
-[训练完整命令](../docs/experiment_plans/stage04_head_training_runbook_2026-10-16.md)，[特征验收总结](../docs/stage_summaries/stage04_feature_export_pass_2026-10-16.md)，[机器回执](../docs/stage_summaries/evidence/stage04_feature_cache_acceptance_2026-10-16.json)。在现有session用finish_model 05_train train，读取新OUT/features/cache、固定REPO/configs/remaining_goals/finish/train.json、输出新OUT/train；只训小头，CPU FP32／50轮，不加载真实VLA或改动作网络。训练1071（1048负23正），验证190（188负2正），unknown52排除；验证正例仅demo_38两帧限制不改。
+[完整验收与06_parity命令](../docs/stage_summaries/stage04_head_training_pass_2026-10-16.md)，[机器回执](../docs/stage_summaries/evidence/stage04_head_training_acceptance_2026-10-16.json)。用户在原3433 session启动finish_sim 06_parity parity，audit复用2cb成功目录、runtime保持75f2a711…、head取新OUT/train/head、输出新OUT/parity；32个不同HDF validation输入，原／shadow各1次共64forward、零容差、无sim。不重做audit、features、训练，不自动准备normal-bank或启动真实作业。
 
-Codex未启动训练／新模型forward／sim。用户完成训练后再核验head并交真实parity命令，随后正常停止控制和Remain；不以缓存完成冒充stop-capable。旧2cb失败forward数仍未知，旧partial/log全保留。PR #5本轮不自动合并；X按R9已审范围保留最新main文档。008／Stage04未closed，精确待删=[]。
+Codex只读JSON／NumPy验收，没有实例化研究头、头推理／VLA／sim／训练。parity尚未开始，之后才是普通停止校准／独立测试及Remain；没有stop-capable声明或新协议成功率。旧失败／成功原始数据和脏工作区全部保留；PR本轮不自动合并，008／Stage04未closed，精确待删=[]。
 
 以下007部署与数据准备经过保留为历史，不重复已经完成的预检。
 
