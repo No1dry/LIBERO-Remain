@@ -10,7 +10,7 @@
 
 ## 当前阶段
 
-Stage04 / [Plan4](../docs/experiment_plans/stage04_finish_protocol.md)：FINISH停止控制阶段。用户5/5普通shadow采集完成（100%），但既定离线校准capability_not_established、selected_threshold=null：0.99诊断点3及时/1释放unknown/1任务未完成不触发；4条整轨迹出现完成真值unknown。暂停normal_active／Remain，不重训、不改规则救分；[R10只读测量审计](reviews/008_round10.md)请X提案。原代码验收和已完成子阶段保留，008／Stage04未closed。
+Stage04 / [Plan4](../docs/experiment_plans/stage04_finish_protocol.md)：FINISH停止控制阶段。用户5/5普通shadow采集完成（100%），但既定离线校准capability_not_established、selected_threshold=null：0.99诊断点3及时/1释放unknown/1任务未完成不触发；4条整轨迹出现完成真值unknown。暂停normal_active／Remain，不重训、不改规则救分；X已提交[R10只读测量审计提案](responses/008_round6.md)，待Codex评议，未改实现或运行native诊断。原代码验收和已完成子阶段保留，008／Stage04未closed。
 
 默认设计：冻结OFT动作网络，只训练小finish head；普通00数据分组训练／校准／独立测试，当前外部10/01/11留作测试；active与shadow分开，新协议H520/W150所有mask一致，FINISH后或超时后做真实物理保持，无GT许可停车。原始无FINISH模型仅历史参考，新主指标不把不支持写成0%。
 
@@ -20,7 +20,7 @@ Stage03的固定15条主pilot＋10条oracle诊断已完成；旧JSR主10=40%（2
 
 | 任务 | 状态 | 交付／裁决 |
 |---|---|---|
-| [008 两来源域数据合同](tasks/008_finish_data_source_domains.md) | 软件/前序子阶段及5条shadow采集accepted；校准未建立；R10只读建议，未closed | 5/5（100%）完整，0.99诊断3及时（60%）/1unknown（20%）/1未触发（20%），不是任务成功率；[总结](../docs/stage_summaries/stage04_shadow_calibration_unestablished_2026-10-16.md)／[R10](reviews/008_round10.md) |
+| [008 两来源域数据合同](tasks/008_finish_data_source_domains.md) | 软件/前序子阶段及5条shadow采集accepted；校准未建立；R10只读提案submitted，未closed | 5/5完整，0.99诊断3及时/1unknown/1未触发，不是任务成功率；[总结](../docs/stage_summaries/stage04_shadow_calibration_unestablished_2026-10-16.md)／[R10](reviews/008_round10.md)／[X回应](responses/008_round6.md) |
 | 001 指标与人工UIR | closed | PR #1已合并；交流仍保留供后续追踪 |
 | 002 venv路径修复 | closed | 同上；阶段总结与本地备份已核验 |
 | 003 正常00回归入口 | accepted，PR #2已合并 | main合并SHA 4a02c78c0b945c2df2f0748614fecdd1c5127f55；不在本轮伪造closed |
@@ -37,7 +37,9 @@ Stage03的固定15条主pilot＋10条oracle诊断已完成；旧JSR主10=40%（2
 
 0.99只是网格诊断：init37/38/39首hit已完成释放且及时（60%），35首hit释放unknown（20%），36未全完成且未触发（20%）。另整轨迹unknown gate涉及35/37/38/39共80%；283帧完成真值unknown里281保守近手包络、2非双垫contact，异常缺字段0。无contact不能直接改release True，保守球重叠也不证明仍抓持；当前未发现明确实现bug，不撤销R9验收，不自动要求重训。[总结](../docs/stage_summaries/stage04_shadow_calibration_unestablished_2026-10-16.md)／[证据](../docs/stage_summaries/evidence/stage04_shadow_calibration_diagnosis_2026-10-16.json)。
 
-**下一步X回应[R10](reviews/008_round10.md)只读测量审计／方案，Codex审查后与用户确认任何协议修订或新增native诊断。** 暂不修改模型、release／unknown规则、阈值网格或分组；不拿unknown当失败／成功，不用normal_test/Remain救校准，不直接绕active门槛。优先复用原始数据，不新采VLA数据、不重训、不重跑；用户当前无需启动实验。
+**X已交[008 Round 6](responses/008_round6.md)，下一步由Codex评议；任何协议修订或新增native诊断仍须与用户确认。** 只读核对未发现明确实现bug；纯CPU fake复现了整轨迹门槛及tau受unknown影响的边界，生产代码与3433f48不变。本机未取得原raw/video树，不把汇总核对冒充完整原数据复核。固定MuJoCo2.3.7无mj_geomDistance；建议先复用现有文件，必要时另立只记录evaluator证据的有限重放任务（首选init35至292，0模型forward），当前尚未实现或执行。
+
+暂不修改模型、release／unknown规则、阈值网格或分组；不拿unknown当失败／成功，不用normal_test/Remain救校准，不直接绕active门槛。未来版本须保留旧结果、并列敏感性并披露事后提出的来源；优先复用原始数据，不新采VLA数据、不重训、不重跑；用户当前无需启动实验。
 
 shadow主指标N/A，不是0%；3/5及时不是新协议任务成功率。普通stop-capable及Remain核心研究现象尚未建立。已用5/30模型rollout预算，后续10normal+15Remain未开始；原始输入/视频/失败partial和脏工作区保留，不自动合并PR，007/008/Stage04未closed，精确待删=[]。
 
