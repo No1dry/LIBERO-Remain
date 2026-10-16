@@ -1,3 +1,5 @@
+> 2026-10-16进度更新：下文动作parity命令已由用户执行，32/32逐bit一致并获验收。不要重复parity；现在进入[普通初态来源准备](../experiment_plans/stage04_normal_bank_runbook_2026-10-16.md)。原训练与执行记录以下保留。
+
 # Stage04：FINISH小头训练完成；用户所贴结尾不是失败
 
 2026-10-16。裁决：**05_train子阶段accepted**，无需重训／返修。用户运行冻结3433f487d38efe0a08e4c814e87412aad5aba9fe，贴出artifact JSON与exit0/tee0后询问是否失败；Codex读取完整1945行日志、training.json、head.json和head.npz，只读核验完成。原始文件均保留并已按服务器SHA备份本地。
