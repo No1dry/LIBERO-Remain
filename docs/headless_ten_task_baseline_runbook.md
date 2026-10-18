@@ -2,6 +2,8 @@
 
 对应[Plan5](experiment_plans/stage05_ten_task_baseline.md)与[011](../collaboration/tasks/011_headless_ten_task_baseline.md)。本入口使用独立协议 `remaining-headless-goal-endpoint-v1`。代码验收后由Codex填写服务器路径、部署；**用户亲自启动所有真实状态构造、独立回放和模型评测**。本次软件交付只执行CPU/fake测试。
 
+**Task012 可选范围验收**：已有 mask10 状态与回放齐全时，可在独立 checkout 中只读复用，显式启用 mask10 验收，避免被未选 00/01/11 失败阻塞。见[配置复制与运行说明](task012_mask10_scoped_acceptance.md)；不要因此重做 prepare/replay 或修改运行中的旧准备。省略新配置项仍保留本页默认的全 mask 验收。
+
 ## 固定范围
 
 每任务官方初态索引 `0..9`，仅 `mask10`，policy seed 7，共100条。不是同一个状态重复10次。basket 0..4 已用于开发，记录 `development_source=true`，不声明全体未见测试。

@@ -3,6 +3,7 @@ from copy import deepcopy
 from datetime import datetime, timezone
 import json
 import csv
+import hashlib
 import os
 from pathlib import Path
 import uuid
@@ -51,7 +52,7 @@ def make_recorder(path, episode):
 
 
 def evidence_identity(metadata, episode):
-    return {"protocol_version": PROTOCOL, "run_id": metadata["run_id"],
+    identity = {"protocol_version": PROTOCOL, "run_id": metadata["run_id"],
             "batch_identity_sha256": metadata["batch_identity_sha256"],
             "source_plan_sha256": metadata["source_plan"]["source_plan_sha256"],
             "runtime_config_sha256": canonical_hash(metadata["runtime_config"]),
@@ -61,6 +62,36 @@ def evidence_identity(metadata, episode):
             "suite": episode["suite"], "evaluation_track": episode["evaluation_track"],
             "policy_seed": 7, "horizon": HORIZON, "confirmation_steps": CONFIRMATION,
             "max_chunk_steps": CHUNK}
+    scope = metadata["source_plan"].get("source_acceptance")
+    if scope is not None:
+        identity["source_acceptance"] = {key: deepcopy(scope[key]) for key in
+            ("schema_version", "acceptance_scope", "selection_sha256", "selected_episode_ids")}
+    return identity
+
+
+def _validate_source_snapshot(directory, plan):
+    """Recheck selected evidence without consulting the live preparation tree."""
+    if "source_acceptance" in plan:
+        from .source_acceptance import validate_mask10_snapshot
+        names = plan["source_snapshot_files"]
+        validate_mask10_snapshot(plan["task_id"],
+            _contained(directory / "source/manifest_files", names["manifest"]),
+            _contained(directory / "source/replay_files", names["replay"]), plan["source_acceptance"])
+
+
+def _archive_mask10_source(directory, plan):
+    roots = {"manifest": Path(plan["source"]["manifest"]).parent,
+             "replay": Path(plan["source"]["candidate_replay"]).parent}
+    for item in plan["source_acceptance"]["selected_files"]:
+        root = item["root"]
+        raw = _contained(roots[root], item["path"]).read_bytes()
+        if hashlib.sha256(raw).hexdigest() != item["sha256"]:
+            raise ValueError("selected mask10 evidence changed after planning")
+        destination = _contained(directory / "source" / (root + "_files"), item["path"])
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        with destination.open("xb") as stream:
+            stream.write(raw)
+    _validate_source_snapshot(directory, plan)
 
 
 def _model_identity(metadata):
@@ -106,6 +137,7 @@ def _read_task(directory, *, batch_identity=None, runtime=None, sources=None, mo
             raise ValueError("archived source/replay bytes changed")
     if read_json(directory / "source/manifest.json") != plan["manifest"]:
         raise ValueError("source plan manifest differs from archived source")
+    _validate_source_snapshot(directory, plan)
     episodes = {e["episode_id"]: e for e in plan["episodes"]}
     if len(episodes) != 10 or sorted(e["initial_state_index"] for e in episodes.values()) != list(range(10)):
         raise ValueError("task source denominator differs")
@@ -125,6 +157,8 @@ def _read_task(directory, *, batch_identity=None, runtime=None, sources=None, mo
                 raise ValueError("raw episode bytes changed")
             result = read_json(path)
             identity = evidence_identity(metadata, episodes[name])
+            if result.get("source_acceptance") != identity.get("source_acceptance"):
+                raise ValueError("raw result source acceptance scope differs from its task run")
             validate_result(result, episodes[name], identity)
             if result.get("model_identity") != _model_identity(metadata):
                 raise ValueError("raw model/normalization identity differs from its task run")
@@ -159,10 +193,11 @@ def _run_task(directory, source, runtime, batch_identity, bind_model):
     for name, origin in (("manifest.json", source["source"]["manifest"]),
                          ("replay_report.json", source["source"]["candidate_replay"])):
         raw = Path(origin).read_bytes()
-        import hashlib
         if hashlib.sha256(raw).hexdigest() != source["source_files"][name]:
             raise ValueError("source changed after planning")
         (directory / "source" / name).write_bytes(raw)
+    if "source_acceptance" in source:
+        _archive_mask10_source(directory, source)
     metadata = {"schema_version": "remaining-headless-task-run-v1", "protocol_version": PROTOCOL,
                 "run_id": uuid.uuid4().hex, "created_at_utc": datetime.now(timezone.utc).isoformat(),
                 "batch_identity_sha256": batch_identity, "source_plan": source,
@@ -181,7 +216,10 @@ def _run_task(directory, source, runtime, batch_identity, bind_model):
         bind_model(shared_model_identity(metadata["model_runtime"]))
         metadata["phase"] = "environment_initialize"
         write_json(directory / "task_run.json", metadata, update=True)
-        env = make_environment(source["environment_config"])
+        environment_config = deepcopy(source["environment_config"])
+        if "source_acceptance" in source:
+            environment_config["manifest_dir"] = str(directory / "source/manifest_files")
+        env = make_environment(environment_config)
         for episode in source["episodes"]:
             name = episode["episode_id"]
             metadata["phase"] = "episode_setup"
@@ -261,7 +299,7 @@ def _bound_task(output, batch, task, *, allow_partial=False):
 
 def _summary(output, batch):
     from .metrics import summarize
-    results, issues = [], []
+    results, issues, source_acceptance = [], [], {}
     for task in COMMON_TEN_TASKS:
         directory = output / "tasks" / task
         if not directory.exists():
@@ -270,12 +308,17 @@ def _summary(output, batch):
             metadata, rows = _bound_task(output, batch, task, allow_partial=True)
             results.extend(rows)
             issues.extend(metadata["artifact_issues"])
+            if "source_acceptance" in metadata["source_plan"]:
+                source_acceptance[task] = deepcopy(metadata["source_plan"]["source_acceptance"])
         except (OSError, ValueError, KeyError, TypeError) as error:
             issues.append({"task_id": task, "reason": f"{type(error).__name__}: {error}"})
     summary = summarize(planned_episodes(), results)
     summary["task_execution"] = deepcopy(batch["tasks"])
     summary["unverified_task_artifacts"] = issues
     summary["batch_identity_sha256"] = batch["batch_identity_sha256"]
+    if "source_acceptance" in batch["identity"]["config"]:
+        summary["source_acceptance_version"] = batch["identity"]["config"]["source_acceptance"]
+        summary["source_acceptance"] = source_acceptance
     for row in summary["episodes"]:
         if row["classification"] == "missing":
             issue = next((i["reason"] for i in issues if i["task_id"] == row["task_id"]

@@ -32,6 +32,8 @@ def run_episode(env, policy, episode, *, horizon=520, confirmation_steps=4,
         measurement_static=None, initial_observation_sha256=None)
     if identity is not None and "model_identity" in identity:
         result["model_identity"] = deepcopy(identity["model_identity"])
+    if identity is not None and "source_acceptance" in identity:
+        result["source_acceptance"] = deepcopy(identity["source_acceptance"])
     phase = "evidence_begin"
     event_counts, events, streak = {}, [], 0
     regression, length, previous, inventory = False, 0., None, None

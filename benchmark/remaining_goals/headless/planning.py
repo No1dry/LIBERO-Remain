@@ -9,6 +9,7 @@ from ..task_catalog import COMMON_TEN_TASKS, TASKS, TASK_TRACKS
 PROTOCOL = "remaining-headless-goal-endpoint-v1"
 CONFIG_SCHEMA = "remaining-headless-batch-config-v1"
 PLAN_SCHEMA = "remaining-headless-batch-plan-v1"
+MASK10_ACCEPTANCE = "remaining-headless-mask10-source-acceptance-v1"
 HORIZON, CONFIRMATION, CHUNK = 520, 4, 8
 VIDEO = {"enabled": True, "camera": "both", "fps": 20, "stride": 1}
 
@@ -58,8 +59,10 @@ def budget_plan():
 def load_config(path):
     path = Path(path).resolve()
     config = read_json(path)
+    required = {"schema_version", "runtime_config", "extension_transfer", "sources"}
     if (config.get("schema_version") != CONFIG_SCHEMA
-            or set(config) != {"schema_version", "runtime_config", "extension_transfer", "sources"}
+            or set(config) not in (required, required | {"source_acceptance"})
+            or "source_acceptance" in config and config["source_acceptance"] != MASK10_ACCEPTANCE
             or not isinstance(config["sources"], dict) or set(config["sources"]) != set(COMMON_TEN_TASKS)):
         raise ValueError("task011 requires the explicit ten-task configuration and no extra protocol overrides")
     runtime_path = resolve(path.parent, config["runtime_config"])
@@ -86,10 +89,17 @@ def load_config(path):
     return config, {"libero_10": primary, "libero_90": extension}
 
 
-def source_plan(task, source):
-    """Use existing complete paired-bank and independent replay validation."""
-    from ..pilot import _source
-    manifest, raw, replay_raw, replay = _source(source["manifest"], source["candidate_replay"])
+def source_plan(task, source, *, acceptance=None):
+    """Keep full-bank validation by default; mask10 is an explicit opt-in."""
+    if acceptance == MASK10_ACCEPTANCE:
+        from .source_acceptance import load_mask10_source
+        manifest, raw, replay_raw, replay = load_mask10_source(
+            task, source["manifest"], source["candidate_replay"])
+    elif acceptance is None:
+        from ..pilot import _source
+        manifest, raw, replay_raw, replay = _source(source["manifest"], source["candidate_replay"])
+    else:
+        raise ValueError("unknown headless source acceptance version")
     catalog = TASKS[task]
     selected = [deepcopy(e) for e in manifest["episodes"] if e["task_id"] == task
                 and e["initial_mask"] == [True, False] and e["initial_state_index"] in range(10)]
@@ -112,6 +122,10 @@ def source_plan(task, source):
               "candidate_replay_evidence": replay,
               "environment_config": {"manifest_dir": str(Path(source["manifest"]).parent),
                   "environment": manifest["environment"], "image_size": 256, "control_freq": 20}}
+    if acceptance is not None:
+        result["source_acceptance"] = replay
+        result["source_snapshot_files"] = {"manifest": Path(source["manifest"]).name,
+                                            "replay": Path(source["candidate_replay"]).name}
     result["source_plan_sha256"] = canonical_hash(result)
     return result
 
@@ -124,7 +138,8 @@ def dry_plan(config_path):
     tasks = []
     for task in COMMON_TEN_TASKS:
         try:
-            row = source_plan(task, config["sources"][task])
+            row = (source_plan(task, config["sources"][task], acceptance=config["source_acceptance"])
+                   if "source_acceptance" in config else source_plan(task, config["sources"][task]))
             if checks[row["suite"]]["errors"]:
                 raise ValueError("model runtime configuration: " + "; ".join(checks[row["suite"]]["errors"]))
         except (OSError, ValueError, KeyError, TypeError) as error:
@@ -154,4 +169,16 @@ def validate_plan(plan):
         if row["status"] == "ready" and row.get("source_plan_sha256") != canonical_hash(
                 {k: v for k, v in row.items() if k != "source_plan_sha256"}):
             raise ValueError("headless source plan hash mismatch")
+        if row["status"] == "ready":
+            scope = plan["identity"]["config"].get("source_acceptance")
+            evidence = row.get("source_acceptance")
+            if scope is not None:
+                if (scope != MASK10_ACCEPTANCE or not isinstance(evidence, dict)
+                        or evidence.get("schema_version") != scope
+                        or evidence.get("acceptance_scope") != "mask10"
+                        or evidence.get("status") != "mask10_ready"
+                        or evidence.get("selected_episode_ids") != [e["episode_id"] for e in row["episodes"]]):
+                    raise ValueError("headless source acceptance scope/selection differs from configuration")
+            elif evidence is not None:
+                raise ValueError("mask10 source acceptance requires an explicit configuration selection")
     return plan
