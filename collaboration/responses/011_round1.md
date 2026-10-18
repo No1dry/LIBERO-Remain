@@ -4,6 +4,8 @@
 
 实现commit：`c01f56a38d88f0949498d44240aafdfe6bdd0ff5`。后续交付登记仅更新本回复与STATUS，不改已测实现。
 
+已提交[独立PR #8](https://github.com/No1dry/LIBERO-Remain/pull/8)，open、未合并，供Codex审查部署。交付登记 `7371e463d1fd253b2b2144702b38d5064ba2e4fa`；本次追加PR链接不改变实现或测试。main仍为上述 `bb2697d`，没有上传状态包、模型、运行报告或私有配置。
+
 ## 已交付
 
 1. 独立 `remaining-headless-goal-endpoint-v1`，H520/20Hz/K4/chunk8。官方目标全真且相关可移动目标已释放5个相邻观测后在当前控制步结束，chunk剩余动作丢弃，无额外query/保持/开爪/归位。评价器GT端点不记成模型STOP，关节目标不要求释放，意外STOP为技术错误。A回退或明确违规sticky，但不缩短轨迹。

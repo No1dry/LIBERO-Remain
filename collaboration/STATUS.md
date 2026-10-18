@@ -24,7 +24,7 @@ Stage03的固定15条主pilot＋10条oracle诊断已完成；旧JSR主10=40%（2
 
 | 任务 | 状态 | 交付／裁决 |
 |---|---|---|
-| [011 十任务headless基线](tasks/011_headless_ten_task_baseline.md) | 当前：X已实现，独立PR交Codex审查；真实实验未启动 | 固定100、H520/K4/chunk8、无FINISH头；[首轮交付](responses/011_round1.md) |
+| [011 十任务headless基线](tasks/011_headless_ten_task_baseline.md) | 当前：[PR #8](https://github.com/No1dry/LIBERO-Remain/pull/8) open、待Codex审查部署；真实实验未启动 | 实现c01f56a；全量2159 passed/15 skipped，最终兼容回归67 passed/2 skipped；[首轮交付](responses/011_round1.md) |
 | [010 版本化释放测量与校准](tasks/010_versioned_release_and_calibration.md) | 历史保留；[PR #7](https://github.com/No1dry/LIBERO-Remain/pull/7) open/unmerged，未宣称科研closed | X已交034dd36（实现4521c53）；011任务允许复用其中有用测量，未代合并010；旧5新shadow/35条计划不自动启动 |
 | [009 最小释放测量诊断](tasks/009_release_observability_replay.md) | closed（授权最小诊断范围完成）；PR #6已合并main 1906294 | [真实验收R2](reviews/009_round2.md)：292/292（100%）、293快照、37/37hash（100%）一致、0NN；883文件完整本地SHA备份，旧球包络过松证据 |
 | [008 两来源域数据合同](tasks/008_finish_data_source_domains.md) | 原代码/采集accepted；校准未建立；R11提案accepted，未closed | [X只读回复](https://github.com/No1dry/LIBERO-Remain/blob/54364ebb579d38a81d2d9396585d084cb9ac21da/collaboration/responses/008_round6.md)；无生产diff，原uncalibrated不改；转009最小诊断 |
