@@ -5,7 +5,7 @@
 ## 交付身份
 
 - 实现：`ba21f388a29d7f7275036293833b50c63cb9be9a`。
-- 分支：`x/task013-table-support-rescore`；独立PR创建后补充链接。
+- 分支：`x/task013-table-support-rescore`；独立 [PR #10](https://github.com/No1dry/LIBERO-Remain/pull/10)，open/unmerged，待审查。
 - 基于已验收012交付 `6e14b7b42123d467fab32b258fd8c4783353352a`，接入最新main `2b4ab600805994894ab00882eb7fd9c2eaf23ba8` 的012审查和013任务，仅本地形成基线 `9250b784903dfc5b52b55fb8b3616e6a21def633`。013增量可直接查看实现提交或相对该基线的diff；未合并其它PR或推送main。
 
 ## 修正与旧记录兼容

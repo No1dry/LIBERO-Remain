@@ -24,7 +24,7 @@ Stage03的固定15条主pilot＋10条oracle诊断已完成；旧JSR主10=40%（2
 
 | 任务 | 状态 | 交付／裁决 |
 |---|---|---|
-| [013 桌面支撑修正与离线重评分](tasks/013_table_support_origin_fix_and_offline_rescore.md) | X已交实现ba21f38，待Codex集中审查部署 | 70项CPU/fake通过，无skip；[首轮回复](responses/013_round1.md)；旧v1可读，统一派生已有记录，不覆盖原分数、不宣称服务器80条已重算 |
+| [013 桌面支撑修正与离线重评分](tasks/013_table_support_origin_fix_and_offline_rescore.md) | submitted：[PR #10](https://github.com/No1dry/LIBERO-Remain/pull/10) open/unmerged；实现ba21f38，待Codex集中审查部署 | 70项CPU/fake通过，无skip；[首轮回复](responses/013_round1.md)；旧v1可读，统一派生已有记录，不覆盖原分数、不宣称服务器80条已重算 |
 | [012 mask10范围验收](tasks/012_mask10_scoped_acceptance.md) | [R1软件accepted](reviews/012_round1.md)；[PR #9](https://github.com/No1dry/LIBERO-Remain/pull/9)交付6e14b7b保留 | Codex独立37 passed/0 skipped；8任务10来源就绪，另2任务各9来源且未进入回放；旧失败与100分母保留 |
 | [011 十任务headless基线](tasks/011_headless_ten_task_baseline.md) | [R1软件accepted](reviews/011_round1.md)，[PR #8](https://github.com/No1dry/LIBERO-Remain/pull/8)交付766ab96保留；后续80条记录见013任务 | Codex独立2165 passed/12 skipped；012是用户范围修订；固定100中20条缺口仍保留，不宣称100条模型已完成 |
 | [010 版本化释放测量与校准](tasks/010_versioned_release_and_calibration.md) | 历史保留；[PR #7](https://github.com/No1dry/LIBERO-Remain/pull/7) open/unmerged，未宣称科研closed | X已交034dd36（实现4521c53）；011任务允许复用其中有用测量，未代合并010；旧5新shadow/35条计划不自动启动 |
