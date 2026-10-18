@@ -8,7 +8,7 @@
 
 - 最新 main：`bc320cbd1a5456e5529b3761de50f1a11c7a08ae`。
 - 接入已验收 PR #8：`766ab9603c376b4139ed32a36ed52fe4498425ae`；仅在新的本地分支合并，形成基线 `a428702a6474ea1f7bbc1fadd63a3e611c2b5491`。
-- 实现提交：`7f023d580cfe0da2da3c95b01311e4957b5fb0b1`；分支：`x/task012-mask10-acceptance`。独立 PR 创建后在本页补充链接。
+- 实现提交：`7f023d580cfe0da2da3c95b01311e4957b5fb0b1`；分支：`x/task012-mask10-acceptance`；独立 [PR #9](https://github.com/No1dry/LIBERO-Remain/pull/9)，open/unmerged，待审查。
 - PR #8 尚未合入 main 时，新 PR 的总 diff 会包括其已验收代码。012 自身增量请对上述 `a428702` 基线或012实现提交查看；没有将010分支合入 main。
 
 ## 实现与范围

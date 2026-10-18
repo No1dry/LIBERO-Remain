@@ -24,7 +24,7 @@ Stage03的固定15条主pilot＋10条oracle诊断已完成；旧JSR主10=40%（2
 
 | 任务 | 状态 | 交付／裁决 |
 |---|---|---|
-| [012 mask10范围验收](tasks/012_mask10_scoped_acceptance.md) | X已交实现7f023d5，待Codex集中审查部署 | 37项CPU/fake通过，无skip；[首轮回复](responses/012_round1.md)；只读复用既有10证据，旧失败与100分母保留 |
+| [012 mask10范围验收](tasks/012_mask10_scoped_acceptance.md) | submitted：[PR #9](https://github.com/No1dry/LIBERO-Remain/pull/9) open/unmerged；实现7f023d5，待Codex集中审查部署 | 37项CPU/fake通过，无skip；[首轮回复](responses/012_round1.md)；只读复用既有10证据，旧失败与100分母保留 |
 | [011 十任务headless基线](tasks/011_headless_ten_task_baseline.md) | [R1软件accepted](reviews/011_round1.md)，[PR #8](https://github.com/No1dry/LIBERO-Remain/pull/8)交付766ab96保留；用户正在prepare | Codex独立2165 passed/12 skipped；本轮012是用户范围修订，不宣称011错误或100条模型已完成 |
 | [010 版本化释放测量与校准](tasks/010_versioned_release_and_calibration.md) | 历史保留；[PR #7](https://github.com/No1dry/LIBERO-Remain/pull/7) open/unmerged，未宣称科研closed | X已交034dd36（实现4521c53）；011任务允许复用其中有用测量，未代合并010；旧5新shadow/35条计划不自动启动 |
 | [009 最小释放测量诊断](tasks/009_release_observability_replay.md) | closed（授权最小诊断范围完成）；PR #6已合并main 1906294 | [真实验收R2](reviews/009_round2.md)：292/292（100%）、293快照、37/37hash（100%）一致、0NN；883文件完整本地SHA备份，旧球包络过松证据 |
