@@ -10,7 +10,7 @@
 
 ## 当前阶段
 
-**Stage05 / [Plan5](../docs/experiment_plans/stage05_ten_task_baseline.md) 当前按[012](tasks/012_mask10_scoped_acceptance.md)限定来源验收范围。** [011软件已accepted](reviews/011_round1.md)。十任务×official init 0..9，仅mask10，固定100条原始SOG10 OFT基线；端点、动作、指标、H520/K4/chunk8、双相机视频和主轨60/扩展40均保持。新显式mask10来源验收复用已有10状态与独立回放，00/01/11失败不阻挡已完整通过的10；旧全mask默认入口不变，原失败事实不改。用户既有prepare继续运行，X不修改或重启；新代码独立目录部署。见[012交付](responses/012_round1.md)与[读取既有数据命令](../docs/task012_mask10_scoped_acceptance.md)。
+**Stage05 / [Plan5](../docs/experiment_plans/stage05_ten_task_baseline.md) 当前任务为[013：桌面支撑误判修正与离线重评分](tasks/013_table_support_origin_fix_and_offline_rescore.md)。** [012软件已accepted](reviews/012_round1.md)。任务记载已有80条真实记录，另外20条准备缺口保留在固定100计划中；本轮不填补缺口、不追加真实实验。修正物体body参考点被误当支撑底面的假设，旧v1原记录按原规则验证，新v2只输出独立派生结果；端点、动作、目标、释放、2cm/K4阈值和每条TCP路径不变。见[013交付](responses/013_round1.md)与[纯文件重算命令](../docs/task013_table_support_rescore.md)。
 
 以下Stage04说明保留为历史阶段状态，不代表当前开跑命令：
 
@@ -24,8 +24,9 @@ Stage03的固定15条主pilot＋10条oracle诊断已完成；旧JSR主10=40%（2
 
 | 任务 | 状态 | 交付／裁决 |
 |---|---|---|
-| [012 mask10范围验收](tasks/012_mask10_scoped_acceptance.md) | submitted：[PR #9](https://github.com/No1dry/LIBERO-Remain/pull/9) open/unmerged；实现7f023d5，待Codex集中审查部署 | 37项CPU/fake通过，无skip；[首轮回复](responses/012_round1.md)；只读复用既有10证据，旧失败与100分母保留 |
-| [011 十任务headless基线](tasks/011_headless_ten_task_baseline.md) | [R1软件accepted](reviews/011_round1.md)，[PR #8](https://github.com/No1dry/LIBERO-Remain/pull/8)交付766ab96保留；用户正在prepare | Codex独立2165 passed/12 skipped；本轮012是用户范围修订，不宣称011错误或100条模型已完成 |
+| [013 桌面支撑修正与离线重评分](tasks/013_table_support_origin_fix_and_offline_rescore.md) | X已交实现ba21f38，待Codex集中审查部署 | 70项CPU/fake通过，无skip；[首轮回复](responses/013_round1.md)；旧v1可读，统一派生已有记录，不覆盖原分数、不宣称服务器80条已重算 |
+| [012 mask10范围验收](tasks/012_mask10_scoped_acceptance.md) | [R1软件accepted](reviews/012_round1.md)；[PR #9](https://github.com/No1dry/LIBERO-Remain/pull/9)交付6e14b7b保留 | Codex独立37 passed/0 skipped；8任务10来源就绪，另2任务各9来源且未进入回放；旧失败与100分母保留 |
+| [011 十任务headless基线](tasks/011_headless_ten_task_baseline.md) | [R1软件accepted](reviews/011_round1.md)，[PR #8](https://github.com/No1dry/LIBERO-Remain/pull/8)交付766ab96保留；后续80条记录见013任务 | Codex独立2165 passed/12 skipped；012是用户范围修订；固定100中20条缺口仍保留，不宣称100条模型已完成 |
 | [010 版本化释放测量与校准](tasks/010_versioned_release_and_calibration.md) | 历史保留；[PR #7](https://github.com/No1dry/LIBERO-Remain/pull/7) open/unmerged，未宣称科研closed | X已交034dd36（实现4521c53）；011任务允许复用其中有用测量，未代合并010；旧5新shadow/35条计划不自动启动 |
 | [009 最小释放测量诊断](tasks/009_release_observability_replay.md) | closed（授权最小诊断范围完成）；PR #6已合并main 1906294 | [真实验收R2](reviews/009_round2.md)：292/292（100%）、293快照、37/37hash（100%）一致、0NN；883文件完整本地SHA备份，旧球包络过松证据 |
 | [008 两来源域数据合同](tasks/008_finish_data_source_domains.md) | 原代码/采集accepted；校准未建立；R11提案accepted，未closed | [X只读回复](https://github.com/No1dry/LIBERO-Remain/blob/54364ebb579d38a81d2d9396585d084cb9ac21da/collaboration/responses/008_round6.md)；无生产diff，原uncalibrated不改；转009最小诊断 |
@@ -41,7 +42,7 @@ Stage03的固定15条主pilot＋10条oracle诊断已完成；旧JSR主10=40%（2
 
 ## 当前下一步
 
-**Codex集中审查012独立交付，并在新目录部署、填写已有数据路径与启动命令；用户启动真实模型评测。** 不修改当前运行的prepare源码、配置、工件或进程，不重复构建/回放已有效的10。旧preparation_error与新mask10_ready可并存；某任务完整10证据写完即可规划，不要求整个prepare结束。未完成/失败的10仍未就绪，主轨60/扩展40共享固定100分母，已执行条目不自动重跑。X本轮只有CPU/fake软件验证，没有新增真实仿真、模型、训练或校准成绩。
+**Codex集中审查013并独立目录部署，随后执行纯文件CPU重算、审查真实80条的旧新分类与覆盖。** 用户无需再次启动真实实验。原raw/static/execution/source bank/summary全部不覆盖；新增派生目录引用旧身份与修订版本。统一处理所有可核验记录，保持固定100列表及20条缺口；新发现真实掉桌也应如实计分。任务所述旧10/80及可能21/80只是诊断线索，不是调参目标。X本轮只有CPU/fake软件验证，未读取或重算服务器80条，不合并其它实现、不清理历史、不宣告阶段closed。
 
 ## 010与更早阶段的下一步记录（历史，当前以011为准）
 
