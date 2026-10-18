@@ -13,7 +13,10 @@ from ..finish.environment import _release
 from .roles import build_roles, task_key, validate_roles
 from . import geometry as geo
 
-SCHEMA = "remaining-headless-measurement-v1"
+LEGACY_SCHEMA = "remaining-headless-measurement-v1"
+SCHEMA = "remaining-headless-measurement-v2"
+LEGACY_SUPPORT_RULE = "direct-table-top-contact-body-origin-v1"
+SUPPORT_RULE = "direct-table-top-contact-no-body-origin-v2"
 LIFT_METERS = DROP_METERS = .02
 EVENTS = ("wrong_grasp", "wrong_placement", "table_drop")
 
@@ -113,7 +116,14 @@ def _table_snapshot(env, roles, geometry):
             "rule": "initial direct top-face native contact; fixed horizontal collision box support"}
 
 
-def _initial_support(name, position, table, geometry, contacts, callback):
+def _initial_support(name, position, table, geometry, contacts, callback, *, support_rule=SUPPORT_RULE):
+    """Use contact surfaces, not the object's arbitrary body-frame origin.
+
+    The legacy branch exists solely to validate historical v1 measurements.
+    All tolerances, normal direction and unsupported/unknown branches are shared.
+    """
+    if support_rule not in (LEGACY_SUPPORT_RULE, SUPPORT_RULE):
+        raise geo.MeasurementError("unknown table support rule")
     ids = set(geometry["groups"][name])
     tables = {item["geom_id"]: item for item in table["geometries"]}
     matching = [c for c in contacts if (c["geom_ids"][0] in ids and c["geom_ids"][1] in tables)
@@ -136,7 +146,8 @@ def _initial_support(name, position, table, geometry, contacts, callback):
         # distance / explicit margin bound plus 1e-7 numerical tolerance is
         # used only to identify that existing horizontal top-face contact.
         tolerance = abs(contact["distance"]) / 2 + abs(contact["includemargin"]) + 1e-7
-        if nz > 1 - 1e-5 and abs(contact["position"][2] - height) <= tolerance and position[2] >= height - tolerance:
+        origin_pass = support_rule != LEGACY_SUPPORT_RULE or position[2] >= height - tolerance
+        if nz > 1 - 1e-5 and abs(contact["position"][2] - height) <= tolerance and origin_pass:
             valid.append((tid, table_geom["top_lower_bound_m"]))
         else:
             uncertain = True
@@ -219,9 +230,18 @@ def _frame_from_records(goals, tcp, records, poses, static):
             "event_candidates": events, "event_evidence": evidence}
 
 
-def validate_measurement_static(static, episode=None):
-    if not isinstance(static, dict) or static.get("schema_version") != SCHEMA:
+def _support_rule(static):
+    if not isinstance(static, dict):
         raise geo.MeasurementError("invalid headless measurement schema")
+    if static.get("schema_version") == LEGACY_SCHEMA and "support_rule" not in static:
+        return LEGACY_SUPPORT_RULE
+    if static.get("schema_version") == SCHEMA and static.get("support_rule") == SUPPORT_RULE:
+        return SUPPORT_RULE
+    raise geo.MeasurementError("invalid headless measurement/support version")
+
+
+def validate_measurement_static(static, episode=None):
+    support_rule = _support_rule(static)
     if static.get("static_sha256") != geo.canonical_hash({k: v for k, v in static.items() if k != "static_sha256"}):
         raise geo.MeasurementError("headless measurement static hash mismatch")
     geometry = geo.validate_measurement_static(static["geometry"])
@@ -286,10 +306,73 @@ def validate_measurement_static(static, episode=None):
                 raise geo.MeasurementError("invalid initial relation value")
         if name in role["table_drop_objects"]:
             expected = _initial_support(name, initial["position"], table, geometry, contacts,
-                                        geometry["filters"]["contact_filter_callback"])
+                                        geometry["filters"]["contact_filter_callback"], support_rule=support_rule)
             if geo.canonical_hash(initial["table_support"]) != geo.canonical_hash(expected):
                 raise geo.MeasurementError("initial table support differs from contact evidence")
     return deepcopy(static)
+
+
+def corrected_measurement_static(static):
+    """Return a separate v2 static projection; never alter the original record.
+
+    Validate the historical version once. Only its support version and the
+    support fields derived from saved initial contacts change. No native state,
+    additional contact, geometry calibration or execution evidence is created.
+    """
+    corrected = validate_measurement_static(static)
+    if _support_rule(corrected) == SUPPORT_RULE:
+        return corrected
+    corrected["schema_version"] = SCHEMA
+    corrected["support_rule"] = SUPPORT_RULE
+    for name in corrected["role_profile"]["table_drop_objects"]:
+        initial = corrected["initial_objects"][name]
+        initial["table_support"] = _initial_support(name, initial["position"], corrected["table"],
+            corrected["geometry"], corrected["initial_contacts"],
+            corrected["geometry"]["filters"]["contact_filter_callback"], support_rule=SUPPORT_RULE)
+    corrected["static_sha256"] = geo.canonical_hash({k: v for k, v in corrected.items() if k != "static_sha256"})
+    return corrected
+
+
+def recompute_table_drop(facts, corrected_static):
+    """Project an already validated historical frame onto corrected support.
+
+    Caller validates original raw/static once through the existing reader, and
+    obtains ``corrected_static`` from ``corrected_measurement_static``. Reuse the
+    recorded whole-object bounds rather than repeat geometry or release work for
+    every frame. The returned copy changes only table-drop candidates/evidence;
+    it is derived evidence, not a newly executed or SHA-bound original frame.
+    """
+    if _support_rule(corrected_static) != SUPPORT_RULE:
+        raise geo.MeasurementError("table-drop correction requires v2 support")
+    names = corrected_static["role_profile"]["table_drop_objects"]
+    if (set(facts["event_candidates"]["table_drop"]) != set(names)
+            or set(facts["event_evidence"]["table_drop"]) != set(names)):
+        raise geo.MeasurementError("table-drop correction object inventory differs")
+    result = deepcopy(facts)
+    for name in names:
+        old = facts["event_evidence"]["table_drop"][name]
+        if (old.get("method") != "whole_collision_group_below_initial_table-v1"
+                or old.get("minimum_drop_m") != DROP_METERS):
+            raise geo.MeasurementError("unknown original table-drop method/threshold")
+        bounds = old["object_bounds"]
+        if bounds.get("geom_ids") != corrected_static["geometry"]["groups"][name]:
+            raise geo.MeasurementError("table-drop geometry inventory differs")
+        if bounds.get("coverage") == "complete":
+            intervals = _finite(bounds.get("intervals"), (3, 2), "recorded whole-object bounds")
+            if np.any(intervals[:, 0] > intervals[:, 1]):
+                raise geo.MeasurementError("invalid recorded whole-object bounds")
+        elif bounds.get("coverage") == "unsupported" and bounds.get("intervals") is None:
+            intervals = None
+        else:
+            raise geo.MeasurementError("unknown recorded whole-object bound coverage")
+        support = corrected_static["initial_objects"][name]["table_support"]
+        below = None
+        if support["table_height_m"] is not None and intervals is not None:
+            below = bool(intervals[2, 1] < support["table_height_m"] - DROP_METERS)
+        result["event_candidates"]["table_drop"][name] = _tri_and(support["eligible"], below)
+        result["event_evidence"]["table_drop"][name] = {**deepcopy(old),
+            "initial_support": deepcopy(support), "below_table_margin": below}
+    return result
 
 
 def validate_evaluator_evidence(facts, static):
@@ -337,7 +420,8 @@ class HeadlessMeasurements:
         for name in self.roles["table_drop_objects"]:
             initial[name]["table_support"] = _initial_support(name, initial[name]["position"], table,
                 self.geometry.static, contacts, self.geometry.static["filters"]["contact_filter_callback"])
-        self.static = {"schema_version": SCHEMA, "role_profile": deepcopy(self.roles), "geometry": self.geometry.static,
+        self.static = {"schema_version": SCHEMA, "support_rule": SUPPORT_RULE,
+                       "role_profile": deepcopy(self.roles), "geometry": self.geometry.static,
                        "source_reset_model_xml_sha256": source_reset_model_xml_sha256,
                        "initial_objects": initial, "initial_contacts": contacts, "table": table, "pose_carrier": sorted(self.inventory)[0],
                        "tcp_identity": {k: v for k, v in tcp.items() if k != "position"},

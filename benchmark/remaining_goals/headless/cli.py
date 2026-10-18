@@ -24,6 +24,9 @@ def main(argv=None):
         cmd.add_argument("--run", type=Path, required=True)
         if name == "summarize":
             cmd.add_argument("--out", type=Path, required=True)
+    rescore = sub.add_parser("rescore", help="file-only table-support v2 derivation; preserve the original batch")
+    rescore.add_argument("--run", type=Path, required=True)
+    rescore.add_argument("--out", type=Path, required=True)
     args = parser.parse_args(argv)
     from .planning import budget_plan, dry_plan
     from .workflow import write_json, run_batch, inspect_batch
@@ -38,6 +41,9 @@ def main(argv=None):
         result = prepare(args.data, args.reports, track=args.track)
     elif args.command == "run":
         result = run_batch(args.config, args.out, track=args.track)
+    elif args.command == "rescore":
+        from .rescore import rescore_batch
+        result = rescore_batch(args.run, args.out)
     else:
         result = inspect_batch(args.run, getattr(args, "out", None))
     print(json.dumps(result, ensure_ascii=False, indent=2, allow_nan=False))
@@ -45,7 +51,7 @@ def main(argv=None):
         return 2 if any(row["status"] != "ready" for row in result["tasks"].values()) else 0
     if args.command == "run":
         return 2 if any(row["status"] != "completed" for row in result["tasks"].values()) else 0
-    if args.command in {"inspect", "summarize"}:
+    if args.command in {"inspect", "summarize", "rescore"}:
         return 2 if result.get("unverified_task_artifacts") else 0
     return 0
 

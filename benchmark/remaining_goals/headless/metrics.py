@@ -8,6 +8,15 @@ CLASSES = ("success", "failure", "unknown", "technical_error", "missing")
 
 
 def score_episode(episode, result=None):
+    return _score_verified_episode(episode, result, validate_result(result) if result is not None else None)
+
+
+def _score_verified_episode(episode, result, valid):
+    """Same classification for source-verified or explicitly derived facts.
+
+    Internal offline callers must verify the original execution first. This
+    avoids treating corrected derived facts as a newly executed raw result.
+    """
     row = {key: deepcopy(episode.get(key)) for key in
            ("episode_id", "task_id", "suite", "initial_state_index", "initial_mask")}
     row.update(classification="missing", success=None, failure_reasons=[], unknown_reasons=[],
@@ -15,7 +24,6 @@ def score_episode(episode, result=None):
                official_goals_achieved=None, execution_status="missing")
     if result is None:
         return row
-    valid = validate_result(result)
     # Fixed 100-entry plans can be minimal for unavailable tasks. Full external
     # state binding is checked by the workflow/evidence reader; here every source
     # field actually supplied by the plan must still agree with the result.
@@ -91,6 +99,13 @@ def summarize(episodes, results, *, expected_tasks=None):
             raise ValueError("unplanned or duplicate headless result")
         indexed[name] = result
     rows = [score_episode(episode, indexed.get(episode["episode_id"])) for episode in episodes]
+    return _summarize_scored(episodes, rows, expected_tasks=expected_tasks)
+
+
+def _summarize_scored(episodes, rows, *, expected_tasks=None):
+    """Aggregate already scored rows with the unchanged fixed-denominator rules."""
+    if [row["episode_id"] for row in rows] != [episode["episode_id"] for episode in episodes]:
+        raise ValueError("scored rows differ from the fixed planned population")
     pairs = sorted({(episode["suite"], episode["task_id"]) for episode in episodes})
     if expected_tasks is not None and set(expected_tasks) != {task for _, task in pairs}:
         raise ValueError("expected task inventory differs from fixed planned population")

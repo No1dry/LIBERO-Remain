@@ -403,8 +403,8 @@ def run_batch(config_path, output, *, track="all"):
     return batch
 
 
-def inspect_batch(directory, output=None):
-    """Offline verification; never instantiate an environment or model."""
+def read_batch(directory):
+    """Read the frozen batch and invocation identities without scoring episodes."""
     directory = Path(directory).resolve()
     batch = read_json(directory / "batch.json")
     if (batch.get("schema_version") != "remaining-headless-batch-run-v1" or batch.get("protocol_version") != PROTOCOL
@@ -418,6 +418,13 @@ def inspect_batch(directory, output=None):
         plan = validate_plan(read_json(path))
         if plan["identity"] != batch["identity"]:
             raise ValueError("batch invocation changes model/code/config")
+    return batch
+
+
+def inspect_batch(directory, output=None):
+    """Offline verification; never instantiate an environment or model."""
+    directory = Path(directory).resolve()
+    batch = read_batch(directory)
     summary = _summary(directory, batch)
     if output is not None:
         out = Path(output).resolve()

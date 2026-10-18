@@ -4,6 +4,8 @@
 
 **Task012 可选范围验收**：已有 mask10 状态与回放齐全时，可在独立 checkout 中只读复用，显式启用 mask10 验收，避免被未选 00/01/11 失败阻塞。见[配置复制与运行说明](task012_mask10_scoped_acceptance.md)；不要因此重做 prepare/replay 或修改运行中的旧准备。省略新配置项仍保留本页默认的全 mask 验收。
 
+**Task013 离线重评分**：桌面支撑判据移除 body 原点高度的错误假设，旧 v1 仍按旧语义读取。使用[独立派生重评分入口](task013_table_support_rescore.md)处理已有记录，不覆盖旧 raw/summary，不重新运行模型或仿真。
+
 ## 固定范围
 
 每任务官方初态索引 `0..9`，仅 `mask10`，policy seed 7，共100条。不是同一个状态重复10次。basket 0..4 已用于开发，记录 `development_source=true`，不声明全体未见测试。
