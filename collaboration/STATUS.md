@@ -1,6 +1,6 @@
 # 当前协作状态
 
-更新：2026-10-16。当前权责以本页和[README](README.md)为准；历史记录保留，不把旧执行者署名改掉。
+更新：2026-10-18。当前权责以本页和[README](README.md)为准；历史记录保留，不把旧执行者署名改掉。
 
 ## 当前分工与审查方式
 
@@ -9,6 +9,10 @@
 只有明确错误、关键已约定功能缺失、真值／数据泄漏、危险控制或证据错误才阻塞；其他意见作为non-blocking建议。需求一次写完整，不因偏好反复返修。
 
 ## 当前阶段
+
+**Stage05 / [Plan5](../docs/experiment_plans/stage05_ten_task_baseline.md) / [011](tasks/011_headless_ten_task_baseline.md)为当前优先任务。** 十任务×official init 0..9，仅mask10，固定100条原始SOG10 OFT基线；新headless目标确认端点、真实TCP路径、自动物理事件、双相机视频和固定分母覆盖。6个LIBERO-10主轨与4个LIBERO-90显式zero-shot扩展分开报告。X交代码/CPU-fake/独立PR，Codex集中建议式审查和部署，用户启动所有真实构造/回放/模型运行。先完成这100条，再进入改进；不以新FINISH训练或010新版校准为本轮前提。交付说明见[011首轮回复](responses/011_round1.md)，命令见[完整runbook](../docs/headless_ten_task_baseline_runbook.md)。
+
+以下Stage04说明保留为历史阶段状态，不代表当前开跑命令：
 
 Stage04 / [Plan4](../docs/experiment_plans/stage04_finish_protocol.md)：009用户真实诊断完成/accepted，292/292动作和37/37原观测全部匹配；step280 collision几何分离≥14.72mm而旧球界重叠，测量保守性已定位。用户已同意[010版本化测量/校准修订](tasks/010_versioned_release_and_calibration.md)，不重训、保留旧结果、追加5新版校准、累计模型预算35。当前旧calibrated=false/threshold=null，normal_active/Remain未启动；009诊断范围closed，010 open、Stage04未closed。
 
@@ -20,8 +24,9 @@ Stage03的固定15条主pilot＋10条oracle诊断已完成；旧JSR主10=40%（2
 
 | 任务 | 状态 | 交付／裁决 |
 |---|---|---|
-| [010 版本化释放测量与校准](tasks/010_versioned_release_and_calibration.md) | open，用户确认，待X实现/CPU-fake/独立PR | 保守轴投影证书补充+first-hit/鲁棒tau；旧版/模型/头不改，5新shadow后独立10normal与15Remain，累计模型35 |
-| [009 最小释放测量诊断](tasks/009_release_observability_replay.md) | closed（授权最小诊断范围完成）；PR #6代码accepted，未合并交流保留 | [真实验收R2](reviews/009_round2.md)：292/292（100%）、293快照、37/37hash（100%）一致、0NN；883文件完整本地SHA备份，旧球包络过松证据 |
+| [011 十任务headless基线](tasks/011_headless_ten_task_baseline.md) | 当前：X已实现，独立PR交Codex审查；真实实验未启动 | 固定100、H520/K4/chunk8、无FINISH头；[首轮交付](responses/011_round1.md) |
+| [010 版本化释放测量与校准](tasks/010_versioned_release_and_calibration.md) | 历史保留；[PR #7](https://github.com/No1dry/LIBERO-Remain/pull/7) open/unmerged，未宣称科研closed | X已交034dd36（实现4521c53）；011任务允许复用其中有用测量，未代合并010；旧5新shadow/35条计划不自动启动 |
+| [009 最小释放测量诊断](tasks/009_release_observability_replay.md) | closed（授权最小诊断范围完成）；PR #6已合并main 1906294 | [真实验收R2](reviews/009_round2.md)：292/292（100%）、293快照、37/37hash（100%）一致、0NN；883文件完整本地SHA备份，旧球包络过松证据 |
 | [008 两来源域数据合同](tasks/008_finish_data_source_domains.md) | 原代码/采集accepted；校准未建立；R11提案accepted，未closed | [X只读回复](https://github.com/No1dry/LIBERO-Remain/blob/54364ebb579d38a81d2d9396585d084cb9ac21da/collaboration/responses/008_round6.md)；无生产diff，原uncalibrated不改；转009最小诊断 |
 | 001 指标与人工UIR | closed | PR #1已合并；交流仍保留供后续追踪 |
 | 002 venv路径修复 | closed | 同上；阶段总结与本地备份已核验 |
@@ -34,6 +39,10 @@ Stage03的固定15条主pilot＋10条oracle诊断已完成；旧JSR主10=40%（2
 [PR #3](https://github.com/No1dry/LIBERO-Remain/pull/3)已由Codex验收并由X于2026-10-13合并为main `869f409884b73fa7de8dcacb4c7861d6ddfa19f8`，已审实现未变；历史验收和实验冻结04508dc保留。[PR #4](https://github.com/No1dry/LIBERO-Remain/pull/4)已按007 accepted与008 A.1授权于2026-10-15合并为 `94c061e99168d76fbe50bef85b187db8fe2b9898`：已审4f76f49合入最新main规则得到48cad17，benchmark/scripts/tests/configs/pyproject均保持已验收实现。008从此main独立开分支；旧38e6a44仍仅作历史失败冻结。[合并与新实现登记](responses/008_round1.md)。
 
 ## 当前下一步
+
+**Codex审查011独立交付并部署，给用户完整准备与评测命令；用户启动真实作业。** 状态bank按十任务分别准备、独立回放和冻结；未就绪/技术错误保留，其他任务可以先执行。主轨60和扩展40共享固定100分母；已执行条目不自动重跑。按新协议汇总，不把旧FINISH成功率或保持段长度转换成headless基线。当前只有软件测试结果，无新增真实模型/仿真/校准成绩。
+
+## 010与更早阶段的下一步记录（历史，当前以011为准）
 
 **X实现[010](tasks/010_versioned_release_and_calibration.md)，用户现阶段不用启动实验。** 用户已确认版本化修订和5条新增新版校准，累计模型rollout35；不是自动追加或重训。Plan4末节已增补，旧30条/旧uncalibrated结果原样保留。
 
