@@ -45,11 +45,25 @@ def _identity(value):
         if key in value and (type(value[key]) is not int or value[key] < (1 if key == "max_chunk_steps" else 0)):
             raise ValueError("invalid bound FINISH execution budget")
     json_bytes(value)
+    if "evaluation_contract" in value:
+        from .evaluation import validate_evaluation_contract
+        validate_evaluation_contract(value["evaluation_contract"])
+        if type(value.get("threshold")) not in (int, float) or not 0 < value["threshold"] <= 1:
+            raise ValueError("versioned evidence requires the frozen plan threshold")
     return deepcopy(value)
 
 
+def _evidence_schema(identity):
+    from .evaluation import EVIDENCE_SCHEMA_V2
+    return EVIDENCE_SCHEMA_V2 if "evaluation_contract" in identity else EVIDENCE_SCHEMA
+
+
 def _binding(result):
-    return {key: deepcopy(result.get(key)) for key in _BINDING}
+    keys = _BINDING
+    if "evaluation_contract" in result:
+        keys = (*keys, "evaluation_contract", "measurement_static", "model_xml_sha256",
+                "state_sha256", "task_id", "seed")
+    return {key: deepcopy(result.get(key)) for key in keys}
 
 
 def _png(pixels):
@@ -88,7 +102,7 @@ class FinishEvidence:
         self.relative = (Path("evidence") / self.output.name).as_posix()
         _contained(self.run_dir, self.relative + "/execution.json", ".json")
         self.identity = _identity(identity)
-        self.data = {"schema_version": EVIDENCE_SCHEMA, "identity": deepcopy(self.identity),
+        self.data = {"schema_version": _evidence_schema(self.identity), "identity": deepcopy(self.identity),
                      "identity_sha256": digest(self.identity), "source_episode_sha256": None,
                      "configuration": None, "recording_status": "recording",
                      "capture_origin": "live_runner_reset_and_same_policy_forward",
@@ -160,7 +174,7 @@ class FinishEvidence:
         self._write()
 
     def _finish_reference(self, status):
-        reference = {"schema_version": EVIDENCE_SCHEMA, "status": status, "identity_sha256": digest(self.identity)}
+        reference = {"schema_version": _evidence_schema(self.identity), "status": status, "identity_sha256": digest(self.identity)}
         path = self.output / "execution.json"
         if self._ready and path.is_file():
             reference.update(path=self.relative + "/execution.json", sha256=_sha(path.read_bytes()))
@@ -209,8 +223,13 @@ def load_query_input(run_dir, reference, *, complete=True):
 
 def _validate(run_dir, result, episode, identity):
     identity = _identity(identity)
+    from .evaluation import result_contract
+    contract = result_contract(result, identity.get("evaluation_contract"))
+    if (contract is None) != ("evaluation_contract" not in identity):
+        raise ValueError("evidence and result evaluation versions differ")
+    expected_schema = _evidence_schema(identity)
     reference = result.get("finish_evidence")
-    if not isinstance(reference, dict) or reference.get("schema_version") != EVIDENCE_SCHEMA:
+    if not isinstance(reference, dict) or reference.get("schema_version") != expected_schema:
         raise ValueError("missing FINISH evidence; legacy STOP evidence is not compatible")
     if reference.get("identity_sha256") != digest(identity):
         raise ValueError("FINISH evidence identity differs")
@@ -230,7 +249,7 @@ def _validate(run_dir, result, episode, identity):
     if _sha(raw) != reference.get("sha256"):
         raise ValueError("FINISH evidence index bytes changed")
     data = _strict_json(raw)
-    if (data.get("schema_version") != EVIDENCE_SCHEMA or data.get("identity") != identity
+    if (data.get("schema_version") != expected_schema or data.get("identity") != identity
             or data.get("identity_sha256") != digest(identity)
             or data.get("source_episode_sha256") not in (None, digest(episode))):
         raise ValueError("FINISH evidence belongs to a different source/run/head")
@@ -275,6 +294,8 @@ def _validate(run_dir, result, episode, identity):
             raise ValueError("first policy query did not use the captured live reset observation")
         item = row.get("input_evidence")
         if row["status"] == "valid":
+            if "evaluation_contract" in identity and row["threshold"] != identity["threshold"]:
+                raise ValueError("query threshold differs from the frozen evaluation plan")
             if item is None:
                 # A failed save can leave a truthful result with no accepted actions.
                 if result["status"] != "runtime_error" or result.get("error_phase") != "evidence_query" or row["accepted_chunk_length"]:
