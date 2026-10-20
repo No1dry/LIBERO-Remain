@@ -68,6 +68,12 @@ def check_config(config, suite=None):
     if not isinstance(python, str) or not Path(python).expanduser().is_file():
         errors.append("runtime.python_executable: existing model-environment Python required")
     options = object_field("adapter_options")
+    if "suite_transfer" in options:
+        from .adapters.oft_transfer import validate_suite_transfer
+        try:
+            validate_suite_transfer(config)
+        except ValueError as error:
+            errors.append(f"adapter_options.suite_transfer: {error}")
     if options.get("suite") != config.get("suite"):
         errors.append("adapter_options.suite must equal suite")
     repo = options.get("repo_path")
