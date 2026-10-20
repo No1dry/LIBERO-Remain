@@ -1,6 +1,6 @@
 # 当前协作状态
 
-更新：2026-10-16。当前权责以本页和[README](README.md)为准；历史记录保留，不把旧执行者署名改掉。
+更新：2026-10-18。当前权责以本页和[README](README.md)为准；历史记录保留，不把旧执行者署名改掉。
 
 ## 当前分工与审查方式
 
@@ -9,6 +9,10 @@
 只有明确错误、关键已约定功能缺失、真值／数据泄漏、危险控制或证据错误才阻塞；其他意见作为non-blocking建议。需求一次写完整，不因偏好反复返修。
 
 ## 当前阶段
+
+**Stage05 / [Plan5](../docs/experiment_plans/stage05_ten_task_baseline.md) 当前任务为[013：桌面支撑误判修正与离线重评分](tasks/013_table_support_origin_fix_and_offline_rescore.md)。** [012软件已accepted](reviews/012_round1.md)。任务记载已有80条真实记录，另外20条准备缺口保留在固定100计划中；本轮不填补缺口、不追加真实实验。修正物体body参考点被误当支撑底面的假设，旧v1原记录按原规则验证，新v2只输出独立派生结果；端点、动作、目标、释放、2cm/K4阈值和每条TCP路径不变。见[013交付](responses/013_round1.md)与[纯文件重算命令](../docs/task013_table_support_rescore.md)。
+
+以下Stage04说明保留为历史阶段状态，不代表当前开跑命令：
 
 Stage04 / [Plan4](../docs/experiment_plans/stage04_finish_protocol.md)：009用户真实诊断完成/accepted，292/292动作和37/37原观测全部匹配；step280 collision几何分离≥14.72mm而旧球界重叠，测量保守性已定位。用户已同意[010版本化测量/校准修订](tasks/010_versioned_release_and_calibration.md)，不重训、保留旧结果、追加5新版校准、累计模型预算35。当前旧calibrated=false/threshold=null，normal_active/Remain未启动；009诊断范围closed，010 open、Stage04未closed。
 
@@ -20,8 +24,11 @@ Stage03的固定15条主pilot＋10条oracle诊断已完成；旧JSR主10=40%（2
 
 | 任务 | 状态 | 交付／裁决 |
 |---|---|---|
-| [010 版本化释放测量与校准](tasks/010_versioned_release_and_calibration.md) | open，用户确认，待X实现/CPU-fake/独立PR | 保守轴投影证书补充+first-hit/鲁棒tau；旧版/模型/头不改，5新shadow后独立10normal与15Remain，累计模型35 |
-| [009 最小释放测量诊断](tasks/009_release_observability_replay.md) | closed（授权最小诊断范围完成）；PR #6代码accepted，未合并交流保留 | [真实验收R2](reviews/009_round2.md)：292/292（100%）、293快照、37/37hash（100%）一致、0NN；883文件完整本地SHA备份，旧球包络过松证据 |
+| [013 桌面支撑修正与离线重评分](tasks/013_table_support_origin_fix_and_offline_rescore.md) | submitted：[PR #10](https://github.com/No1dry/LIBERO-Remain/pull/10) open/unmerged；实现ba21f38，待Codex集中审查部署 | 70项CPU/fake通过，无skip；[首轮回复](responses/013_round1.md)；旧v1可读，统一派生已有记录，不覆盖原分数、不宣称服务器80条已重算 |
+| [012 mask10范围验收](tasks/012_mask10_scoped_acceptance.md) | [R1软件accepted](reviews/012_round1.md)；[PR #9](https://github.com/No1dry/LIBERO-Remain/pull/9)交付6e14b7b保留 | Codex独立37 passed/0 skipped；8任务10来源就绪，另2任务各9来源且未进入回放；旧失败与100分母保留 |
+| [011 十任务headless基线](tasks/011_headless_ten_task_baseline.md) | [R1软件accepted](reviews/011_round1.md)，[PR #8](https://github.com/No1dry/LIBERO-Remain/pull/8)交付766ab96保留；后续80条记录见013任务 | Codex独立2165 passed/12 skipped；012是用户范围修订；固定100中20条缺口仍保留，不宣称100条模型已完成 |
+| [010 版本化释放测量与校准](tasks/010_versioned_release_and_calibration.md) | 历史保留；[PR #7](https://github.com/No1dry/LIBERO-Remain/pull/7) open/unmerged，未宣称科研closed | X已交034dd36（实现4521c53）；011任务允许复用其中有用测量，未代合并010；旧5新shadow/35条计划不自动启动 |
+| [009 最小释放测量诊断](tasks/009_release_observability_replay.md) | closed（授权最小诊断范围完成）；PR #6已合并main 1906294 | [真实验收R2](reviews/009_round2.md)：292/292（100%）、293快照、37/37hash（100%）一致、0NN；883文件完整本地SHA备份，旧球包络过松证据 |
 | [008 两来源域数据合同](tasks/008_finish_data_source_domains.md) | 原代码/采集accepted；校准未建立；R11提案accepted，未closed | [X只读回复](https://github.com/No1dry/LIBERO-Remain/blob/54364ebb579d38a81d2d9396585d084cb9ac21da/collaboration/responses/008_round6.md)；无生产diff，原uncalibrated不改；转009最小诊断 |
 | 001 指标与人工UIR | closed | PR #1已合并；交流仍保留供后续追踪 |
 | 002 venv路径修复 | closed | 同上；阶段总结与本地备份已核验 |
@@ -34,6 +41,10 @@ Stage03的固定15条主pilot＋10条oracle诊断已完成；旧JSR主10=40%（2
 [PR #3](https://github.com/No1dry/LIBERO-Remain/pull/3)已由Codex验收并由X于2026-10-13合并为main `869f409884b73fa7de8dcacb4c7861d6ddfa19f8`，已审实现未变；历史验收和实验冻结04508dc保留。[PR #4](https://github.com/No1dry/LIBERO-Remain/pull/4)已按007 accepted与008 A.1授权于2026-10-15合并为 `94c061e99168d76fbe50bef85b187db8fe2b9898`：已审4f76f49合入最新main规则得到48cad17，benchmark/scripts/tests/configs/pyproject均保持已验收实现。008从此main独立开分支；旧38e6a44仍仅作历史失败冻结。[合并与新实现登记](responses/008_round1.md)。
 
 ## 当前下一步
+
+**Codex集中审查013并独立目录部署，随后执行纯文件CPU重算、审查真实80条的旧新分类与覆盖。** 用户无需再次启动真实实验。原raw/static/execution/source bank/summary全部不覆盖；新增派生目录引用旧身份与修订版本。统一处理所有可核验记录，保持固定100列表及20条缺口；新发现真实掉桌也应如实计分。任务所述旧10/80及可能21/80只是诊断线索，不是调参目标。X本轮只有CPU/fake软件验证，未读取或重算服务器80条，不合并其它实现、不清理历史、不宣告阶段closed。
+
+## 010与更早阶段的下一步记录（历史，当前以011为准）
 
 **X实现[010](tasks/010_versioned_release_and_calibration.md)，用户现阶段不用启动实验。** 用户已确认版本化修订和5条新增新版校准，累计模型rollout35；不是自动追加或重训。Plan4末节已增补，旧30条/旧uncalibrated结果原样保留。
 
