@@ -80,6 +80,13 @@ def provenance(config, policy=None):
             return str(value)
         raise TypeError(f"unsupported policy metadata: {type(value).__name__}")
     metadata = json.loads(json.dumps(metadata, default=json_default, allow_nan=False))
+    from .adapters.oft_transfer import validate_suite_transfer, validate_policy_metadata
+    transfer = validate_suite_transfer(config)
+    # Only the explicit transfer opts into this narrow experiment contract.
+    # Ordinary SOG10 same-suite workers retain their existing configurations;
+    # task011 additionally validates its primary metadata in its own workflow.
+    if transfer is not None:
+        metadata = validate_policy_metadata(config, metadata)
     packages, package_resolution = _package_metadata()
     return {"python": sys.executable, "python_version": platform.python_version(),
             "packages": packages, "package_metadata_resolution": package_resolution,
@@ -109,6 +116,8 @@ def serve(input_stream, output_stream):
         if request.get("command") != "initialize":
             raise ValueError("worker must be initialized first")
         config = request["config"]
+        from .adapters.oft_transfer import validate_suite_transfer
+        validate_suite_transfer(config)
         seed = config.get("execution", {}).get("random_seed", 0)
         if type(seed) is not int or not 0 <= seed < 2**32:
             raise ValueError("random_seed must be an integer in [0, 2**32)")
