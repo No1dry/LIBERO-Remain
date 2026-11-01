@@ -1,5 +1,13 @@
 # 当前协作状态
 
+## 2026-11-01最新R2：031制备续跑P2已修复，待Codex复核
+
+X已在同一[PR #12](https://github.com/No1dry/LIBERO-Remain/pull/12)提交最小修复 `18059cb12abdd505144e36c87b521faeba897de9`，见[031 R2回复](responses/031_round2.md)。原库存ready且operations为空的来源失效后，原输出continue仅做文件重验，保留历史及计数；普通continue和retry标志均不隐式build/replay。恢复原文件可重新ready，新物理尝试须显式使用新输出目录。
+
+新增6个边界用例在修前均复现失败，修后受影响CPU/fake检查42 passed（1.47s）；独立只读复核无阻塞项。未运行真实sim／回放／模型／训练。制备修正版另目录部署，首批80及后续20条00继续固定a23a8116评测源码，不热改、不因此重跑80；PR未自动merge，031整体仍open。
+
+以下保留R1审查和此前交付记录，其旧“待修”描述为当时状态；以本R2交付及后续Codex裁决为准。
+
 ## 2026-11-01最新R1：首批00可运行，制备续跑P2独立小修
 
 Codex审查[PR #12](https://github.com/No1dry/LIBERO-Remain/pull/12)@a23a8116，实现0a198a18。独立190项定向CPU/fake通过；另一个新增fake复现确认一处普通制备continue会隐式重建失效原库存ready来源的P2。见[031 R1](reviews/031_round1.md)。首批00软件路径accepted；制备该分支needs-fix，031整体未closed，未自动merge。
