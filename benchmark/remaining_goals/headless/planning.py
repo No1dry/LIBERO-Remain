@@ -66,6 +66,18 @@ def load_config(path):
             or not isinstance(config["sources"], dict) or set(config["sources"]) != set(COMMON_TEN_TASKS)):
         raise ValueError("task011 requires the explicit ten-task configuration and no extra protocol overrides")
     runtime_path = resolve(path.parent, config["runtime_config"])
+    runtimes = load_runtimes(runtime_path, config["extension_transfer"])
+    for task, source in config["sources"].items():
+        if not isinstance(source, dict) or set(source) != {"manifest", "candidate_replay"}:
+            raise ValueError(f"{task}: explicit manifest and independent replay paths required")
+        for key in source:
+            source[key] = str(resolve(path.parent, source[key]))
+    config["runtime_config"] = str(runtime_path)
+    return config, runtimes
+
+
+def load_runtimes(runtime_path, extension_transfer):
+    """Validate the unchanged original SOG10 policy for both evaluation tracks."""
     primary = read_json(runtime_path)
     from ..regression import _validate_config
     from ..adapters.oft_transfer import validate_suite_transfer, validate_sog10_pair
@@ -76,17 +88,11 @@ def load_config(path):
     # used by the existing worker. New task source paths are config-relative.
     extension = deepcopy(primary)
     extension["suite"] = extension["adapter_options"]["suite"] = "libero_90"
-    extension["adapter_options"]["suite_transfer"] = deepcopy(config["extension_transfer"])
+    extension["adapter_options"]["suite_transfer"] = deepcopy(extension_transfer)
     extension["policy_id"] = primary["policy_id"] + "-libero90-zero-shot"
     validate_suite_transfer(extension)
     validate_sog10_pair(primary, extension)
-    for task, source in config["sources"].items():
-        if not isinstance(source, dict) or set(source) != {"manifest", "candidate_replay"}:
-            raise ValueError(f"{task}: explicit manifest and independent replay paths required")
-        for key in source:
-            source[key] = str(resolve(path.parent, source[key]))
-    config["runtime_config"] = str(runtime_path)
-    return config, {"libero_10": primary, "libero_90": extension}
+    return {"libero_10": primary, "libero_90": extension}
 
 
 def source_plan(task, source, *, acceptance=None):

@@ -2,13 +2,21 @@
 from copy import deepcopy
 from collections import Counter
 
-from .schema import PROTOCOL, validate_result, canonical_hash
+from .schema import PROTOCOL, validate_protocol_result, canonical_hash
+from .protocols import get_protocol, LEGACY_PROTOCOL, NORMAL00_PROTOCOL
 
 CLASSES = ("success", "failure", "unknown", "technical_error", "missing")
 
 
-def score_episode(episode, result=None):
-    return _score_verified_episode(episode, result, validate_result(result) if result is not None else None)
+def score_episode(episode, result=None, *, protocol=LEGACY_PROTOCOL):
+    descriptor = get_protocol(protocol)
+    if protocol == NORMAL00_PROTOCOL:
+        descriptor.validate_mask(episode.get("initial_mask"))
+    row = _score_verified_episode(episode, result,
+        validate_protocol_result(result, protocol=protocol) if result is not None else None)
+    if protocol == NORMAL00_PROTOCOL:
+        row.update(goal_regression=None, preservation_applicable=False)
+    return row
 
 
 def _score_verified_episode(episode, result, valid):
@@ -88,7 +96,8 @@ def _macro(tasks, rows):
     return result
 
 
-def summarize(episodes, results, *, expected_tasks=None):
+def summarize(episodes, results, *, expected_tasks=None, protocol=LEGACY_PROTOCOL):
+    get_protocol(protocol)
     expected = {episode["episode_id"]: episode for episode in episodes}
     if len(expected) != len(episodes):
         raise ValueError("duplicate planned headless episode")
@@ -98,12 +107,13 @@ def summarize(episodes, results, *, expected_tasks=None):
         if name not in expected or name in indexed:
             raise ValueError("unplanned or duplicate headless result")
         indexed[name] = result
-    rows = [score_episode(episode, indexed.get(episode["episode_id"])) for episode in episodes]
-    return _summarize_scored(episodes, rows, expected_tasks=expected_tasks)
+    rows = [score_episode(episode, indexed.get(episode["episode_id"]), protocol=protocol) for episode in episodes]
+    return _summarize_scored(episodes, rows, expected_tasks=expected_tasks, protocol=protocol)
 
 
-def _summarize_scored(episodes, rows, *, expected_tasks=None):
+def _summarize_scored(episodes, rows, *, expected_tasks=None, protocol=LEGACY_PROTOCOL):
     """Aggregate already scored rows with the unchanged fixed-denominator rules."""
+    descriptor = get_protocol(protocol)
     if [row["episode_id"] for row in rows] != [episode["episode_id"] for episode in episodes]:
         raise ValueError("scored rows differ from the fixed planned population")
     pairs = sorted({(episode["suite"], episode["task_id"]) for episode in episodes})
@@ -113,10 +123,13 @@ def _summarize_scored(episodes, rows, *, expected_tasks=None):
              for suite, task in pairs]
     tracks = [{"suite": suite, **_macro([task for task in tasks if task["suite"] == suite],
                [row for row in rows if row["suite"] == suite])} for suite in sorted({suite for suite, _ in pairs})]
-    return {"schema_version": "remaining-headless-summary-v1", "protocol_version": PROTOCOL,
+    summary = {"schema_version": descriptor.summary_schema, "protocol_version": descriptor.protocol_version,
             "counts": _group(rows), "tasks": tasks, "tracks": tracks,
             "mixed_batch": _macro(tasks, rows), "episodes": rows,
             "notice": "Goal confirmation is an evaluator endpoint, not model STOP. Main path efficiency is conditional on compliant success; no success is N/A. Fixed planned denominators retain missing/technical/unknown cases. LIBERO-90 is a separately labelled SOG10 zero-shot extension; the mixed batch is descriptive."}
+    if protocol == NORMAL00_PROTOCOL:
+        summary["notice"] += " Initial-goal preservation is N/A for normal00: neither goal is initially completed."
+    return summary
 
 
 def render_report(summary):
@@ -129,7 +142,8 @@ def render_report(summary):
     def reasons(value):
         return "; ".join(f"{key}: {count}" for key, count in sorted(value.items())) or "none"
 
-    lines = ["# Headless ten-task baseline", "", summary["notice"], "",
+    title = "# Headless normal00 control" if summary["protocol_version"] == get_protocol(NORMAL00_PROTOCOL).protocol_version else "# Headless ten-task baseline"
+    lines = [title, "", summary["notice"], "",
              "| Task | Track | Compliant success | Successful mean TCP path (m) | Path coverage |", "|---|---|---:|---:|---:|"]
     for task in summary["tasks"]:
         percent = f"{task['success_percent']:.2f}%" if task['success_percent'] is not None else "N/A"

@@ -6,25 +6,27 @@ from ..runner import _observation, _actions
 from ..pilot_evidence import observation_sha256
 from .schema import (PROTOCOL, RESULT_SCHEMA, EVENTS, canonical_hash, integer,
                      validate_evaluator_state, analyze_trace)
+from .protocols import get_protocol, LEGACY_PROTOCOL, NORMAL00_PROTOCOL
 
 
 def run_episode(env, policy, episode, *, horizon=520, confirmation_steps=4,
-                max_chunk_steps=8, recorder=None, evidence=None, identity=None):
+                max_chunk_steps=8, recorder=None, evidence=None, identity=None, protocol=LEGACY_PROTOCOL):
+    descriptor = get_protocol(protocol)
     integer(horizon, "horizon", 1)
     integer(max_chunk_steps, "max_chunk_steps", 1)
     if horizon > 520 or confirmation_steps != 4 or type(confirmation_steps) is not int or max_chunk_steps > 8:
         raise ValueError("task011 fixes H<=520/K4/chunk<=8; smaller H is CPU-fixture only")
-    if episode.get("initial_mask") != [True, False] or any(type(x) is not bool for x in episode["initial_mask"]):
-        raise ValueError("headless task011 requires source mask10")
+    descriptor.validate_mask(episode.get("initial_mask"))
     if identity is None and evidence is not None:
         identity = evidence.identity
     if evidence is not None and identity != evidence.identity:
         raise ValueError("runner/evidence identities differ")
+    descriptor.validate_identity(identity)
     result = {key: deepcopy(episode.get(key)) for key in ("episode_id", "task_id", "suite", "instruction", "seed",
         "initial_state_index", "initial_mask", "state_sha256", "model_xml_sha256", "bddl_sha256")}
     if "task_name" in episode:
         result["task_name"] = deepcopy(episode["task_name"])
-    result.update(schema_version=RESULT_SCHEMA, protocol_version=PROTOCOL,
+    result.update(schema_version=descriptor.result_schema, protocol_version=descriptor.protocol_version,
         configuration={"horizon": horizon, "confirmation_steps": 4, "max_chunk_steps": max_chunk_steps},
         identity_sha256=canonical_hash(identity) if identity is not None else None,
         status="runtime_error", exit_reason="technical_error", n_steps=0, policy_queries=0,
@@ -34,9 +36,12 @@ def run_episode(env, policy, episode, *, horizon=520, confirmation_steps=4,
         result["model_identity"] = deepcopy(identity["model_identity"])
     if identity is not None and "source_acceptance" in identity:
         result["source_acceptance"] = deepcopy(identity["source_acceptance"])
+    if identity is not None and "source_origin" in identity:
+        result["source_origin"] = deepcopy(identity["source_origin"])
     phase = "evidence_begin"
     event_counts, events, streak = {}, [], 0
-    regression, length, previous, inventory = False, 0., None, None
+    preservation = bool(descriptor.preserved_goal_indices)
+    regression, length, previous, inventory = False if preservation else None, 0., None, None
 
     def record(step, raw, event=None):
         nonlocal streak, regression, length, previous, inventory
@@ -57,7 +62,8 @@ def run_episode(env, policy, episode, *, horizon=520, confirmation_steps=4,
         increment = 0. if previous is None else math.dist(position, previous)
         length += increment
         previous = position
-        regression = regression or not facts["goals"][0]
+        if preservation:
+            regression = regression or any(not facts["goals"][index] for index in descriptor.preserved_goal_indices)
         streak = streak + 1 if all(facts["goals"]) and facts["released"] is True else 0
         for kind in EVENTS:
             for name, candidate in facts["event_candidates"][kind].items():
@@ -70,6 +76,8 @@ def run_episode(env, policy, episode, *, horizon=520, confirmation_steps=4,
         result["trace"].append({"step": step, **facts, **provenance, "path_increment_m": increment,
             "path_length_m": length, "completion_streak": streak, "goal_regression": regression,
             "confirmed_events": deepcopy(events)})
+        if not preservation:
+            result["trace"][-1]["preservation_applicable"] = False
         return observation
 
     try:
@@ -88,11 +96,12 @@ def run_episode(env, policy, episode, *, horizon=520, confirmation_steps=4,
         result["measurement_static"] = deepcopy(env.measurement_static())
         canonical_hash(result["measurement_static"])
         from .environment import validate_measurement_static
-        validate_measurement_static(result["measurement_static"], episode=episode)
+        static_options = {} if protocol == LEGACY_PROTOCOL else {"protocol": protocol}
+        validate_measurement_static(result["measurement_static"], episode=episode, **static_options)
         phase = "evaluator_state"
         observation = record(0, observation)
-        if result["trace"][0]["goals"] != [True, False]:
-            result.update(status="invalid_initial_state", exit_reason="invalid_initial_state", error="actual initial goals differ from mask10", error_phase="initial_mask")
+        if tuple(result["trace"][0]["goals"]) != descriptor.initial_mask:
+            result.update(status="invalid_initial_state", exit_reason="invalid_initial_state", error=f"actual initial goals differ from {protocol}", error_phase="initial_mask")
         else:
             while result["n_steps"] < horizon:
                 sequence = len(result["queries"]) + 1
@@ -141,7 +150,7 @@ def run_episode(env, policy, episode, *, horizon=520, confirmation_steps=4,
         result.update(status="runtime_error", exit_reason="technical_error", error=f"{type(error).__name__}: {error}",
                       error_phase=phase, interrupted=isinstance(error, (KeyboardInterrupt, SystemExit)))
     finally:
-        result.update({key: value for key, value in analyze_trace(result["trace"]).items() if key != "frames"})
+        result.update({key: value for key, value in analyze_trace(result["trace"], protocol=protocol).items() if key != "frames"})
         if recorder is not None:
             try:
                 video = recorder.close()
@@ -167,3 +176,8 @@ def run_episode(env, policy, episode, *, horizon=520, confirmation_steps=4,
                 result["interrupted"] |= isinstance(error, (KeyboardInterrupt, SystemExit))
                 result["execution_evidence"] = evidence.failure_reference(error)
     return result
+
+
+def run_normal00_episode(env, policy, episode, **options):
+    """Explicit normal-task entry point using the shared rollout core."""
+    return run_episode(env, policy, episode, protocol=NORMAL00_PROTOCOL, **options)

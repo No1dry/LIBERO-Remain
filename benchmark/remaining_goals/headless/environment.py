@@ -240,7 +240,9 @@ def _support_rule(static):
     raise geo.MeasurementError("invalid headless measurement/support version")
 
 
-def validate_measurement_static(static, episode=None):
+def validate_measurement_static(static, episode=None, *, protocol="mask10"):
+    from .protocols import get_protocol
+    descriptor = get_protocol(protocol)
     support_rule = _support_rule(static)
     if static.get("static_sha256") != geo.canonical_hash({k: v for k, v in static.items() if k != "static_sha256"}):
         raise geo.MeasurementError("headless measurement static hash mismatch")
@@ -258,8 +260,10 @@ def validate_measurement_static(static, episode=None):
     if episode is not None:
         if task_key(episode) != key or source_xml is None or episode.get("model_xml_sha256") != source_xml:
             raise geo.MeasurementError("headless static/episode task or XML identity mismatch")
-        if episode.get("initial_mask") != [True, False]:
-            raise geo.MeasurementError("headless source must be mask10")
+        try:
+            descriptor.validate_mask(episode.get("initial_mask"))
+        except ValueError as error:
+            raise geo.MeasurementError(str(error)) from error
     names = set(role["roles"])
     if set(static["initial_objects"]) != names or static["pose_carrier"] not in names:
         raise geo.MeasurementError("headless initial object inventory mismatch")
@@ -467,6 +471,8 @@ class HeadlessMeasurements:
 
 class HeadlessLiberoEnv(LiberoGoalEnv):
     def __init__(self, config):
+        from .protocols import get_protocol
+        self.protocol = get_protocol(config.get("protocol", "mask10"))
         if "hold_action" in config or "hold_contract" in config:
             raise ValueError("headless baseline never uses a scripted hold")
         super().__init__(config)
@@ -474,13 +480,15 @@ class HeadlessLiberoEnv(LiberoGoalEnv):
 
     def reset(self, episode):
         self.measurements = None
+        self._ready = False
         key = task_key(episode)
-        if episode.get("initial_mask") != [True, False]:
-            raise ValueError("headless baseline accepts only the fixed mask10 source")
+        self.protocol.validate_mask(episode.get("initial_mask"))
         observation = super().reset(episode)
         try:
-            if self.goal_values() != [True, False]:
+            if self.protocol.key == "mask10" and self.goal_values() != [True, False]:
                 raise ValueError("restored official goals differ from source mask10")
+            # Normal00 exposes actual t0 facts to the runner so an incorrect
+            # restored mask receives the explicit technical invalid-start status.
             # The existing bridge has already checked this exact reset-model SHA
             # before restoring state. Native post-processing may legitimately change
             # stove indicator site RGBA; retain the post-restore XML independently.

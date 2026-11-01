@@ -8,7 +8,8 @@ from pathlib import Path, PurePosixPath
 from ..observation_artifact import save_observation_artifact, load_observation_artifact
 from ..pilot_evidence import observation_sha256
 from ..runner import _observation
-from .schema import canonical_hash, validate_result
+from .schema import canonical_hash, validate_protocol_result
+from .protocols import get_protocol, NORMAL00_PROTOCOL, LEGACY_PROTOCOL
 
 SCHEMA = "remaining-headless-evidence-v1"
 
@@ -17,6 +18,12 @@ def _identity(value):
     if not isinstance(value, dict) or not value.get("episode_id") or not value.get("state_sha256"):
         raise ValueError("headless evidence requires its full source/run identity")
     canonical_hash(value)
+    if "protocol_version" in value:
+        matched = [get_protocol(key) for key in (LEGACY_PROTOCOL, NORMAL00_PROTOCOL)
+                   if get_protocol(key).protocol_version == value["protocol_version"]]
+        if not matched:
+            raise ValueError("evidence has an unsupported protocol identity")
+        matched[0].validate_identity(value)
     return deepcopy(value)
 
 
@@ -61,6 +68,11 @@ class HeadlessEvidence:
             raise ValueError("evidence cannot be reused")
         if any(self.identity[key] != episode[key] for key in ("episode_id", "state_sha256")):
             raise ValueError("evidence source differs from the actual reset episode")
+        if "protocol_version" in self.identity:
+            for key in (LEGACY_PROTOCOL, NORMAL00_PROTOCOL):
+                descriptor = get_protocol(key)
+                if descriptor.protocol_version == self.identity["protocol_version"]:
+                    descriptor.validate_mask(episode.get("initial_mask"))
         self.data["episode_sha256"] = canonical_hash(episode)
         self._write()
 
@@ -104,7 +116,7 @@ class HeadlessEvidence:
 
 def validate_evidence(run_dir, result, episode, identity):
     identity = _identity(identity)
-    validated = validate_result(result, episode, identity)
+    validated = validate_protocol_result(result, episode, identity)
     reference = result.get("execution_evidence", {})
     if reference.get("schema_version") != SCHEMA or reference.get("identity_sha256") != canonical_hash(identity):
         raise ValueError("headless evidence belongs to another run/source/model")

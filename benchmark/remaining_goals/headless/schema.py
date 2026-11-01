@@ -5,6 +5,9 @@ import json
 import math
 import re
 
+from .protocols import (get_protocol, protocol_for_result, LEGACY_PROTOCOL, NORMAL00_PROTOCOL,
+                        NORMAL00_VERSION, NORMAL00_RESULT_SCHEMA)
+
 PROTOCOL = "remaining-headless-goal-endpoint-v1"
 RESULT_SCHEMA = "remaining-headless-episode-v1"
 EVENTS = ("wrong_grasp", "wrong_placement", "table_drop")
@@ -77,13 +80,15 @@ def validate_evaluator_state(value):
     return deepcopy(value)
 
 
-def analyze_trace(trace, *, confirmation_steps=4):
+def analyze_trace(trace, *, confirmation_steps=4, protocol=LEGACY_PROTOCOL):
     """Recompute facts, sticky events and TCP path; unknown never means false."""
     integer(confirmation_steps, "confirmation_steps", 1)
+    descriptor = get_protocol(protocol)
+    preservation = bool(descriptor.preserved_goal_indices)
     streak = 0
     confirmed = begin = None
     counters, events, unknown = {}, [], []
-    regression, length, previous, inventory = False, 0., None, None
+    regression, length, previous, inventory = False if preservation else None, 0., None, None
     derived = []
     for step, row in enumerate(trace):
         if row.get("step") != step or type(row.get("step")) is not int:
@@ -101,7 +106,8 @@ def analyze_trace(trace, *, confirmation_steps=4):
         increment = 0. if previous is None else math.dist(position, previous)
         length += increment
         previous = position
-        regression = regression or not facts["goals"][0]
+        if preservation:
+            regression = regression or any(not facts["goals"][index] for index in descriptor.preserved_goal_indices)
         complete = all(facts["goals"]) and facts["released"] is True
         streak = streak + 1 if complete else 0
         if confirmed is None and streak >= confirmation_steps + 1:
@@ -119,23 +125,30 @@ def analyze_trace(trace, *, confirmation_steps=4):
         derived.append({"path_increment_m": increment, "path_length_m": length,
                         "completion_streak": streak, "goal_regression": regression,
                         "confirmed_events": deepcopy(events)})
-    return {"frames": derived, "path_length_m": length, "goal_completion_step": begin,
+        if not preservation:
+            derived[-1]["preservation_applicable"] = False
+    result = {"frames": derived, "path_length_m": length, "goal_completion_step": begin,
             "goal_confirmed_step": confirmed, "goal_regression": regression,
             "confirmed_events": events, "event_unknown": unknown,
             "release_unknown_steps": [row["step"] for row in trace if row["released"] is None],
             "official_goals_achieved": any(all(row["goals"]) for row in trace)}
+    if not preservation:
+        result["preservation_applicable"] = False
+    return result
 
 
 def _same(left, right):
     return canonical_hash(left) == canonical_hash(right)
 
 
-def _validate_result(result, episode=None, identity=None):
-    if result.get("schema_version") != RESULT_SCHEMA or result.get("protocol_version") != PROTOCOL:
+def _validate_result(result, episode=None, identity=None, *, protocol=LEGACY_PROTOCOL):
+    descriptor = get_protocol(protocol)
+    if result.get("schema_version") != descriptor.result_schema or result.get("protocol_version") != descriptor.protocol_version:
         raise ValueError("not a headless task011 result; old protocols cannot be reinterpreted")
     canonical_hash(result)
-    if result.get("initial_mask") != [True, False] or any(type(x) is not bool for x in result["initial_mask"]):
-        raise ValueError("task011 requires exactly initial mask10")
+    descriptor.validate_mask(result.get("initial_mask"))
+    descriptor.validate_identity(result)
+    descriptor.validate_identity(identity)
     for key in ("episode_id", "task_id", "suite", "instruction"):
         if not isinstance(result.get(key), str) or not result[key]:
             raise ValueError("missing source episode identity")
@@ -156,9 +169,14 @@ def _validate_result(result, episode=None, identity=None):
         raise ValueError("result belongs to a different run/model/track identity")
     if identity is not None and "model_identity" in identity and result.get("model_identity") != identity["model_identity"]:
         raise ValueError("result model/checkpoint/normalization identity differs")
+    if identity is not None:
+        for key in ("source_acceptance", "source_origin"):
+            if key in identity and not _same(result.get(key), identity[key]):
+                raise ValueError(f"result {key} differs from frozen identity")
     if result.get("measurement_static") is not None:
         from .environment import validate_measurement_static, validate_evaluator_evidence
-        validate_measurement_static(result["measurement_static"], episode=episode if episode is not None else result)
+        static_options = {} if protocol == LEGACY_PROTOCOL else {"protocol": protocol}
+        validate_measurement_static(result["measurement_static"], episode=episode if episode is not None else result, **static_options)
         for row in result["trace"]:
             validate_evaluator_evidence({key: row[key] for key in
                 ("goals", "released", "tcp", "objects", "event_candidates", "event_evidence")}, result["measurement_static"])
@@ -215,17 +233,22 @@ def _validate_result(result, episode=None, identity=None):
             key: actions[step - 1][key] for key in ("action", "query_sequence", "chunk_index")}
         if any(not _same(row.get(key), value) for key, value in expected.items()):
             raise ValueError("frame does not match its physical action")
-    analysis = analyze_trace(trace, confirmation_steps=k)
+    analysis = analyze_trace(trace, confirmation_steps=k, protocol=protocol)
+    if protocol == NORMAL00_PROTOCOL and ("goal_regression" not in result or
+            any("goal_regression" not in row for row in trace)):
+        raise ValueError("normal00 preservation requires explicit null goal_regression")
     for row, derived in zip(trace, analysis["frames"]):
         if any(not _same(row.get(key), value) for key, value in derived.items()):
             raise ValueError("stored TCP path or sticky event summary does not recompute")
     for key in ("path_length_m", "goal_completion_step", "goal_confirmed_step", "goal_regression", "confirmed_events", "event_unknown", "release_unknown_steps", "official_goals_achieved"):
         if not _same(result.get(key), analysis[key]):
             raise ValueError(f"headless result {key} does not recompute")
+    if protocol == NORMAL00_PROTOCOL and result.get("preservation_applicable") is not False:
+        raise ValueError("normal00 preservation must be explicitly inapplicable")
     if analysis["goal_confirmed_step"] is not None and analysis["goal_confirmed_step"] != steps:
         raise ValueError("actions continued after the first confirmed goal endpoint")
     if result["status"] == "completed":
-        if len(trace) != steps + 1 or not trace or trace[0]["goals"] != [True, False]:
+        if len(trace) != steps + 1 or not trace or tuple(trace[0]["goals"]) != descriptor.initial_mask:
             raise ValueError("completed result lacks valid t0 or per-step observations")
         reason = "goal_confirmed" if analysis["goal_confirmed_step"] is not None else "horizon"
         if result.get("exit_reason") != reason or reason == "horizon" and steps != horizon:
@@ -233,16 +256,28 @@ def _validate_result(result, episode=None, identity=None):
         if result.get("error") is not None:
             raise ValueError("completed result carries a technical error")
     elif result["status"] == "invalid_initial_state":
-        if steps or queries or not trace or trace[0]["goals"] == [True, False] or result.get("exit_reason") != "invalid_initial_state":
+        if steps or queries or not trace or tuple(trace[0]["goals"]) == descriptor.initial_mask or result.get("exit_reason") != "invalid_initial_state":
             raise ValueError("invalid-initial report does not describe actual t0 mismatch")
     elif result.get("exit_reason") != "technical_error" or not result.get("error"):
         raise ValueError("runtime failure needs its actual error and technical endpoint")
-    return {"verified": True, "protocol_version": PROTOCOL, "path_observations": len(trace), "n_steps": steps,
+    return {"verified": True, "protocol_version": descriptor.protocol_version, "path_observations": len(trace), "n_steps": steps,
             "path_complete": len(trace) == steps + 1, "path_length_m": analysis["path_length_m"]}
 
 
 def validate_result(result, episode=None, identity=None):
     try:
         return _validate_result(result, episode, identity)
+    except (KeyError, TypeError, IndexError, AttributeError) as error:
+        raise ValueError(f"malformed headless result: {error}") from error
+
+
+def validate_normal00_result(result, episode=None, identity=None):
+    return validate_protocol_result(result, episode, identity, protocol=NORMAL00_PROTOCOL)
+
+
+def validate_protocol_result(result, episode=None, identity=None, *, protocol=None):
+    try:
+        descriptor = protocol_for_result(result) if protocol is None else get_protocol(protocol)
+        return _validate_result(result, episode, identity, protocol=descriptor.key)
     except (KeyError, TypeError, IndexError, AttributeError) as error:
         raise ValueError(f"malformed headless result: {error}") from error

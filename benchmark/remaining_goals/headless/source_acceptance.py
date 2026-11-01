@@ -87,17 +87,22 @@ def _same_array(left, right):
     return np.asarray(left, dtype="<f8").tobytes() == np.asarray(right, dtype="<f8").tobytes()
 
 
-def _audit(audit, episode, state, *, steps, initial_hash):
+def _audit(audit, episode, state, *, steps, initial_hash, initial_only=False, fixed=False):
     """Recompute saved numerical checks; dynamic RGB has recorded bounds only.
 
     Initial RGB is independently compared from two typed artifacts by the caller.
     Full dynamic images were never stored by the original audit; do not claim to
     re-render or independently reconstruct their pixels here.
     """
+    expected_mask = [False, False] if initial_only else [True, False]
     if (audit.get("schema_version") != "remaining-goals-validation-v1"
             or audit.get("episode_id") != episode["episode_id"]
-            or audit.get("initial_mask") != [True, False]
-            or type(audit.get("requested_steps")) is not int or audit["requested_steps"] != steps
+            or audit.get("initial_mask") != expected_mask
+            or audit.get("observation_audit_rule") != RGB_QUANTIZATION_RULE
+            or audit.get("reference_robot_qpos") != episode.get("reference_robot_qpos")):
+        raise ValueError("selected audit identity/limits is invalid")
+    if not initial_only and (
+            type(audit.get("requested_steps")) is not int or audit["requested_steps"] != steps
             or steps < 150 or type(audit.get("completed_steps")) is not int
             or audit["completed_steps"] != steps or audit.get("error") is not None
             or audit.get("technical_acceptance") is not True or audit.get("static_acceptance") is not True
@@ -114,14 +119,26 @@ def _audit(audit, episode, state, *, steps, initial_hash):
         raise ValueError("selected audit changed the existing fixed RGB rule")
     hold = _vector(audit.get("hold_action"), "hold_action", 7).tolist()
     ignored = _contact_pairs(audit.get("ignored_contact_pairs"))
+    if fixed and (any(limits.get(key) != value for key, value in {
+            "position_tolerance": .005, "velocity_tolerance": .01,
+            "robot_position_tolerance": .002, "penetration_tolerance": .002,
+            "observation_tolerance": 1e-8}.items())
+            or hold != [0., 0., 0., 0., 0., 0., -1.] or ignored):
+        raise ValueError("selected audit changed fixed physical limits/hold/contact rules")
     trace = audit.get("trace")
+    if initial_only:
+        if not isinstance(trace, list) or not trace:
+            raise ValueError("normal00 initial audit trace missing")
+        # Inspect the original trace directly. Never manufacture a passing
+        # shortened audit or mutate its aggregate acceptance declarations.
+        trace, steps = trace[:1], 0
     if not isinstance(trace, list) or len(trace) != steps + 1:
         raise ValueError("selected audit window is incomplete")
     reference = _vector(episode.get("reference_robot_qpos"), "reference_robot_qpos")
     first_robot = first_positions = velocity_size = None
     initial_comparison = trace[0].get("observation_check", {})
     for index, row in enumerate(trace):
-        if (type(row.get("step")) is not int or row["step"] != index or row.get("goals") != [True, False]
+        if (type(row.get("step")) is not int or row["step"] != index or row.get("goals") != expected_mask
                 or any(type(bit) is not bool for bit in row["goals"])
                 or row.get("action") != (None if index == 0 else hold)):
             raise ValueError("selected audit trace order/mask/action mismatch")
@@ -172,7 +189,7 @@ def _audit(audit, episode, state, *, steps, initial_hash):
                 or not all(checks.values())):
             raise ValueError("selected audit physical checks failed or disagree with raw trace")
     expected = {**checks, "validation_window_complete": True, "snapshot_contract_valid": True}
-    if audit.get("checks") != expected or any(type(v) is not bool for v in audit["checks"].values()):
+    if not initial_only and (audit.get("checks") != expected or any(type(v) is not bool for v in audit["checks"].values())):
         raise ValueError("selected audit aggregate differs from complete checks")
     return {"steps": steps, "initial_state_array_sha256": _array_hash(state),
             "initial_observation_sha256": initial_hash, "technical_acceptance": True,
@@ -180,7 +197,7 @@ def _audit(audit, episode, state, *, steps, initial_hash):
             "ignored_contact_pairs": deepcopy(audit["ignored_contact_pairs"])}
 
 
-def _load_mask10_source(task, manifest_path, replay_path):
+def _load_mask10_source(task, manifest_path, replay_path, *, indices=None, fixed=False):
     """Return original manifest, both original byte strings and scoped evidence."""
     if task not in COMMON_TEN_TASKS: raise ValueError("unknown headless ten-task identity")
     manifest_path, replay_path = Path(manifest_path).resolve(), Path(replay_path).resolve()
@@ -193,9 +210,10 @@ def _load_mask10_source(task, manifest_path, replay_path):
         raise ValueError("source manifest content/environment identity mismatch")
     entries = manifest.get("episodes")
     if not isinstance(entries, list): raise ValueError("source manifest episodes missing")
-    expected_ids = [f"{task}_s{index:03d}_10" for index in range(10)]
+    selected_indices = list(range(10)) if indices is None else list(indices)
+    expected_ids = [f"{task}_s{index:03d}_10" for index in selected_indices]
     selected = []
-    for index, identifier in enumerate(expected_ids):
+    for index, identifier in zip(selected_indices, expected_ids):
         matches = [e for e in entries if isinstance(e, dict) and e.get("episode_id") == identifier]
         if len(matches) != 1: raise ValueError("all ten unique mask10 official sources 0..9 are required")
         episode = matches[0]
@@ -236,13 +254,18 @@ def _load_mask10_source(task, manifest_path, replay_path):
         if not _digest(initial_hash): raise ValueError("selected construction initial observation digest missing")
         frozen = files.observation("manifest", ".", episode.get("initial_observation"), initial_hash)
         construction_result = _audit(construction, episode, state,
-            steps=construction.get("requested_steps"), initial_hash=initial_hash)
+            steps=construction.get("requested_steps"), initial_hash=initial_hash, fixed=fixed)
         replay_results = []
+        replay_audit_files, replay_reset_files = set(), set()
         for row in sorted((r for r in rows if r["episode_id"] == identifier), key=lambda r: r["repetition"]):
             if (row.get("technical_acceptance") is not True or row.get("initial_mask") != [True, False]
                     or row.get("source_legal") is not False or row.get("error") is not None):
                 raise ValueError("selected mask10 replay explicitly failed")
             audit_path = _safe_name(row["audit_path"])
+            resolved_audit = _contained(files.roots["replay"], audit_path)
+            if fixed and resolved_audit in replay_audit_files:
+                raise ValueError("selected replay repetitions require distinct audit files; audit reused")
+            replay_audit_files.add(resolved_audit)
             audit = _json(files.read("replay", audit_path))
             reset = row.get("reset_checks")
             if (not isinstance(reset, dict) or set(reset) != {"saved_state_exact", "initial_mask_exact", "construction_observation_matches", "initial_non_rgb_exact"}
@@ -254,18 +277,24 @@ def _load_mask10_source(task, manifest_path, replay_path):
             if not isinstance(comparison, dict): raise ValueError("selected replay reset comparison missing")
             actual = files.observation("replay", PurePosixPath(audit_path).parent.as_posix(),
                 audit.get("reset_initial_observation"), comparison.get("returned_sha256"))
+            reset_relative = (PurePosixPath(audit_path).parent /
+                              _safe_name(audit["reset_initial_observation"]["path"])).as_posix()
+            resolved_reset = _contained(files.roots["replay"], reset_relative)
+            if fixed and resolved_reset in replay_reset_files:
+                raise ValueError("selected replay repetitions require distinct reset artifact files; artifact reused")
+            replay_reset_files.add(resolved_reset)
             recomputed = compare_observations(actual, frozen, atol=0, require_non_rgb_exact=True,
                 refresh_state_unchanged=True, **RGB_QUANTIZATION_AUDIT)
             if recomputed != comparison: raise ValueError("selected reset pixel/proprio comparison differs from artifacts")
             _passing_observation_comparison(comparison, initial=True, reference_hash=initial_hash)
-            result = _audit(audit, episode, state, steps=report["steps"], initial_hash=comparison["returned_sha256"])
+            result = _audit(audit, episode, state, steps=report["steps"], initial_hash=comparison["returned_sha256"], fixed=fixed)
             if (row.get("checks") != audit["checks"] or audit["trace"][0]["observation_check"]["returned_non_rgb_sha256"] != comparison["returned_non_rgb_sha256"]):
                 raise ValueError("selected replay report or initial non-RGB binding differs")
             replay_results.append({"repetition": row["repetition"], "audit_path": audit_path, **result})
         accepted.append({"episode_id": identifier, "state_sha256": episode["state_sha256"],
                          "construction": construction_result, "replays": replay_results})
     unselected = [r for r in report["episodes"] if not isinstance(r, dict) or r.get("episode_id") not in expected_ids]
-    selection = {"task_id": task, "mask": [True, False], "indices": list(range(10)), "episode_ids": expected_ids}
+    selection = {"task_id": task, "mask": [True, False], "indices": selected_indices, "episode_ids": expected_ids}
     evidence = {"schema_version": SCHEMA, "status": "mask10_ready", "acceptance_scope": SCOPE,
         "selection": selection, "selection_sha256": _canonical(selection), "selected_episode_ids": expected_ids,
         "source_manifest_sha256": _sha(raw), "source_content_hash": manifest["content_hash"],

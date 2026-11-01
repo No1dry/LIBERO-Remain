@@ -52,7 +52,7 @@ def make_recorder(path, episode):
 
 
 def evidence_identity(metadata, episode):
-    identity = {"protocol_version": PROTOCOL, "run_id": metadata["run_id"],
+    identity = {"protocol_version": metadata["protocol_version"], "run_id": metadata["run_id"],
             "batch_identity_sha256": metadata["batch_identity_sha256"],
             "source_plan_sha256": metadata["source_plan"]["source_plan_sha256"],
             "runtime_config_sha256": canonical_hash(metadata["runtime_config"]),
@@ -66,6 +66,10 @@ def evidence_identity(metadata, episode):
     if scope is not None:
         identity["source_acceptance"] = {key: deepcopy(scope[key]) for key in
             ("schema_version", "acceptance_scope", "selection_sha256", "selected_episode_ids")}
+    if metadata["schema_version"] == "remaining-headless-scoped-source-run-v1":
+        identity["source_origin"] = {"protocol": metadata["source_plan"]["protocol"],
+            "origin": deepcopy(metadata["source_plan"]["source"]),
+            "acceptance_evidence_sha256": scope["evidence_sha256"]}
     return identity
 
 
@@ -114,14 +118,21 @@ def shared_model_identity(metadata):
     return {key: deepcopy(policy.get(key)) for key in keys}
 
 
-def _read_task(directory, *, batch_identity=None, runtime=None, sources=None, model_identity=None, allow_partial=False):
-    from .schema import validate_result
+def _read_task(directory, *, batch_identity=None, runtime=None, sources=None, model_identity=None, allow_partial=False,
+               scoped=False):
+    from .schema import validate_result, validate_protocol_result
     from .evidence import validate_evidence
     from ..adapters.oft_transfer import validate_policy_metadata
     directory = Path(directory)
     metadata = read_json(directory / "task_run.json")
-    if (metadata.get("schema_version") != "remaining-headless-task-run-v1"
-            or metadata.get("protocol_version") != PROTOCOL
+    schema = "remaining-headless-scoped-source-run-v1" if scoped else "remaining-headless-task-run-v1"
+    if scoped:
+        from .scoped_planning import protocol_version
+        expected_protocol = protocol_version(metadata["source_plan"]["protocol"])
+    else:
+        expected_protocol = PROTOCOL
+    if (metadata.get("schema_version") != schema
+            or metadata.get("protocol_version") != expected_protocol
             or metadata.get("status") not in {"completed", "technical_pause"}
             or batch_identity is not None and metadata["batch_identity_sha256"] != batch_identity):
         raise ValueError("incomplete or incompatible task run; preserve it, never silently rerun")
@@ -132,14 +143,20 @@ def _read_task(directory, *, batch_identity=None, runtime=None, sources=None, mo
         raise ValueError("task sources do not belong to a frozen invocation plan")
     if plan["source_plan_sha256"] != canonical_hash({k: v for k, v in plan.items() if k != "source_plan_sha256"}):
         raise ValueError("source plan hash mismatch")
-    for name, sha in plan["source_files"].items():
-        if file_sha(_contained(directory / "source", name)) != sha:
-            raise ValueError("archived source/replay bytes changed")
-    if read_json(directory / "source/manifest.json") != plan["manifest"]:
-        raise ValueError("source plan manifest differs from archived source")
-    _validate_source_snapshot(directory, plan)
+    if scoped:
+        from .scoped_sources import validate_snapshot
+        validate_snapshot(directory, plan)
+    else:
+        for name, sha in plan["source_files"].items():
+            if file_sha(_contained(directory / "source", name)) != sha:
+                raise ValueError("archived source/replay bytes changed")
+        if read_json(directory / "source/manifest.json") != plan["manifest"]:
+            raise ValueError("source plan manifest differs from archived source")
+        _validate_source_snapshot(directory, plan)
     episodes = {e["episode_id"]: e for e in plan["episodes"]}
-    if len(episodes) != 10 or sorted(e["initial_state_index"] for e in episodes.values()) != list(range(10)):
+    count_valid = len(episodes) == 1 if scoped else (
+        len(episodes) == 10 and sorted(e["initial_state_index"] for e in episodes.values()) == list(range(10)))
+    if not count_valid:
         raise ValueError("task source denominator differs")
     if metadata["model_runtime"] is not None:
         validate_policy_metadata(metadata["runtime_config"], metadata["model_runtime"]["policy_metadata"])
@@ -159,7 +176,7 @@ def _read_task(directory, *, batch_identity=None, runtime=None, sources=None, mo
             identity = evidence_identity(metadata, episodes[name])
             if result.get("source_acceptance") != identity.get("source_acceptance"):
                 raise ValueError("raw result source acceptance scope differs from its task run")
-            validate_result(result, episodes[name], identity)
+            (validate_protocol_result if scoped else validate_result)(result, episodes[name], identity)
             if result.get("model_identity") != _model_identity(metadata):
                 raise ValueError("raw model/normalization identity differs from its task run")
             validation = validate_evidence(directory, result, episodes[name], identity)
@@ -183,22 +200,30 @@ def _read_task(directory, *, batch_identity=None, runtime=None, sources=None, mo
     return metadata, results
 
 
-def _run_task(directory, source, runtime, batch_identity, bind_model):
+def _run_task(directory, source, runtime, batch_identity, bind_model, *, scoped=False, shared_policy=None):
     from .runner import run_episode
     from .evidence import HeadlessEvidence, validate_evidence
     from ..adapters.oft_transfer import validate_policy_metadata
     directory = Path(directory)
     directory.mkdir(parents=True, exist_ok=False)
     (directory / "source").mkdir()
-    for name, origin in (("manifest.json", source["source"]["manifest"]),
-                         ("replay_report.json", source["source"]["candidate_replay"])):
-        raw = Path(origin).read_bytes()
-        if hashlib.sha256(raw).hexdigest() != source["source_files"][name]:
-            raise ValueError("source changed after planning")
-        (directory / "source" / name).write_bytes(raw)
-    if "source_acceptance" in source:
-        _archive_mask10_source(directory, source)
-    metadata = {"schema_version": "remaining-headless-task-run-v1", "protocol_version": PROTOCOL,
+    if scoped:
+        from .scoped_sources import archive_source
+        from .scoped_planning import runtime_protocol, protocol_version
+        archived_manifest_root = archive_source(directory, source)
+        execution_protocol = runtime_protocol(source["protocol"])
+        version = protocol_version(source["protocol"])
+    else:
+        for name, origin in (("manifest.json", source["source"]["manifest"]),
+                             ("replay_report.json", source["source"]["candidate_replay"])):
+            raw = Path(origin).read_bytes()
+            if hashlib.sha256(raw).hexdigest() != source["source_files"][name]:
+                raise ValueError("source changed after planning")
+            (directory / "source" / name).write_bytes(raw)
+        if "source_acceptance" in source:
+            _archive_mask10_source(directory, source)
+        execution_protocol, version = "mask10", PROTOCOL
+    metadata = {"schema_version": "remaining-headless-scoped-source-run-v1" if scoped else "remaining-headless-task-run-v1", "protocol_version": version,
                 "run_id": uuid.uuid4().hex, "created_at_utc": datetime.now(timezone.utc).isoformat(),
                 "batch_identity_sha256": batch_identity, "source_plan": source,
                 "runtime_config": runtime, "model_runtime": None, "status": "running",
@@ -210,14 +235,17 @@ def _run_task(directory, source, runtime, batch_identity, bind_model):
     try:
         metadata["phase"] = "policy_initialize"
         write_json(directory / "task_run.json", metadata, update=True)
-        policy = make_policy(runtime)
+        policy = shared_policy if shared_policy is not None else make_policy(runtime)
         metadata["model_runtime"] = deepcopy(policy.provenance)
         validate_policy_metadata(runtime, metadata["model_runtime"]["policy_metadata"])
         bind_model(shared_model_identity(metadata["model_runtime"]))
         metadata["phase"] = "environment_initialize"
         write_json(directory / "task_run.json", metadata, update=True)
         environment_config = deepcopy(source["environment_config"])
-        if "source_acceptance" in source:
+        if scoped:
+            environment_config["manifest_dir"] = str(archived_manifest_root)
+            environment_config["protocol"] = execution_protocol
+        elif "source_acceptance" in source:
             environment_config["manifest_dir"] = str(directory / "source/manifest_files")
         env = make_environment(environment_config)
         for episode in source["episodes"]:
@@ -235,8 +263,9 @@ def _run_task(directory, source, runtime, batch_identity, bind_model):
                 except BaseException as cleanup_error:
                     metadata["cleanup_errors"].append(f"{type(cleanup_error).__name__}: {cleanup_error}")
                 raise
+            kwargs = {"protocol": execution_protocol} if scoped else {}
             result = run_episode(env, policy, episode, horizon=HORIZON, confirmation_steps=CONFIRMATION,
-                                 max_chunk_steps=CHUNK, recorder=recorder, evidence=evidence, identity=identity)
+                                 max_chunk_steps=CHUNK, recorder=recorder, evidence=evidence, identity=identity, **kwargs)
             interrupted = bool(result.get("interrupted"))
             metadata["phase"] = "artifact_verification"
             # Even a failed video finalization must leave the executed trace.
@@ -271,7 +300,7 @@ def _run_task(directory, source, runtime, batch_identity, bind_model):
         if interrupted:
             raise KeyboardInterrupt("episode interrupted; artifact error retained, remaining tasks not started") from error
     finally:
-        for resource in (env, policy):
+        for resource in (env, policy if shared_policy is None else None):
             if resource is not None:
                 try:
                     resource.close()
