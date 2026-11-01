@@ -1,12 +1,12 @@
 # 当前协作状态
 
-## 2026-11-01：031本地软件交付，待发布与真实运行
+## 2026-11-01：031已提交PR #12，待审阅部署与真实运行
 
 X已在独立分支 `x/task031-normal00` 完成031；固定实现 `0a198a18d05d7a893518aa50d42f48e15e8172c2`，基于已审c6dc98d及main文档同步。normal00独立协议、逐来源selected10制备/回放/组合验收、80+20+20预算与录像/汇总均已实现；272项相关CPU/fake回归通过，最后汇总修正后9项集成检查通过，独立审查问题已修复并复审。
 
 见[031完整交付回复](responses/031_round1.md)与[runbook](../docs/task031_normal00_selected_preparation.md)。没有启动真实sim/恢复/回放/模型/训练，没有宣称两任务实际通过或100条已齐。旧80条10、原失败、历史PR保留，不自动merge。下一步为Codex审阅、服务器路径核对和隔离部署，再由用户启动真实作业。
 
-GitHub发布尚未完成：本轮浏览器host/native pipe不可用，未认证写入端401；本地提交及根目录交付包已准备。此状态不表示远端已有031 PR，恢复已登录发布通道后再上传独立分支。
+GitHub交付：[PR #12](https://github.com/No1dry/LIBERO-Remain/pull/12)，base `main`，head `x/task031-normal00`，open／unmerged。已通过系统 Git Credential Manager 的现有 No1dry 登录发布并核对远端 commit／tree；未使用历史聊天 token。发布补记仅修改本页与031回复，固定实现不变；根目录另存对应发布版本的完整交付包。
 
 ## 2026-11-01最新：031补00对照并修复两个准备缺口
 

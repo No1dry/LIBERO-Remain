@@ -1,6 +1,6 @@
 # 031 round1：normal00 与缺失两任务的局部制备交付
 
-日期：2026-11-01。实现：X。状态：**本地软件实现及审查完成，待 GitHub 发布、Codex 审阅部署与用户真实运行**。没有自动合并，没有宣称两任务物理故障已修好或100条来源已齐。
+日期：2026-11-01。实现：X。状态：**软件实现及审查完成，已提交 [PR #12](https://github.com/No1dry/LIBERO-Remain/pull/12)，待 Codex 审阅部署与用户真实运行**。没有自动合并，没有宣称两任务物理故障已修好或100条来源已齐。
 
 ## 固定版本与范围
 
@@ -71,4 +71,6 @@ git diff --check
 
 ## GitHub交付状态
 
-本轮未能发布独立PR：浏览器连接重置后仍报告browser access host unavailable，native pipe也不存在；公开仓库HTTP读取200，未认证GitHub写入端401。Git dry-run未形成可用写入会话，未写远端分支，未合并，未使用历史token。完整本地代码／git历史／回复／说明已准备，根目录交付包可直接交给具备仓库写权限的会话发布。恢复已登录浏览器或现有Git认证后推送独立分支并创建PR即可；不应把这份本地回复误认为已在GitHub可见。
+已使用系统 Git Credential Manager 中的现有 No1dry 登录推送独立分支 `x/task031-normal00`，并创建 [PR #12](https://github.com/No1dry/LIBERO-Remain/pull/12)（base：`main`，open／unmerged）。初始交付 `e475f3bac763faea035435dc712b73b19632eb6c` 的远端 commit 与 tree 已核对一致；其后仅补充本回复与 STATUS 的发布登记，固定实现 `0a198a18d05d7a893518aa50d42f48e15e8172c2` 不变。
+
+此前浏览器 host／native pipe 不可用仍属客户端连接问题，本次通过现有 Git 登录完成交付，未使用历史聊天 token，未自动合并。根目录保留此前本地交付包，并另生成对应最终发布提交的源码包、完整 Git bundle 和 hash 清单。没有因此启动真实制备、回放、模型评测或训练；下一步由 Codex 审阅、核对服务器路径及隔离部署。
