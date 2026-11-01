@@ -1,0 +1,1419 @@
+{
+  "schema_version": "remaining-headless-budget-v1",
+  "protocol_version": "remaining-headless-goal-endpoint-v1",
+  "episodes": [
+    {
+      "episode_id": "basket_s000_10",
+      "task_id": "basket",
+      "suite": "libero_10",
+      "task_name": "LIVING_ROOM_SCENE2_put_both_the_alphabet_soup_and_the_tomato_sauce_in_the_basket",
+      "evaluation_track": "primary",
+      "initial_state_index": 0,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": true
+    },
+    {
+      "episode_id": "basket_s001_10",
+      "task_id": "basket",
+      "suite": "libero_10",
+      "task_name": "LIVING_ROOM_SCENE2_put_both_the_alphabet_soup_and_the_tomato_sauce_in_the_basket",
+      "evaluation_track": "primary",
+      "initial_state_index": 1,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": true
+    },
+    {
+      "episode_id": "basket_s002_10",
+      "task_id": "basket",
+      "suite": "libero_10",
+      "task_name": "LIVING_ROOM_SCENE2_put_both_the_alphabet_soup_and_the_tomato_sauce_in_the_basket",
+      "evaluation_track": "primary",
+      "initial_state_index": 2,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": true
+    },
+    {
+      "episode_id": "basket_s003_10",
+      "task_id": "basket",
+      "suite": "libero_10",
+      "task_name": "LIVING_ROOM_SCENE2_put_both_the_alphabet_soup_and_the_tomato_sauce_in_the_basket",
+      "evaluation_track": "primary",
+      "initial_state_index": 3,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": true
+    },
+    {
+      "episode_id": "basket_s004_10",
+      "task_id": "basket",
+      "suite": "libero_10",
+      "task_name": "LIVING_ROOM_SCENE2_put_both_the_alphabet_soup_and_the_tomato_sauce_in_the_basket",
+      "evaluation_track": "primary",
+      "initial_state_index": 4,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": true
+    },
+    {
+      "episode_id": "basket_s005_10",
+      "task_id": "basket",
+      "suite": "libero_10",
+      "task_name": "LIVING_ROOM_SCENE2_put_both_the_alphabet_soup_and_the_tomato_sauce_in_the_basket",
+      "evaluation_track": "primary",
+      "initial_state_index": 5,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": false
+    },
+    {
+      "episode_id": "basket_s006_10",
+      "task_id": "basket",
+      "suite": "libero_10",
+      "task_name": "LIVING_ROOM_SCENE2_put_both_the_alphabet_soup_and_the_tomato_sauce_in_the_basket",
+      "evaluation_track": "primary",
+      "initial_state_index": 6,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": false
+    },
+    {
+      "episode_id": "basket_s007_10",
+      "task_id": "basket",
+      "suite": "libero_10",
+      "task_name": "LIVING_ROOM_SCENE2_put_both_the_alphabet_soup_and_the_tomato_sauce_in_the_basket",
+      "evaluation_track": "primary",
+      "initial_state_index": 7,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": false
+    },
+    {
+      "episode_id": "basket_s008_10",
+      "task_id": "basket",
+      "suite": "libero_10",
+      "task_name": "LIVING_ROOM_SCENE2_put_both_the_alphabet_soup_and_the_tomato_sauce_in_the_basket",
+      "evaluation_track": "primary",
+      "initial_state_index": 8,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": false
+    },
+    {
+      "episode_id": "basket_s009_10",
+      "task_id": "basket",
+      "suite": "libero_10",
+      "task_name": "LIVING_ROOM_SCENE2_put_both_the_alphabet_soup_and_the_tomato_sauce_in_the_basket",
+      "evaluation_track": "primary",
+      "initial_state_index": 9,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": false
+    },
+    {
+      "episode_id": "stove_s000_10",
+      "task_id": "stove",
+      "suite": "libero_10",
+      "task_name": "KITCHEN_SCENE3_turn_on_the_stove_and_put_the_moka_pot_on_it",
+      "evaluation_track": "primary",
+      "initial_state_index": 0,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": false
+    },
+    {
+      "episode_id": "stove_s001_10",
+      "task_id": "stove",
+      "suite": "libero_10",
+      "task_name": "KITCHEN_SCENE3_turn_on_the_stove_and_put_the_moka_pot_on_it",
+      "evaluation_track": "primary",
+      "initial_state_index": 1,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": false
+    },
+    {
+      "episode_id": "stove_s002_10",
+      "task_id": "stove",
+      "suite": "libero_10",
+      "task_name": "KITCHEN_SCENE3_turn_on_the_stove_and_put_the_moka_pot_on_it",
+      "evaluation_track": "primary",
+      "initial_state_index": 2,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": false
+    },
+    {
+      "episode_id": "stove_s003_10",
+      "task_id": "stove",
+      "suite": "libero_10",
+      "task_name": "KITCHEN_SCENE3_turn_on_the_stove_and_put_the_moka_pot_on_it",
+      "evaluation_track": "primary",
+      "initial_state_index": 3,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": false
+    },
+    {
+      "episode_id": "stove_s004_10",
+      "task_id": "stove",
+      "suite": "libero_10",
+      "task_name": "KITCHEN_SCENE3_turn_on_the_stove_and_put_the_moka_pot_on_it",
+      "evaluation_track": "primary",
+      "initial_state_index": 4,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": false
+    },
+    {
+      "episode_id": "stove_s005_10",
+      "task_id": "stove",
+      "suite": "libero_10",
+      "task_name": "KITCHEN_SCENE3_turn_on_the_stove_and_put_the_moka_pot_on_it",
+      "evaluation_track": "primary",
+      "initial_state_index": 5,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": false
+    },
+    {
+      "episode_id": "stove_s006_10",
+      "task_id": "stove",
+      "suite": "libero_10",
+      "task_name": "KITCHEN_SCENE3_turn_on_the_stove_and_put_the_moka_pot_on_it",
+      "evaluation_track": "primary",
+      "initial_state_index": 6,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": false
+    },
+    {
+      "episode_id": "stove_s007_10",
+      "task_id": "stove",
+      "suite": "libero_10",
+      "task_name": "KITCHEN_SCENE3_turn_on_the_stove_and_put_the_moka_pot_on_it",
+      "evaluation_track": "primary",
+      "initial_state_index": 7,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": false
+    },
+    {
+      "episode_id": "stove_s008_10",
+      "task_id": "stove",
+      "suite": "libero_10",
+      "task_name": "KITCHEN_SCENE3_turn_on_the_stove_and_put_the_moka_pot_on_it",
+      "evaluation_track": "primary",
+      "initial_state_index": 8,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": false
+    },
+    {
+      "episode_id": "stove_s009_10",
+      "task_id": "stove",
+      "suite": "libero_10",
+      "task_name": "KITCHEN_SCENE3_turn_on_the_stove_and_put_the_moka_pot_on_it",
+      "evaluation_track": "primary",
+      "initial_state_index": 9,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": false
+    },
+    {
+      "episode_id": "basket_cheese_butter_s000_10",
+      "task_id": "basket_cheese_butter",
+      "suite": "libero_10",
+      "task_name": "LIVING_ROOM_SCENE2_put_both_the_cream_cheese_box_and_the_butter_in_the_basket",
+      "evaluation_track": "primary",
+      "initial_state_index": 0,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": false
+    },
+    {
+      "episode_id": "basket_cheese_butter_s001_10",
+      "task_id": "basket_cheese_butter",
+      "suite": "libero_10",
+      "task_name": "LIVING_ROOM_SCENE2_put_both_the_cream_cheese_box_and_the_butter_in_the_basket",
+      "evaluation_track": "primary",
+      "initial_state_index": 1,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": false
+    },
+    {
+      "episode_id": "basket_cheese_butter_s002_10",
+      "task_id": "basket_cheese_butter",
+      "suite": "libero_10",
+      "task_name": "LIVING_ROOM_SCENE2_put_both_the_cream_cheese_box_and_the_butter_in_the_basket",
+      "evaluation_track": "primary",
+      "initial_state_index": 2,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": false
+    },
+    {
+      "episode_id": "basket_cheese_butter_s003_10",
+      "task_id": "basket_cheese_butter",
+      "suite": "libero_10",
+      "task_name": "LIVING_ROOM_SCENE2_put_both_the_cream_cheese_box_and_the_butter_in_the_basket",
+      "evaluation_track": "primary",
+      "initial_state_index": 3,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": false
+    },
+    {
+      "episode_id": "basket_cheese_butter_s004_10",
+      "task_id": "basket_cheese_butter",
+      "suite": "libero_10",
+      "task_name": "LIVING_ROOM_SCENE2_put_both_the_cream_cheese_box_and_the_butter_in_the_basket",
+      "evaluation_track": "primary",
+      "initial_state_index": 4,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": false
+    },
+    {
+      "episode_id": "basket_cheese_butter_s005_10",
+      "task_id": "basket_cheese_butter",
+      "suite": "libero_10",
+      "task_name": "LIVING_ROOM_SCENE2_put_both_the_cream_cheese_box_and_the_butter_in_the_basket",
+      "evaluation_track": "primary",
+      "initial_state_index": 5,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": false
+    },
+    {
+      "episode_id": "basket_cheese_butter_s006_10",
+      "task_id": "basket_cheese_butter",
+      "suite": "libero_10",
+      "task_name": "LIVING_ROOM_SCENE2_put_both_the_cream_cheese_box_and_the_butter_in_the_basket",
+      "evaluation_track": "primary",
+      "initial_state_index": 6,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": false
+    },
+    {
+      "episode_id": "basket_cheese_butter_s007_10",
+      "task_id": "basket_cheese_butter",
+      "suite": "libero_10",
+      "task_name": "LIVING_ROOM_SCENE2_put_both_the_cream_cheese_box_and_the_butter_in_the_basket",
+      "evaluation_track": "primary",
+      "initial_state_index": 7,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": false
+    },
+    {
+      "episode_id": "basket_cheese_butter_s008_10",
+      "task_id": "basket_cheese_butter",
+      "suite": "libero_10",
+      "task_name": "LIVING_ROOM_SCENE2_put_both_the_cream_cheese_box_and_the_butter_in_the_basket",
+      "evaluation_track": "primary",
+      "initial_state_index": 8,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": false
+    },
+    {
+      "episode_id": "basket_cheese_butter_s009_10",
+      "task_id": "basket_cheese_butter",
+      "suite": "libero_10",
+      "task_name": "LIVING_ROOM_SCENE2_put_both_the_cream_cheese_box_and_the_butter_in_the_basket",
+      "evaluation_track": "primary",
+      "initial_state_index": 9,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": false
+    },
+    {
+      "episode_id": "basket_soup_cheese_s000_10",
+      "task_id": "basket_soup_cheese",
+      "suite": "libero_10",
+      "task_name": "LIVING_ROOM_SCENE1_put_both_the_alphabet_soup_and_the_cream_cheese_box_in_the_basket",
+      "evaluation_track": "primary",
+      "initial_state_index": 0,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": false
+    },
+    {
+      "episode_id": "basket_soup_cheese_s001_10",
+      "task_id": "basket_soup_cheese",
+      "suite": "libero_10",
+      "task_name": "LIVING_ROOM_SCENE1_put_both_the_alphabet_soup_and_the_cream_cheese_box_in_the_basket",
+      "evaluation_track": "primary",
+      "initial_state_index": 1,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": false
+    },
+    {
+      "episode_id": "basket_soup_cheese_s002_10",
+      "task_id": "basket_soup_cheese",
+      "suite": "libero_10",
+      "task_name": "LIVING_ROOM_SCENE1_put_both_the_alphabet_soup_and_the_cream_cheese_box_in_the_basket",
+      "evaluation_track": "primary",
+      "initial_state_index": 2,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": false
+    },
+    {
+      "episode_id": "basket_soup_cheese_s003_10",
+      "task_id": "basket_soup_cheese",
+      "suite": "libero_10",
+      "task_name": "LIVING_ROOM_SCENE1_put_both_the_alphabet_soup_and_the_cream_cheese_box_in_the_basket",
+      "evaluation_track": "primary",
+      "initial_state_index": 3,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": false
+    },
+    {
+      "episode_id": "basket_soup_cheese_s004_10",
+      "task_id": "basket_soup_cheese",
+      "suite": "libero_10",
+      "task_name": "LIVING_ROOM_SCENE1_put_both_the_alphabet_soup_and_the_cream_cheese_box_in_the_basket",
+      "evaluation_track": "primary",
+      "initial_state_index": 4,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": false
+    },
+    {
+      "episode_id": "basket_soup_cheese_s005_10",
+      "task_id": "basket_soup_cheese",
+      "suite": "libero_10",
+      "task_name": "LIVING_ROOM_SCENE1_put_both_the_alphabet_soup_and_the_cream_cheese_box_in_the_basket",
+      "evaluation_track": "primary",
+      "initial_state_index": 5,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": false
+    },
+    {
+      "episode_id": "basket_soup_cheese_s006_10",
+      "task_id": "basket_soup_cheese",
+      "suite": "libero_10",
+      "task_name": "LIVING_ROOM_SCENE1_put_both_the_alphabet_soup_and_the_cream_cheese_box_in_the_basket",
+      "evaluation_track": "primary",
+      "initial_state_index": 6,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": false
+    },
+    {
+      "episode_id": "basket_soup_cheese_s007_10",
+      "task_id": "basket_soup_cheese",
+      "suite": "libero_10",
+      "task_name": "LIVING_ROOM_SCENE1_put_both_the_alphabet_soup_and_the_cream_cheese_box_in_the_basket",
+      "evaluation_track": "primary",
+      "initial_state_index": 7,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": false
+    },
+    {
+      "episode_id": "basket_soup_cheese_s008_10",
+      "task_id": "basket_soup_cheese",
+      "suite": "libero_10",
+      "task_name": "LIVING_ROOM_SCENE1_put_both_the_alphabet_soup_and_the_cream_cheese_box_in_the_basket",
+      "evaluation_track": "primary",
+      "initial_state_index": 8,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": false
+    },
+    {
+      "episode_id": "basket_soup_cheese_s009_10",
+      "task_id": "basket_soup_cheese",
+      "suite": "libero_10",
+      "task_name": "LIVING_ROOM_SCENE1_put_both_the_alphabet_soup_and_the_cream_cheese_box_in_the_basket",
+      "evaluation_track": "primary",
+      "initial_state_index": 9,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": false
+    },
+    {
+      "episode_id": "dual_mugs_s000_10",
+      "task_id": "dual_mugs",
+      "suite": "libero_10",
+      "task_name": "LIVING_ROOM_SCENE5_put_the_white_mug_on_the_left_plate_and_put_the_yellow_and_white_mug_on_the_right_plate",
+      "evaluation_track": "primary",
+      "initial_state_index": 0,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": false
+    },
+    {
+      "episode_id": "dual_mugs_s001_10",
+      "task_id": "dual_mugs",
+      "suite": "libero_10",
+      "task_name": "LIVING_ROOM_SCENE5_put_the_white_mug_on_the_left_plate_and_put_the_yellow_and_white_mug_on_the_right_plate",
+      "evaluation_track": "primary",
+      "initial_state_index": 1,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": false
+    },
+    {
+      "episode_id": "dual_mugs_s002_10",
+      "task_id": "dual_mugs",
+      "suite": "libero_10",
+      "task_name": "LIVING_ROOM_SCENE5_put_the_white_mug_on_the_left_plate_and_put_the_yellow_and_white_mug_on_the_right_plate",
+      "evaluation_track": "primary",
+      "initial_state_index": 2,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": false
+    },
+    {
+      "episode_id": "dual_mugs_s003_10",
+      "task_id": "dual_mugs",
+      "suite": "libero_10",
+      "task_name": "LIVING_ROOM_SCENE5_put_the_white_mug_on_the_left_plate_and_put_the_yellow_and_white_mug_on_the_right_plate",
+      "evaluation_track": "primary",
+      "initial_state_index": 3,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": false
+    },
+    {
+      "episode_id": "dual_mugs_s004_10",
+      "task_id": "dual_mugs",
+      "suite": "libero_10",
+      "task_name": "LIVING_ROOM_SCENE5_put_the_white_mug_on_the_left_plate_and_put_the_yellow_and_white_mug_on_the_right_plate",
+      "evaluation_track": "primary",
+      "initial_state_index": 4,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": false
+    },
+    {
+      "episode_id": "dual_mugs_s005_10",
+      "task_id": "dual_mugs",
+      "suite": "libero_10",
+      "task_name": "LIVING_ROOM_SCENE5_put_the_white_mug_on_the_left_plate_and_put_the_yellow_and_white_mug_on_the_right_plate",
+      "evaluation_track": "primary",
+      "initial_state_index": 5,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": false
+    },
+    {
+      "episode_id": "dual_mugs_s006_10",
+      "task_id": "dual_mugs",
+      "suite": "libero_10",
+      "task_name": "LIVING_ROOM_SCENE5_put_the_white_mug_on_the_left_plate_and_put_the_yellow_and_white_mug_on_the_right_plate",
+      "evaluation_track": "primary",
+      "initial_state_index": 6,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": false
+    },
+    {
+      "episode_id": "dual_mugs_s007_10",
+      "task_id": "dual_mugs",
+      "suite": "libero_10",
+      "task_name": "LIVING_ROOM_SCENE5_put_the_white_mug_on_the_left_plate_and_put_the_yellow_and_white_mug_on_the_right_plate",
+      "evaluation_track": "primary",
+      "initial_state_index": 7,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": false
+    },
+    {
+      "episode_id": "dual_mugs_s008_10",
+      "task_id": "dual_mugs",
+      "suite": "libero_10",
+      "task_name": "LIVING_ROOM_SCENE5_put_the_white_mug_on_the_left_plate_and_put_the_yellow_and_white_mug_on_the_right_plate",
+      "evaluation_track": "primary",
+      "initial_state_index": 8,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": false
+    },
+    {
+      "episode_id": "dual_mugs_s009_10",
+      "task_id": "dual_mugs",
+      "suite": "libero_10",
+      "task_name": "LIVING_ROOM_SCENE5_put_the_white_mug_on_the_left_plate_and_put_the_yellow_and_white_mug_on_the_right_plate",
+      "evaluation_track": "primary",
+      "initial_state_index": 9,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": false
+    },
+    {
+      "episode_id": "mug_pudding_s000_10",
+      "task_id": "mug_pudding",
+      "suite": "libero_10",
+      "task_name": "LIVING_ROOM_SCENE6_put_the_white_mug_on_the_plate_and_put_the_chocolate_pudding_to_the_right_of_the_plate",
+      "evaluation_track": "primary",
+      "initial_state_index": 0,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": false
+    },
+    {
+      "episode_id": "mug_pudding_s001_10",
+      "task_id": "mug_pudding",
+      "suite": "libero_10",
+      "task_name": "LIVING_ROOM_SCENE6_put_the_white_mug_on_the_plate_and_put_the_chocolate_pudding_to_the_right_of_the_plate",
+      "evaluation_track": "primary",
+      "initial_state_index": 1,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": false
+    },
+    {
+      "episode_id": "mug_pudding_s002_10",
+      "task_id": "mug_pudding",
+      "suite": "libero_10",
+      "task_name": "LIVING_ROOM_SCENE6_put_the_white_mug_on_the_plate_and_put_the_chocolate_pudding_to_the_right_of_the_plate",
+      "evaluation_track": "primary",
+      "initial_state_index": 2,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": false
+    },
+    {
+      "episode_id": "mug_pudding_s003_10",
+      "task_id": "mug_pudding",
+      "suite": "libero_10",
+      "task_name": "LIVING_ROOM_SCENE6_put_the_white_mug_on_the_plate_and_put_the_chocolate_pudding_to_the_right_of_the_plate",
+      "evaluation_track": "primary",
+      "initial_state_index": 3,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": false
+    },
+    {
+      "episode_id": "mug_pudding_s004_10",
+      "task_id": "mug_pudding",
+      "suite": "libero_10",
+      "task_name": "LIVING_ROOM_SCENE6_put_the_white_mug_on_the_plate_and_put_the_chocolate_pudding_to_the_right_of_the_plate",
+      "evaluation_track": "primary",
+      "initial_state_index": 4,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": false
+    },
+    {
+      "episode_id": "mug_pudding_s005_10",
+      "task_id": "mug_pudding",
+      "suite": "libero_10",
+      "task_name": "LIVING_ROOM_SCENE6_put_the_white_mug_on_the_plate_and_put_the_chocolate_pudding_to_the_right_of_the_plate",
+      "evaluation_track": "primary",
+      "initial_state_index": 5,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": false
+    },
+    {
+      "episode_id": "mug_pudding_s006_10",
+      "task_id": "mug_pudding",
+      "suite": "libero_10",
+      "task_name": "LIVING_ROOM_SCENE6_put_the_white_mug_on_the_plate_and_put_the_chocolate_pudding_to_the_right_of_the_plate",
+      "evaluation_track": "primary",
+      "initial_state_index": 6,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": false
+    },
+    {
+      "episode_id": "mug_pudding_s007_10",
+      "task_id": "mug_pudding",
+      "suite": "libero_10",
+      "task_name": "LIVING_ROOM_SCENE6_put_the_white_mug_on_the_plate_and_put_the_chocolate_pudding_to_the_right_of_the_plate",
+      "evaluation_track": "primary",
+      "initial_state_index": 7,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": false
+    },
+    {
+      "episode_id": "mug_pudding_s008_10",
+      "task_id": "mug_pudding",
+      "suite": "libero_10",
+      "task_name": "LIVING_ROOM_SCENE6_put_the_white_mug_on_the_plate_and_put_the_chocolate_pudding_to_the_right_of_the_plate",
+      "evaluation_track": "primary",
+      "initial_state_index": 8,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": false
+    },
+    {
+      "episode_id": "mug_pudding_s009_10",
+      "task_id": "mug_pudding",
+      "suite": "libero_10",
+      "task_name": "LIVING_ROOM_SCENE6_put_the_white_mug_on_the_plate_and_put_the_chocolate_pudding_to_the_right_of_the_plate",
+      "evaluation_track": "primary",
+      "initial_state_index": 9,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": false
+    },
+    {
+      "episode_id": "frypan_stove3_s000_10",
+      "task_id": "frypan_stove3",
+      "suite": "libero_90",
+      "task_name": "KITCHEN_SCENE3_turn_on_the_stove_and_put_the_frying_pan_on_it",
+      "evaluation_track": "extension",
+      "initial_state_index": 0,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": false
+    },
+    {
+      "episode_id": "frypan_stove3_s001_10",
+      "task_id": "frypan_stove3",
+      "suite": "libero_90",
+      "task_name": "KITCHEN_SCENE3_turn_on_the_stove_and_put_the_frying_pan_on_it",
+      "evaluation_track": "extension",
+      "initial_state_index": 1,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": false
+    },
+    {
+      "episode_id": "frypan_stove3_s002_10",
+      "task_id": "frypan_stove3",
+      "suite": "libero_90",
+      "task_name": "KITCHEN_SCENE3_turn_on_the_stove_and_put_the_frying_pan_on_it",
+      "evaluation_track": "extension",
+      "initial_state_index": 2,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": false
+    },
+    {
+      "episode_id": "frypan_stove3_s003_10",
+      "task_id": "frypan_stove3",
+      "suite": "libero_90",
+      "task_name": "KITCHEN_SCENE3_turn_on_the_stove_and_put_the_frying_pan_on_it",
+      "evaluation_track": "extension",
+      "initial_state_index": 3,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": false
+    },
+    {
+      "episode_id": "frypan_stove3_s004_10",
+      "task_id": "frypan_stove3",
+      "suite": "libero_90",
+      "task_name": "KITCHEN_SCENE3_turn_on_the_stove_and_put_the_frying_pan_on_it",
+      "evaluation_track": "extension",
+      "initial_state_index": 4,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": false
+    },
+    {
+      "episode_id": "frypan_stove3_s005_10",
+      "task_id": "frypan_stove3",
+      "suite": "libero_90",
+      "task_name": "KITCHEN_SCENE3_turn_on_the_stove_and_put_the_frying_pan_on_it",
+      "evaluation_track": "extension",
+      "initial_state_index": 5,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": false
+    },
+    {
+      "episode_id": "frypan_stove3_s006_10",
+      "task_id": "frypan_stove3",
+      "suite": "libero_90",
+      "task_name": "KITCHEN_SCENE3_turn_on_the_stove_and_put_the_frying_pan_on_it",
+      "evaluation_track": "extension",
+      "initial_state_index": 6,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": false
+    },
+    {
+      "episode_id": "frypan_stove3_s007_10",
+      "task_id": "frypan_stove3",
+      "suite": "libero_90",
+      "task_name": "KITCHEN_SCENE3_turn_on_the_stove_and_put_the_frying_pan_on_it",
+      "evaluation_track": "extension",
+      "initial_state_index": 7,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": false
+    },
+    {
+      "episode_id": "frypan_stove3_s008_10",
+      "task_id": "frypan_stove3",
+      "suite": "libero_90",
+      "task_name": "KITCHEN_SCENE3_turn_on_the_stove_and_put_the_frying_pan_on_it",
+      "evaluation_track": "extension",
+      "initial_state_index": 8,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": false
+    },
+    {
+      "episode_id": "frypan_stove3_s009_10",
+      "task_id": "frypan_stove3",
+      "suite": "libero_90",
+      "task_name": "KITCHEN_SCENE3_turn_on_the_stove_and_put_the_frying_pan_on_it",
+      "evaluation_track": "extension",
+      "initial_state_index": 9,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": false
+    },
+    {
+      "episode_id": "frypan_stove9_s000_10",
+      "task_id": "frypan_stove9",
+      "suite": "libero_90",
+      "task_name": "KITCHEN_SCENE9_turn_on_the_stove_and_put_the_frying_pan_on_it",
+      "evaluation_track": "extension",
+      "initial_state_index": 0,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": false
+    },
+    {
+      "episode_id": "frypan_stove9_s001_10",
+      "task_id": "frypan_stove9",
+      "suite": "libero_90",
+      "task_name": "KITCHEN_SCENE9_turn_on_the_stove_and_put_the_frying_pan_on_it",
+      "evaluation_track": "extension",
+      "initial_state_index": 1,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": false
+    },
+    {
+      "episode_id": "frypan_stove9_s002_10",
+      "task_id": "frypan_stove9",
+      "suite": "libero_90",
+      "task_name": "KITCHEN_SCENE9_turn_on_the_stove_and_put_the_frying_pan_on_it",
+      "evaluation_track": "extension",
+      "initial_state_index": 2,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": false
+    },
+    {
+      "episode_id": "frypan_stove9_s003_10",
+      "task_id": "frypan_stove9",
+      "suite": "libero_90",
+      "task_name": "KITCHEN_SCENE9_turn_on_the_stove_and_put_the_frying_pan_on_it",
+      "evaluation_track": "extension",
+      "initial_state_index": 3,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": false
+    },
+    {
+      "episode_id": "frypan_stove9_s004_10",
+      "task_id": "frypan_stove9",
+      "suite": "libero_90",
+      "task_name": "KITCHEN_SCENE9_turn_on_the_stove_and_put_the_frying_pan_on_it",
+      "evaluation_track": "extension",
+      "initial_state_index": 4,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": false
+    },
+    {
+      "episode_id": "frypan_stove9_s005_10",
+      "task_id": "frypan_stove9",
+      "suite": "libero_90",
+      "task_name": "KITCHEN_SCENE9_turn_on_the_stove_and_put_the_frying_pan_on_it",
+      "evaluation_track": "extension",
+      "initial_state_index": 5,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": false
+    },
+    {
+      "episode_id": "frypan_stove9_s006_10",
+      "task_id": "frypan_stove9",
+      "suite": "libero_90",
+      "task_name": "KITCHEN_SCENE9_turn_on_the_stove_and_put_the_frying_pan_on_it",
+      "evaluation_track": "extension",
+      "initial_state_index": 6,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": false
+    },
+    {
+      "episode_id": "frypan_stove9_s007_10",
+      "task_id": "frypan_stove9",
+      "suite": "libero_90",
+      "task_name": "KITCHEN_SCENE9_turn_on_the_stove_and_put_the_frying_pan_on_it",
+      "evaluation_track": "extension",
+      "initial_state_index": 7,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": false
+    },
+    {
+      "episode_id": "frypan_stove9_s008_10",
+      "task_id": "frypan_stove9",
+      "suite": "libero_90",
+      "task_name": "KITCHEN_SCENE9_turn_on_the_stove_and_put_the_frying_pan_on_it",
+      "evaluation_track": "extension",
+      "initial_state_index": 8,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": false
+    },
+    {
+      "episode_id": "frypan_stove9_s009_10",
+      "task_id": "frypan_stove9",
+      "suite": "libero_90",
+      "task_name": "KITCHEN_SCENE9_turn_on_the_stove_and_put_the_frying_pan_on_it",
+      "evaluation_track": "extension",
+      "initial_state_index": 9,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": false
+    },
+    {
+      "episode_id": "cabinet_close_top_bowl_s000_10",
+      "task_id": "cabinet_close_top_bowl",
+      "suite": "libero_90",
+      "task_name": "KITCHEN_SCENE10_close_the_top_drawer_of_the_cabinet_and_put_the_black_bowl_on_top_of_it",
+      "evaluation_track": "extension",
+      "initial_state_index": 0,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": false
+    },
+    {
+      "episode_id": "cabinet_close_top_bowl_s001_10",
+      "task_id": "cabinet_close_top_bowl",
+      "suite": "libero_90",
+      "task_name": "KITCHEN_SCENE10_close_the_top_drawer_of_the_cabinet_and_put_the_black_bowl_on_top_of_it",
+      "evaluation_track": "extension",
+      "initial_state_index": 1,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": false
+    },
+    {
+      "episode_id": "cabinet_close_top_bowl_s002_10",
+      "task_id": "cabinet_close_top_bowl",
+      "suite": "libero_90",
+      "task_name": "KITCHEN_SCENE10_close_the_top_drawer_of_the_cabinet_and_put_the_black_bowl_on_top_of_it",
+      "evaluation_track": "extension",
+      "initial_state_index": 2,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": false
+    },
+    {
+      "episode_id": "cabinet_close_top_bowl_s003_10",
+      "task_id": "cabinet_close_top_bowl",
+      "suite": "libero_90",
+      "task_name": "KITCHEN_SCENE10_close_the_top_drawer_of_the_cabinet_and_put_the_black_bowl_on_top_of_it",
+      "evaluation_track": "extension",
+      "initial_state_index": 3,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": false
+    },
+    {
+      "episode_id": "cabinet_close_top_bowl_s004_10",
+      "task_id": "cabinet_close_top_bowl",
+      "suite": "libero_90",
+      "task_name": "KITCHEN_SCENE10_close_the_top_drawer_of_the_cabinet_and_put_the_black_bowl_on_top_of_it",
+      "evaluation_track": "extension",
+      "initial_state_index": 4,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": false
+    },
+    {
+      "episode_id": "cabinet_close_top_bowl_s005_10",
+      "task_id": "cabinet_close_top_bowl",
+      "suite": "libero_90",
+      "task_name": "KITCHEN_SCENE10_close_the_top_drawer_of_the_cabinet_and_put_the_black_bowl_on_top_of_it",
+      "evaluation_track": "extension",
+      "initial_state_index": 5,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": false
+    },
+    {
+      "episode_id": "cabinet_close_top_bowl_s006_10",
+      "task_id": "cabinet_close_top_bowl",
+      "suite": "libero_90",
+      "task_name": "KITCHEN_SCENE10_close_the_top_drawer_of_the_cabinet_and_put_the_black_bowl_on_top_of_it",
+      "evaluation_track": "extension",
+      "initial_state_index": 6,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": false
+    },
+    {
+      "episode_id": "cabinet_close_top_bowl_s007_10",
+      "task_id": "cabinet_close_top_bowl",
+      "suite": "libero_90",
+      "task_name": "KITCHEN_SCENE10_close_the_top_drawer_of_the_cabinet_and_put_the_black_bowl_on_top_of_it",
+      "evaluation_track": "extension",
+      "initial_state_index": 7,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": false
+    },
+    {
+      "episode_id": "cabinet_close_top_bowl_s008_10",
+      "task_id": "cabinet_close_top_bowl",
+      "suite": "libero_90",
+      "task_name": "KITCHEN_SCENE10_close_the_top_drawer_of_the_cabinet_and_put_the_black_bowl_on_top_of_it",
+      "evaluation_track": "extension",
+      "initial_state_index": 8,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": false
+    },
+    {
+      "episode_id": "cabinet_close_top_bowl_s009_10",
+      "task_id": "cabinet_close_top_bowl",
+      "suite": "libero_90",
+      "task_name": "KITCHEN_SCENE10_close_the_top_drawer_of_the_cabinet_and_put_the_black_bowl_on_top_of_it",
+      "evaluation_track": "extension",
+      "initial_state_index": 9,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": false
+    },
+    {
+      "episode_id": "cabinet_close_bottom_open_top_s000_10",
+      "task_id": "cabinet_close_bottom_open_top",
+      "suite": "libero_90",
+      "task_name": "KITCHEN_SCENE4_close_the_bottom_drawer_of_the_cabinet_and_open_the_top_drawer",
+      "evaluation_track": "extension",
+      "initial_state_index": 0,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": false
+    },
+    {
+      "episode_id": "cabinet_close_bottom_open_top_s001_10",
+      "task_id": "cabinet_close_bottom_open_top",
+      "suite": "libero_90",
+      "task_name": "KITCHEN_SCENE4_close_the_bottom_drawer_of_the_cabinet_and_open_the_top_drawer",
+      "evaluation_track": "extension",
+      "initial_state_index": 1,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": false
+    },
+    {
+      "episode_id": "cabinet_close_bottom_open_top_s002_10",
+      "task_id": "cabinet_close_bottom_open_top",
+      "suite": "libero_90",
+      "task_name": "KITCHEN_SCENE4_close_the_bottom_drawer_of_the_cabinet_and_open_the_top_drawer",
+      "evaluation_track": "extension",
+      "initial_state_index": 2,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": false
+    },
+    {
+      "episode_id": "cabinet_close_bottom_open_top_s003_10",
+      "task_id": "cabinet_close_bottom_open_top",
+      "suite": "libero_90",
+      "task_name": "KITCHEN_SCENE4_close_the_bottom_drawer_of_the_cabinet_and_open_the_top_drawer",
+      "evaluation_track": "extension",
+      "initial_state_index": 3,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": false
+    },
+    {
+      "episode_id": "cabinet_close_bottom_open_top_s004_10",
+      "task_id": "cabinet_close_bottom_open_top",
+      "suite": "libero_90",
+      "task_name": "KITCHEN_SCENE4_close_the_bottom_drawer_of_the_cabinet_and_open_the_top_drawer",
+      "evaluation_track": "extension",
+      "initial_state_index": 4,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": false
+    },
+    {
+      "episode_id": "cabinet_close_bottom_open_top_s005_10",
+      "task_id": "cabinet_close_bottom_open_top",
+      "suite": "libero_90",
+      "task_name": "KITCHEN_SCENE4_close_the_bottom_drawer_of_the_cabinet_and_open_the_top_drawer",
+      "evaluation_track": "extension",
+      "initial_state_index": 5,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": false
+    },
+    {
+      "episode_id": "cabinet_close_bottom_open_top_s006_10",
+      "task_id": "cabinet_close_bottom_open_top",
+      "suite": "libero_90",
+      "task_name": "KITCHEN_SCENE4_close_the_bottom_drawer_of_the_cabinet_and_open_the_top_drawer",
+      "evaluation_track": "extension",
+      "initial_state_index": 6,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": false
+    },
+    {
+      "episode_id": "cabinet_close_bottom_open_top_s007_10",
+      "task_id": "cabinet_close_bottom_open_top",
+      "suite": "libero_90",
+      "task_name": "KITCHEN_SCENE4_close_the_bottom_drawer_of_the_cabinet_and_open_the_top_drawer",
+      "evaluation_track": "extension",
+      "initial_state_index": 7,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": false
+    },
+    {
+      "episode_id": "cabinet_close_bottom_open_top_s008_10",
+      "task_id": "cabinet_close_bottom_open_top",
+      "suite": "libero_90",
+      "task_name": "KITCHEN_SCENE4_close_the_bottom_drawer_of_the_cabinet_and_open_the_top_drawer",
+      "evaluation_track": "extension",
+      "initial_state_index": 8,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": false
+    },
+    {
+      "episode_id": "cabinet_close_bottom_open_top_s009_10",
+      "task_id": "cabinet_close_bottom_open_top",
+      "suite": "libero_90",
+      "task_name": "KITCHEN_SCENE4_close_the_bottom_drawer_of_the_cabinet_and_open_the_top_drawer",
+      "evaluation_track": "extension",
+      "initial_state_index": 9,
+      "initial_mask": [
+        true,
+        false
+      ],
+      "policy_seed": 7,
+      "development_source": false
+    }
+  ],
+  "expected": 100,
+  "horizon": 520,
+  "confirmation_steps": 4,
+  "max_chunk_steps": 8,
+  "retention_steps": 0,
+  "maximum_policy_steps": 52000,
+  "primary": 60,
+  "extension": 40,
+  "policy_seed": 7,
+  "extra_smoke_or_calibration_episodes": 0,
+  "simulation_created": false,
+  "weights_loaded": false,
+  "notice": "Exactly ten official init indices 0..9 per task, mask10 only. State preparation/replay steps recorded separately. Basket 0..4 are development sources. No automatic retries."
+}

@@ -23,6 +23,7 @@ MODULES = {
     "evaluate": "benchmark.remaining_goals.evaluation",
     "regression": "benchmark.remaining_goals.regression",
     "metrics": "benchmark.remaining_goals.cli",
+    "headless": "benchmark.remaining_goals.headless.cli",
 }
 
 
