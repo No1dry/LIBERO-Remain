@@ -1,0 +1,275 @@
+{
+  "format": "libero-remain.source-gap-handoff.v1",
+  "date": "2026-11-01",
+  "scope": "source preparation gaps, not model failures",
+  "baseline_completed_mask10_episodes": 80,
+  "planned_mask10_episodes": 100,
+  "existing_model_results_to_rerun": 0,
+  "raw_audits_retrieved_this_round": false,
+  "original_failed_artifacts_must_be_retained": true,
+  "tasks": [
+    {
+      "task_id": "frypan_stove9",
+      "suite": "libero_90",
+      "affected_official_init_index": 4,
+      "reported_common_base_mask": "00",
+      "reported_failure_category": "observation_consistency",
+      "observed_numeric_details": {
+        "episode_id": "frypan_stove9_s004_00",
+        "technical_acceptance": false,
+        "error": null,
+        "requested_steps": 150,
+        "completed_steps": 150,
+        "checks": {
+          "contact_penetration_within_limit": true,
+          "finite_state_and_velocity": true,
+          "initial_non_rgb_bit_exact": true,
+          "object_positions_stable": true,
+          "observation_matches_fresh": false,
+          "predicate_mask_matches": true,
+          "reference_robot_pose_matches": true,
+          "refresh_did_not_step": true,
+          "rgb_allowance_state_verified": true,
+          "robot_pose_stable": true,
+          "velocities_below_limit": true,
+          "validation_window_complete": true,
+          "snapshot_contract_valid": true
+        },
+        "limits": {
+          "position_tolerance": 0.005,
+          "velocity_tolerance": 0.01,
+          "robot_position_tolerance": 0.002,
+          "penetration_tolerance": 0.002,
+          "observation_tolerance": 1e-8,
+          "rgb_max_abs_error": 1,
+          "rgb_max_changed_fraction": 0.0001
+        },
+        "trace_length": 151,
+        "failed_trace_count": 1,
+        "first_failures": [
+          {
+            "step": 142,
+            "goals": [
+              false,
+              false
+            ],
+            "failed_checks": [
+              "observation_matches_fresh"
+            ],
+            "max_abs_velocity": 0.000048154833795878085,
+            "max_velocity_index": 0,
+            "velocity_at_index": -0.000048154833795878085,
+            "observation": {
+              "matches": false,
+              "mismatched_fields": [
+                "observation.robot0_eye_in_hand_image"
+              ],
+              "max_abs_error": 1,
+              "errors": [],
+              "non_rgb_bit_exact": true,
+              "image_diagnostics": {
+                "observation.agentview_image": {
+                  "bit_exact": true,
+                  "changed_pixels": 0,
+                  "total_pixels": 65536,
+                  "changed_fraction": 0,
+                  "max_changed_pixels": 6,
+                  "max_changed_fraction": 0.0001,
+                  "max_abs_error": 0,
+                  "bounded_allowance_used": false
+                },
+                "observation.robot0_eye_in_hand_image": {
+                  "bit_exact": false,
+                  "changed_pixels": 7,
+                  "total_pixels": 65536,
+                  "changed_fraction": 0.0001068115234375,
+                  "max_changed_pixels": 6,
+                  "max_changed_fraction": 0.0001,
+                  "max_abs_error": 1,
+                  "bounded_allowance_used": false
+                }
+              }
+            }
+          }
+        ],
+        "worst_velocity": {
+          "step": 3,
+          "goals": [
+            false,
+            false
+          ],
+          "failed_checks": [],
+          "max_abs_velocity": 0.000565506475971804,
+          "max_velocity_index": 0,
+          "velocity_at_index": -0.000565506475971804,
+          "observation": {
+            "matches": true,
+            "mismatched_fields": [],
+            "max_abs_error": 1,
+            "errors": [],
+            "non_rgb_bit_exact": true,
+            "image_diagnostics": {
+              "observation.agentview_image": {
+                "bit_exact": true,
+                "changed_pixels": 0,
+                "total_pixels": 65536,
+                "changed_fraction": 0,
+                "max_changed_pixels": 6,
+                "max_changed_fraction": 0.0001,
+                "max_abs_error": 0,
+                "bounded_allowance_used": false
+              },
+              "observation.robot0_eye_in_hand_image": {
+                "bit_exact": false,
+                "changed_pixels": 1,
+                "total_pixels": 65536,
+                "changed_fraction": 0.0000152587890625,
+                "max_changed_pixels": 6,
+                "max_changed_fraction": 0.0001,
+                "max_abs_error": 1,
+                "bounded_allowance_used": true
+              }
+            }
+          }
+        }
+      },
+      "known_other_constructed_sources": 9,
+      "other_constructed_sources_independently_replay_verified": "not_established",
+      "missing_model_episodes": 10
+    },
+    {
+      "task_id": "cabinet_close_top_bowl",
+      "suite": "libero_90",
+      "affected_official_init_index": 5,
+      "reported_common_base_mask": "00",
+      "reported_failure_category": "velocity_limit",
+      "observed_numeric_details": {
+        "episode_id": "cabinet_close_top_bowl_s005_00",
+        "technical_acceptance": false,
+        "error": null,
+        "requested_steps": 150,
+        "completed_steps": 150,
+        "checks": {
+          "contact_penetration_within_limit": true,
+          "finite_state_and_velocity": true,
+          "initial_non_rgb_bit_exact": true,
+          "object_positions_stable": true,
+          "observation_matches_fresh": true,
+          "predicate_mask_matches": true,
+          "reference_robot_pose_matches": true,
+          "refresh_did_not_step": true,
+          "rgb_allowance_state_verified": true,
+          "robot_pose_stable": true,
+          "velocities_below_limit": false,
+          "validation_window_complete": true,
+          "snapshot_contract_valid": true
+        },
+        "limits": {
+          "position_tolerance": 0.005,
+          "velocity_tolerance": 0.01,
+          "robot_position_tolerance": 0.002,
+          "penetration_tolerance": 0.002,
+          "observation_tolerance": 1e-8,
+          "rgb_max_abs_error": 1,
+          "rgb_max_changed_fraction": 0.0001
+        },
+        "trace_length": 151,
+        "failed_trace_count": 1,
+        "first_failures": [
+          {
+            "step": 7,
+            "goals": [
+              false,
+              false
+            ],
+            "failed_checks": [
+              "velocities_below_limit"
+            ],
+            "max_abs_velocity": 0.16360815756333752,
+            "max_velocity_index": 12,
+            "velocity_at_index": 0.16360815756333752,
+            "observation": {
+              "matches": true,
+              "mismatched_fields": [],
+              "max_abs_error": 0,
+              "errors": [],
+              "non_rgb_bit_exact": true,
+              "image_diagnostics": {
+                "observation.agentview_image": {
+                  "bit_exact": true,
+                  "changed_pixels": 0,
+                  "total_pixels": 65536,
+                  "changed_fraction": 0,
+                  "max_changed_pixels": 6,
+                  "max_changed_fraction": 0.0001,
+                  "max_abs_error": 0,
+                  "bounded_allowance_used": false
+                },
+                "observation.robot0_eye_in_hand_image": {
+                  "bit_exact": true,
+                  "changed_pixels": 0,
+                  "total_pixels": 65536,
+                  "changed_fraction": 0,
+                  "max_changed_pixels": 6,
+                  "max_changed_fraction": 0.0001,
+                  "max_abs_error": 0,
+                  "bounded_allowance_used": false
+                }
+              }
+            }
+          }
+        ],
+        "worst_velocity": {
+          "step": 7,
+          "goals": [
+            false,
+            false
+          ],
+          "failed_checks": [
+            "velocities_below_limit"
+          ],
+          "max_abs_velocity": 0.16360815756333752,
+          "max_velocity_index": 12,
+          "velocity_at_index": 0.16360815756333752,
+          "observation": {
+            "matches": true,
+            "mismatched_fields": [],
+            "max_abs_error": 0,
+            "errors": [],
+            "non_rgb_bit_exact": true,
+            "image_diagnostics": {
+              "observation.agentview_image": {
+                "bit_exact": true,
+                "changed_pixels": 0,
+                "total_pixels": 65536,
+                "changed_fraction": 0,
+                "max_changed_pixels": 6,
+                "max_changed_fraction": 0.0001,
+                "max_abs_error": 0,
+                "bounded_allowance_used": false
+              },
+              "observation.robot0_eye_in_hand_image": {
+                "bit_exact": true,
+                "changed_pixels": 0,
+                "total_pixels": 65536,
+                "changed_fraction": 0,
+                "max_changed_pixels": 6,
+                "max_changed_fraction": 0.0001,
+                "max_abs_error": 0,
+                "bounded_allowance_used": false
+              }
+            }
+          }
+        }
+      },
+      "known_other_constructed_sources": 9,
+      "other_constructed_sources_independently_replay_verified": "not_established",
+      "missing_model_episodes": 10
+    }
+  ],
+  "required_next_evidence": "Resolve qvel index 12 joint identity and failure mechanism only if needed; these read-only excerpts do not establish a corrected source.",
+  "prohibition": "Do not relax checks, substitute easier indices, rewrite old source hashes, or score missing episodes as model failures.",
+  "existing_audits_read_this_round": true,
+  "raw_files_copied": false,
+  "excerpt_semantics": "Read-only summaries extracted from two existing JSON audit files; no new simulation or replay."
+}
