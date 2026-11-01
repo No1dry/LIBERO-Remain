@@ -1,5 +1,17 @@
 # 当前协作状态
 
+## 2026-11-01最新R1：首批00可运行，制备续跑P2独立小修
+
+Codex审查[PR #12](https://github.com/No1dry/LIBERO-Remain/pull/12)@a23a8116，实现0a198a18。独立190项定向CPU/fake通过；另一个新增fake复现确认一处普通制备continue会隐式重建失效原库存ready来源的P2。见[031 R1](reviews/031_round1.md)。首批00软件路径accepted；制备该分支needs-fix，031整体未closed，未自动merge。
+
+固定源码/配置已隔离部署，纯文件验收现有8任务00来源80/80 ready（100%），三条文件准备命令exit0。本地/服务器harness SHA一致。模型加载、仿真、回放和新模型评测均未启动；80/80不是成功率或新物理认证。用户现在可直接启动首批80条00。
+
+X只修R1列出的一处边界，补原库存ready且operations=[]的丢失/恢复fake即可；不要求GPU补验/全库重跑，不阻塞首批00。修复前禁用该制备continue组合。两个正常00阶段保持同一冻结评测源码；制备小修另目录，不热改或重跑已完成80条。
+
+[本轮长期记录](../docs/stage_summaries/2026-11-01_task031_review_and_normal00_deployment.md)。首阶段按实际八任务80条报告SR，保留计划100/20未选中，不混称successes/100为八任务SR。旧80条10和失败原样保留，两个缺任务真实制备/00及10补齐未完成，030训练仍未启动。不清理，待删=[]。
+
+---
+
 ## 2026-11-01最新：031补00对照并修复两个准备缺口
 
 用户希望先测原始00能力，再推进数据增强，并同时修复两个缺失任务。已提交[031完整实现要求](tasks/031_normal00_control_and_missing_two_tasks.md)与[已知缺口清单](tasks/031_known_source_gaps.json)。X实现，Codex审查部署/给命令，真实制备与模型作业仍由用户启动。
