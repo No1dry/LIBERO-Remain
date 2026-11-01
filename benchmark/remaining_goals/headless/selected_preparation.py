@@ -242,15 +242,19 @@ def prepare(inventory_path, output, *, mode="inspect", indices=None, tasks=None,
         # are immutable history. Refresh even retained rows outside this subset.
         readiness_fields = ("status", "phase", "candidate", "origin", "episode_id", "acceptance", "reason")
         for row in prior.values():
-            if row["status"] != "ready":
+            if row["status"] != "ready" and not row.get("ready_origin_invalidated"):
                 continue
             current = _inspect(protocol, row["task_id"], row["initial_state_index"], row.get("origin"))
-            if current["status"] != "ready":
+            if current["status"] != "ready" and row["status"] == "ready":
                 row.setdefault("readiness_history", []).append(
                     {field: deepcopy(row[field]) for field in readiness_fields if field in row})
                 # A once-completed attempt becoming missing does not authorize
                 # replay/build again through ordinary continuation selection.
                 row["ready_origin_invalidated"] = True
+                row["recovery_action"] = (
+                    "Restore original evidence for file-only revalidation; a new physical attempt "
+                    "requires a new --output, preserving this report. --allow-failed-retry does "
+                    "not rebuild or replay an invalidated ready origin in this output.")
             for field in readiness_fields:
                 row.pop(field, None)
                 if field in current:
@@ -274,6 +278,10 @@ def prepare(inventory_path, output, *, mode="inspect", indices=None, tasks=None,
         for index in indices:
             key = task, index
             old = prior.get(key)
+            if old and old.get("ready_origin_invalidated"):
+                # Revalidated above without replacing its evidence/operation history.
+                # Existing inventory sources may have no operations of their own.
+                continue
             resume_replay = (old and old["status"] == "missing" and old["phase"] == "replay"
                              and not old.get("ready_origin_invalidated")
                              and mode in ("replay-missing", "prepare-missing")

@@ -2,6 +2,8 @@
 
 031 的代码属于 LIBERO-Remain。基于已审 `c6dc98de0c54517c976057598b60f4cedf7fa3e5`，新增独立入口；旧 `headless.cli` 的 mask10 默认协议、旧80条 raw／评分v2与原全mask构造入口继续保留。此文是代码交付与命令草稿，**不表示真实来源已齐、不表示两任务物理故障已修复**。真实制备、回放和模型作业由用户启动，Codex先核对服务器路径、隔离部署与完整环境命令。
 
+031 R2仅修制备续跑边界：制备修正版应部署到独立目录。首批80条及后续20条normal00评测继续使用已冻结的 `a23a8116e5e2e2bcd344242b170e787e50535a42` 源码；不热改该评测目录，不因制备小修切换prior-run代码身份或重跑80条。
+
 ## 顺序与预算
 
 | 阶段 | 协议／population | 固定来源 | 新模型上限 |
@@ -80,6 +82,8 @@ python -m benchmark.remaining_goals.headless.selected_preparation --inventory re
 ```
 
 这两条制备命令不启动模型。明确失败的原证据默认不会隐式重试；`--allow-failed-retry`只表示显式新尝试并保留前次记录，不允许绕过真实失败或改变阈值。对真实不稳定的修订必须先交Codex裁定；目前未宣称qvel[12]故障根因或腕相机差异成因已查明。输出已有时必须显式 `--continue`，不会覆盖旧尝试目录。`replay-missing`可单独补回放，`build-missing`可只构造。
+
+**曾ready后失效的来源单独处理**：包括首次从原库存直接验收、`operations=[]` 的来源。依赖丢失或损坏后，原输出中的任何 `--continue` 只重新验收文件并保留missing／failed、旧验收历史、原origin和物理计数；即使带 `--allow-failed-retry` 也不构建／回放。恢复原文件后可再次验收ready，历史与 `ready_origin_invalidated` 标记仍保留。需要新的物理尝试时，由用户显式指定一个尚不存在的 `--output`，保留旧报告和原始工件；若现有证据明确失败，仍须按原规则显式retry，不能改阈值或来源index。CLI报告的 `recovery_action` 会提示这一区别。
 
 待两任务来源证据通过，检查与运行：
 

@@ -15,11 +15,11 @@ def write(path, value):
     path.write_text(json.dumps(value), encoding="utf-8")
 
 
-def setup_inventory(tmp_path, entries):
+def setup_inventory(tmp_path, entries, protocol="selected-mask10"):
     from benchmark.remaining_goals.headless.scoped_planning import expected_episodes
     path = tmp_path / "inventory.json"
     write(path, {"schema_version": "remaining-headless-composite-sources-v1",
-                 "protocol": "selected-mask10", "expected": expected_episodes("selected-mask10"), "entries": entries})
+                 "protocol": protocol, "expected": expected_episodes(protocol), "entries": entries})
     return path
 
 
@@ -316,3 +316,67 @@ def test_invalidated_ready_candidate_does_not_trigger_implicit_replay(monkeypatc
     assert result["sources"][0]["phase"] == "replay"
     assert result["sources"][0]["candidate"] == "existing"
     assert native_calls == ["build"]
+
+
+@pytest.mark.parametrize("protocol,phase,mode", [
+    ("normal00-control", "candidate", "build-missing"),
+    ("selected-mask10", "candidate", "prepare-missing"),
+    ("selected-mask10", "replay", "replay-missing"),
+])
+@pytest.mark.parametrize("change,status", [("deleted", "missing"), ("changed", "failed")])
+def test_inventory_ready_invalidation_and_restore_are_file_only(
+        monkeypatch, tmp_path, protocol, phase, mode, change, status):
+    """Previously ready inventory evidence cannot authorize new physical work."""
+    p = importlib.import_module("benchmark.remaining_goals.headless.selected_preparation")
+    dependency = tmp_path / "existing_evidence.json"
+    dependency.write_text("original evidence", encoding="utf-8")
+    acceptance = {"evidence_sha256": "a" * 64}
+    calls = []
+
+    def check_dependency():
+        if dependency.read_text(encoding="utf-8") != "original evidence":
+            raise ValueError("existing evidence hash mismatch")
+
+    def resolve(protocol, task, index, origin):
+        check_dependency()
+        return {"episodes": [{"episode_id": "existing_source"}], "source_acceptance": acceptance}
+
+    def inspect(task, index, manifest):
+        if phase == "candidate":
+            check_dependency()
+        return {"episode": {"episode_id": "existing_source"}}
+
+    def native(operation, *args):
+        calls.append(operation)
+        raise RuntimeError("unexpected physical preparation")
+
+    monkeypatch.setattr(p, "_sources", lambda: SimpleNamespace(resolve_source=resolve, inspect_candidate=inspect))
+    monkeypatch.setattr(p, "_native", native)
+    inventory = setup_inventory(tmp_path, [entry(0, manifest="existing_manifest.json")], protocol)
+    output = tmp_path / "out"
+    initial = p.prepare(inventory, output, mode=mode, tasks=[TASK], indices=[0])["sources"][0]
+    assert initial["status"] == "ready" and initial["operations"] == []
+    if change == "deleted":
+        dependency.unlink()
+    else:
+        dependency.write_text("changed evidence", encoding="utf-8")
+
+    for allow_retry in (False, True):
+        row = p.prepare(inventory, output, mode=mode, tasks=[TASK], indices=[0],
+                        continuation=True, allow_failed_retry=allow_retry)["sources"][0]
+        assert calls == [], "continuation implicitly rebuilt or replayed a previously ready origin"
+        assert row["status"] == status and row["phase"] == phase
+        assert row.get("ready_origin_invalidated") is True
+        assert row["readiness_history"][0]["acceptance"] == acceptance
+        assert len(row["readiness_history"]) == 1
+        assert row["origin"] == initial["origin"]
+        assert row["operations"] == [] and row["actual_control_steps"] == 0
+
+    dependency.write_text("original evidence", encoding="utf-8")
+    restored = p.prepare(inventory, output, mode=mode, tasks=[TASK], indices=[0],
+                         continuation=True)["sources"][0]
+    assert restored["status"] == "ready" and restored["acceptance"] == acceptance
+    assert restored["readiness_history"] == row["readiness_history"]
+    assert restored["ready_origin_invalidated"] is True
+    assert restored["operations"] == [] and restored["actual_control_steps"] == 0
+    assert calls == [] and not (output / "attempts").exists()
