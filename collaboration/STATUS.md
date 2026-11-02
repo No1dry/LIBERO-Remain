@@ -1,5 +1,19 @@
 # 当前协作状态
 
+## 2026-11-02：033 R5软件accepted并部署，用户可直接启动仅微波炉补建
+
+已审PR #14固定942db12f（实现fc2dd617），[033 R6](reviews/033_round6.md)裁决accepted限软件与部署，无返修阻断，不等X再确认。独立45项定向CPU/fake全部通过、0skip、3.10秒；包括固定06817e61旧reader对新工件/归档和缺回放拒绝的兼容性测试，不重跑53/234/280全组。
+
+新方法microwave_gravity_support_pose_transplant_v3逐四姿态重算实际碰撞承托/容积/墙门余量，只改A种子qpos、保留qvel，实际落稳后移植完整分量；24/400、min80、连续20/qvel0.01、150+paired300及评分/v6均未放宽。固定0源真ready才派发1..9，失败停止，不盲跑10遍。
+
+代码已隔离上传 /HUBU-AI096/zp/ICML/LIBERO-Remain-task033-r5-942db12f，输出根task033_r5_942db12f。归档/四源码SHA与本地一致，原R3两个输入SHA不变；服务器纯文件_inputs复验20个旧ready及证书，固定两个实际XML同SHA，22.09秒，无native/model。microwave_repair输出尚未创建，未代用户启动。
+
+[用户完整python命令](../docs/experiment_plans/2026-11-02_task033_r5_server_commands.md)已准备；[阶段记录](../docs/stage_summaries/2026-11-02_task033_r5_review_and_file_deployment.md)。当前真实准备仍20/30=66.67%、微波炉待补10，新三模型0/30，正式10模型覆盖60/90=66.67%；00完整78/90=86.67%、覆盖100%，不重跑。按用户决定齐30后一次评30，不启动部分20或allow-missing，不自动串联模型。
+
+X本轮无修复待办。用户启动必要准备，Codex读回实际结果后给模型命令；软件验收不是物理成功。033整体open，PR未自动merge，不清理，待删=[]。
+
+---
+
 ## 2026-11-02：R3真实准备20/30就绪，微波炉10待修；用户选择齐30再评
 
 用户已完成06817e61的22来源真实补建，新增30中20ready/10failed（66.67%）：抽屉10、双壶10全部ready，微波炉10全部构造失败。报告policy_called=false/model_rollouts=0；全轮实际103,810控制步，其中微波炉96,800。原五ready/三派生及新通过源保留，00/旧六不重跑。
