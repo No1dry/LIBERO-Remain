@@ -98,7 +98,8 @@ def _settle_component(b, env, profile, semantics, whitelist, evidence):
     return None
 
 
-def build(output, *, task, index, protocol="selected-mask10", max_candidates=24, construction_method=None):
+def build(output, *, task, index, protocol="selected-mask10", max_candidates=24, construction_method=None,
+          observation_profile=None):
     """Produce one fixed official source, always in a fresh directory.
 
     Default v1 keeps settle80. Explicit R2 microwave convergence is bounded at
@@ -106,6 +107,10 @@ def build(output, *, task, index, protocol="selected-mask10", max_candidates=24,
     candidates stay in the new output and never replace old files.
     """
     nine = protocol in NINE_PROTOCOLS
+    from .validation import observation_profile_config, V6_PROFILE
+    observation_config = observation_profile_config(observation_profile)
+    if observation_profile == V6_PROFILE and not nine:
+        raise ValueError("v6 source construction is limited to the nine-task protocols")
     if (task not in (NEW_TASKS if nine else SELECTED_TASKS) or type(index) is not int or index not in range(10)
             or protocol not in ("selected-mask10", "normal00-control", *NINE_PROTOCOLS)
             or type(max_candidates) is not int or not 1 <= max_candidates <= 24):
@@ -134,6 +139,11 @@ def build(output, *, task, index, protocol="selected-mask10", max_candidates=24,
                                          for name in ("selected_build.py", "build.py", "construction.py", "validation.py", "task_catalog.py")
                                          + (("nine_catalog.py", "libero_env.py") if nine else ())},
               "groups": [group]}
+    if observation_profile is not None:
+        manifest["observation_profile"] = report["observation_profile"] = observation_profile
+        report.update(observation_audit_limits=observation_config["limits"],
+                      observation_audit_rule=observation_config["rule"],
+                      observation_audit_limitation=observation_config["limitation"])
     if r2:
         report["candidate_settle_contract"] = deepcopy(BOUNDED_SETTLE) if task == "mug_microwave_close" else {"mode": "fixed80", "steps": 80}
         report["seed_velocity_policy"] = "preserve_entire_real_settled_base_qvel_before_native_restore"
@@ -192,9 +202,13 @@ def build(output, *, task, index, protocol="selected-mask10", max_candidates=24,
         def audit_and_export(state, number, provenance):
             episode, relative = episode_for(number)
             episode["construction"].update(provenance)
+            options = {}
+            if observation_profile is not None:
+                episode["observation_profile"] = observation_profile
+                options["observation_profile"] = observation_profile
             acceptance = b._audit_state(env, state, episode, output, relative,
                                         validation_steps=0 if normal else 150,
-                                        velocity_tolerance=.01, robot_tolerance=.002)
+                                        velocity_tolerance=.01, robot_tolerance=.002, **options)
             group["attempts"].append({"candidate": number, **acceptance, **provenance})
             if not acceptance["technical_acceptance"]:
                 return False
@@ -299,8 +313,11 @@ def main(argv=None):
     parser.add_argument("--index", required=True, type=int)
     parser.add_argument("--protocol", choices=("selected-mask10", "normal00-control", *NINE_PROTOCOLS), default="selected-mask10")
     parser.add_argument("--construction-method", choices=(METHOD, METHOD_R2))
+    from .validation import V6_PROFILE, RGB_QUANTIZATION_RULE
+    parser.add_argument("--observation-profile", choices=(RGB_QUANTIZATION_RULE["rule_id"], V6_PROFILE))
     args = parser.parse_args(argv)
-    if not build(args.out, task=args.task, index=args.index, protocol=args.protocol, construction_method=args.construction_method)["complete"]:
+    if not build(args.out, task=args.task, index=args.index, protocol=args.protocol,
+                 construction_method=args.construction_method, observation_profile=args.observation_profile)["complete"]:
         raise SystemExit("source construction failed; inspect construction_report.json")
 
 

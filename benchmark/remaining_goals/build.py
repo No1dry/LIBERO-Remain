@@ -17,7 +17,7 @@ import numpy as np
 from benchmark.states import mujoco_state as ms
 from .construction import placement_candidates, joint_candidates, drawer_candidates, combine_goal_candidates, state_diff_whitelist
 from .libero_env import create_scene, restore_raw_state, fresh_observation, model_xml_hash, environment_identity, reset_scene
-from .validation import validate_candidate, RGB_QUANTIZATION_AUDIT, RGB_QUANTIZATION_LIMITATION, RGB_QUANTIZATION_RULE
+from .validation import validate_candidate, RGB_QUANTIZATION_AUDIT, RGB_QUANTIZATION_LIMITATION, RGB_QUANTIZATION_RULE, observation_profile_config
 from .schema import manifest_hash
 from .observation_artifact import save_observation_artifact
 from .task_catalog import TASKS, mask_order, select_tasks
@@ -292,14 +292,17 @@ def _matched_states(base, settled, model, per_goal, candidate):
 
 
 def _audit_state(env, state, episode, output, relative, *, validation_steps,
-                 velocity_tolerance, robot_tolerance):
+                 velocity_tolerance, robot_tolerance, observation_profile=None):
     """Reject static failures before paying for a full dynamic audit."""
     directory = output / relative
     directory.mkdir(parents=True, exist_ok=True)
     wrapper = CandidateAuditEnv(env, state, episode["goal_specs"], frames_dir=directory,
                                 task_semantics=episode.get("task_semantics"))
+    config = observation_profile_config(observation_profile)
     kwargs = {"hold_action": HOLD, "velocity_tolerance": velocity_tolerance,
-              "robot_position_tolerance": robot_tolerance, **RGB_QUANTIZATION_AUDIT}
+              "robot_position_tolerance": robot_tolerance, **config["limits"]}
+    if observation_profile is not None:
+        kwargs["observation_profile"] = observation_profile
     static = validate_candidate(wrapper, episode, steps=0, **kwargs)
     _write(directory / "static_audit.json", static)
     if not static["technical_acceptance"]:

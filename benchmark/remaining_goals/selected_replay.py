@@ -12,6 +12,7 @@ from pathlib import Path
 
 import numpy as np
 from .nine_catalog import NEW_TASKS
+from .validation import observation_profile_config, V6_PROFILE
 
 SELECTED_TASKS = ("frypan_stove9", "cabinet_close_top_bowl")
 
@@ -21,19 +22,29 @@ def _backend():
     return replay_candidates
 
 
-def _candidate(task, index, manifest_path, *, protocol=None):
+def _candidate(task, index, manifest_path, *, protocol=None, rgb_certificate=None):
     from .headless.scoped_sources import inspect_candidate
-    return inspect_candidate(task, index, manifest_path, protocol=protocol)
+    options = {"rgb_certificate": rgb_certificate} if rgb_certificate is not None else {}
+    return inspect_candidate(task, index, manifest_path, protocol=protocol, **options)
 
 
-def replay(manifest_path, output, *, task, index, protocol="selected-mask10"):
+def replay(manifest_path, output, *, task, index, protocol="selected-mask10", observation_profile=None,
+           rgb_certificate=None):
     """Replay one source in a fresh formal adapter with fixed physical rules."""
     nine = protocol == "nine-mask10"
+    observation_config = observation_profile_config(observation_profile)
+    if observation_profile == V6_PROFILE and not nine:
+        raise ValueError("v6 source replay is limited to the nine-mask10 protocol")
     if (protocol not in ("selected-mask10", "nine-mask10") or task not in (NEW_TASKS if nine else SELECTED_TASKS)
             or type(index) is not int or index not in range(10)):
         raise ValueError("selected replay requires a fixed task and source index 0..9")
     manifest_path, output = Path(manifest_path).resolve(), Path(output)
-    candidate = _candidate(task, index, manifest_path, protocol=protocol) if nine else _candidate(task, index, manifest_path)
+    options = {"protocol": protocol} if nine else {}
+    if rgb_certificate is not None:
+        if not nine:
+            raise ValueError("RGB evidence certificate is limited to the nine-mask10 source protocol")
+        options["rgb_certificate"] = rgb_certificate
+    candidate = _candidate(task, index, manifest_path, **options)
     episode, manifest = candidate["episode"], candidate["manifest"]
     original_raw = manifest_path.read_bytes()
     if hashlib.sha256(original_raw).hexdigest() != candidate["source_manifest_sha256"]:
@@ -53,10 +64,17 @@ def replay(manifest_path, output, *, task, index, protocol="selected-mask10"):
               "source_manifest_sha256": candidate["source_manifest_sha256"],
               "source_content_hash": candidate["source_content_hash"],
               "steps": 150, "repeats": 2, "hold_action": b.HOLD.tolist(),
-              "observation_audit_limits": dict(b.RGB_QUANTIZATION_AUDIT),
-              "observation_audit_limitation": b.RGB_QUANTIZATION_LIMITATION,
-              "observation_audit_rule": dict(b.RGB_QUANTIZATION_RULE),
+              "observation_audit_limits": observation_config["limits"],
+              "observation_audit_limitation": observation_config["limitation"],
+              "observation_audit_rule": observation_config["rule"],
               "technical_acceptance": False, "episodes": [], "error": None}
+    profile_options = {"observation_profile": observation_profile} if observation_profile is not None else {}
+    if observation_profile is not None:
+        report["observation_profile"] = observation_profile
+    if rgb_certificate is not None:
+        certificate_path = Path(rgb_certificate).resolve()
+        report.update(rgb_certificate=str(certificate_path),
+                      rgb_certificate_sha256=hashlib.sha256(certificate_path.read_bytes()).hexdigest())
     adapter = None
     try:
         adapter = b.LiberoGoalEnv({"manifest_dir": str(manifest_path.parent), "environment": manifest["environment"],
@@ -64,10 +82,10 @@ def replay(manifest_path, output, *, task, index, protocol="selected-mask10"):
         for repetition in range(2):
             relative = Path("group_000") / f"repeat_{repetition:02d}" / "mask_00"
             wrapper = b.ReplayAuditEnv(adapter, state, observation_hash, frames_dir=output / relative,
-                                        manifest_dir=manifest_path.parent)
+                                        manifest_dir=manifest_path.parent, **profile_options)
             audit = b.validate_candidate(wrapper, episode, steps=150, hold_action=b.HOLD,
                                           velocity_tolerance=.01, robot_position_tolerance=.002,
-                                          **b.RGB_QUANTIZATION_AUDIT)
+                                          **observation_config["limits"], **profile_options)
             audit.update(formal_reset_checks=wrapper.reset_checks,
                          reset_observation_comparison=wrapper.reset_observation_comparison,
                          reset_initial_observation=wrapper.reset_initial_observation,
@@ -103,8 +121,13 @@ def main(argv=None):
     parser.add_argument("--task", required=True, choices=(*SELECTED_TASKS, *NEW_TASKS))
     parser.add_argument("--protocol", choices=("selected-mask10", "nine-mask10"), default="selected-mask10")
     parser.add_argument("--index", required=True, type=int)
+    from .validation import V6_PROFILE, RGB_QUANTIZATION_RULE
+    parser.add_argument("--observation-profile", choices=(RGB_QUANTIZATION_RULE["rule_id"], V6_PROFILE))
+    parser.add_argument("--rgb-certificate", type=Path,
+                        help="Immutable v6 recorded-evidence certificate for the selected original candidate")
     args = parser.parse_args(argv)
-    if not replay(args.manifest, args.out, task=args.task, index=args.index, protocol=args.protocol)["technical_acceptance"]:
+    if not replay(args.manifest, args.out, task=args.task, index=args.index, protocol=args.protocol,
+                  observation_profile=args.observation_profile, rgb_certificate=args.rgb_certificate)["technical_acceptance"]:
         raise SystemExit("source replay failed; inspect replay_report.json")
 
 

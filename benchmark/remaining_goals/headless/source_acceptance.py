@@ -87,13 +87,20 @@ def _same_array(left, right):
     return np.asarray(left, dtype="<f8").tobytes() == np.asarray(right, dtype="<f8").tobytes()
 
 
-def _audit(audit, episode, state, *, steps, initial_hash, initial_only=False, fixed=False):
+def _audit(audit, episode, state, *, steps, initial_hash, initial_only=False, fixed=False, revalidate_profile=None):
     """Recompute saved numerical checks; dynamic RGB has recorded bounds only.
 
     Initial RGB is independently compared from two typed artifacts by the caller.
     Full dynamic images were never stored by the original audit; do not claim to
     re-render or independently reconstruct their pixels here.
     """
+    from ..validation import V6_PROFILE
+    if audit.get("observation_profile") == V6_PROFILE or revalidate_profile == V6_PROFILE:
+        from .rgb_revalidation import audit_v6
+        return audit_v6(audit, episode, state, steps=steps, initial_hash=initial_hash,
+                        initial_only=initial_only, fixed=fixed)
+    if revalidate_profile is not None or audit.get("observation_profile") not in (None, RGB_QUANTIZATION_RULE["rule_id"]):
+        raise ValueError("unknown source observation profile")
     expected_mask = [False, False] if initial_only else [True, False]
     semantics = episode.get("task_semantics")
     if semantics is not None:
@@ -180,6 +187,8 @@ def _audit(audit, episode, state, *, steps, initial_hash, initial_only=False, fi
         if any(row.get(key) != value for key, value in numeric.items()):
             raise ValueError("selected audit cached numerical diagnostics differ from raw trace")
         comparison = row.get("observation_check")
+        if not isinstance(comparison,dict) or comparison.get("observation_profile") != audit.get("observation_profile"):
+            raise ValueError("comparison observation profile differs from its audit")
         _passing_observation_comparison(comparison, initial=index == 0,
             returned_hash=initial_hash if index == 0 else None,
             float_tolerance=limits["observation_tolerance"], camera_reference=initial_comparison.get("image_diagnostics"))
@@ -206,7 +215,7 @@ def _audit(audit, episode, state, *, steps, initial_hash, initial_only=False, fi
             "ignored_contact_pairs": deepcopy(audit["ignored_contact_pairs"])}
 
 
-def _load_mask10_source(task, manifest_path, replay_path, *, indices=None, fixed=False, protocol=None):
+def _load_mask10_source(task, manifest_path, replay_path, *, indices=None, fixed=False, protocol=None, revalidate_profile=None):
     """Return original manifest, both original byte strings and scoped evidence."""
     from ..nine_catalog import NINE_PROTOCOLS, NINE_TASKS, get_task, validate_episode_semantics
     nine = protocol in NINE_PROTOCOLS
@@ -217,6 +226,12 @@ def _load_mask10_source(task, manifest_path, replay_path, *, indices=None, fixed
     raw = files.read("manifest", manifest_path.name)
     replay_raw = files.read("replay", replay_path.name)
     manifest, report = _json(raw), _json(replay_raw)
+    from ..validation import observation_profile_config, V6_PROFILE
+    replay_config = observation_profile_config(report.get("observation_profile"))
+    if report.get("observation_profile") == V6_PROFILE and (
+            report.get("observation_audit_rule") != replay_config["rule"]
+            or report.get("observation_audit_limits") != replay_config["limits"]):
+        raise ValueError("replay report profile/rule/limits mismatch")
     if (manifest.get("content_hash") != manifest_hash(manifest)
             or manifest.get("environment", {}).get("name") != "libero"):
         raise ValueError("source manifest content/environment identity mismatch")
@@ -265,15 +280,21 @@ def _load_mask10_source(task, manifest_path, replay_path, *, indices=None, fixed
         verify_state_file(episode, manifest_path.parent)
         state = np.load(io.BytesIO(files.read("manifest", episode["state_path"], episode["state_sha256"])), allow_pickle=False)
         construction = _json(files.read("manifest", episode["construction"]["technical_audit"]))
+        if not (manifest.get("observation_profile") == episode.get("observation_profile") == construction.get("observation_profile")):
+            raise ValueError("manifest/episode/construction profile mismatch")
         initial_hash = construction.get("trace", [{}])[0].get("observation_check", {}).get("returned_sha256")
         if not _digest(initial_hash): raise ValueError("selected construction initial observation digest missing")
         frozen = files.observation("manifest", ".", episode.get("initial_observation"), initial_hash)
+        from .scoped_sources import _observation_binding
+        _observation_binding(frozen,construction["trace"][0]["observation_check"],
+            profile=construction.get("observation_profile"),revalidate=revalidate_profile is not None)
         construction_result = _audit(construction, episode, state,
-            steps=construction.get("requested_steps"), initial_hash=initial_hash, fixed=fixed)
+            steps=construction.get("requested_steps"), initial_hash=initial_hash, fixed=fixed,
+            revalidate_profile=revalidate_profile)
         replay_results = []
         replay_audit_files, replay_reset_files = set(), set()
         for row in sorted((r for r in rows if r["episode_id"] == identifier), key=lambda r: r["repetition"]):
-            if (row.get("technical_acceptance") is not True or row.get("initial_mask") != [True, False]
+            if ((revalidate_profile is None and row.get("technical_acceptance") is not True) or row.get("initial_mask") != [True, False]
                     or row.get("source_legal") is not False or row.get("error") is not None):
                 raise ValueError("selected mask10 replay explicitly failed")
             audit_path = _safe_name(row["audit_path"])
@@ -282,9 +303,12 @@ def _load_mask10_source(task, manifest_path, replay_path, *, indices=None, fixed
                 raise ValueError("selected replay repetitions require distinct audit files; audit reused")
             replay_audit_files.add(resolved_audit)
             audit = _json(files.read("replay", audit_path))
+            if audit.get("observation_profile") != report.get("observation_profile"):
+                raise ValueError("replay report/audit observation profile mismatch")
             reset = row.get("reset_checks")
             if (not isinstance(reset, dict) or set(reset) != {"saved_state_exact", "initial_mask_exact", "construction_observation_matches", "initial_non_rgb_exact"}
-                    or any(v is not True for v in reset.values()) or audit.get("formal_reset_checks") != reset
+                    or any(v is not True for k,v in reset.items() if revalidate_profile is None or k != "construction_observation_matches")
+                    or type(reset.get("construction_observation_matches")) is not bool or audit.get("formal_reset_checks") != reset
                     or audit.get("expected_reset_model_xml_sha256") != episode["model_xml_sha256"]
                     or not _digest(audit.get("post_restore_model_xml_sha256"))):
                 raise ValueError("selected replay formal reset/XML evidence mismatch")
@@ -298,11 +322,22 @@ def _load_mask10_source(task, manifest_path, replay_path, *, indices=None, fixed
             if fixed and resolved_reset in replay_reset_files:
                 raise ValueError("selected replay repetitions require distinct reset artifact files; artifact reused")
             replay_reset_files.add(resolved_reset)
+            from .rgb_revalidation import audit_profile, comparison as check_comparison
+            profile = audit_profile(audit)
+            options = {"observation_profile": profile} if profile is not None else RGB_QUANTIZATION_AUDIT
             recomputed = compare_observations(actual, frozen, atol=0, require_non_rgb_exact=True,
-                refresh_state_unchanged=True, **RGB_QUANTIZATION_AUDIT)
+                refresh_state_unchanged=True, **options)
             if recomputed != comparison: raise ValueError("selected reset pixel/proprio comparison differs from artifacts")
-            _passing_observation_comparison(comparison, initial=True, reference_hash=initial_hash)
-            result = _audit(audit, episode, state, steps=report["steps"], initial_hash=comparison["returned_sha256"], fixed=fixed)
+            if reset["construction_observation_matches"] is not comparison["matches"]:
+                raise ValueError("selected reset original outcome differs from original comparison")
+            check_comparison(comparison, initial=True, reference_hash=initial_hash,
+                profile=profile, revalidate=revalidate_profile is not None)
+            result = _audit(audit, episode, state, steps=report["steps"], initial_hash=comparison["returned_sha256"], fixed=fixed,
+                            revalidate_profile=revalidate_profile)
+            _observation_binding(actual,audit["trace"][0]["observation_check"],
+                profile=profile,revalidate=revalidate_profile is not None)
+            if row.get("technical_acceptance") is not audit.get("technical_acceptance"):
+                raise ValueError("selected replay original result differs from original audit")
             if (row.get("checks") != audit["checks"] or audit["trace"][0]["observation_check"]["returned_non_rgb_sha256"] != comparison["returned_non_rgb_sha256"]):
                 raise ValueError("selected replay report or initial non-RGB binding differs")
             replay_results.append({"repetition": row["repetition"], "audit_path": audit_path, **result})

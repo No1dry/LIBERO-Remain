@@ -71,7 +71,7 @@ def read_sources(path, protocol):
         if origin is not None:
             if not isinstance(origin, dict):
                 raise ValueError("source origin must be an object or null")
-            for field in ("manifest", "candidate_replay", "initialization"):
+            for field in ("manifest", "candidate_replay", "initialization", "rgb_certificate"):
                 if field in origin:
                     origin[field] = str(resolve(path.parent, origin[field]))
         entries[key] = origin

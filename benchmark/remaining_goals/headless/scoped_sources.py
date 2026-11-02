@@ -84,7 +84,7 @@ def _episode(manifest, task, index, mask, *, protocol=None):
     return e
 
 
-def _observation_binding(observation, comparison):
+def _observation_binding(observation, comparison, *, profile=None, revalidate=False):
     """Hash the typed returned artifact; do not invent a second fresh artifact.
 
     Fresh RGB differences exist only as recorded diagnostics in old audits.
@@ -101,7 +101,9 @@ def _observation_binding(observation, comparison):
         named = path.startswith("observation.images.") or path in (
             "observation.agentview_image", "observation.robot0_eye_in_hand_image")
         if named and array.dtype == np.uint8 and array.ndim == 3 and array.shape[-1] == 3:
-            cameras[path] = {"total_pixels": int(array.shape[0] * array.shape[1])}
+            cameras[path] = {"total_pixels": int(array.shape[0] * array.shape[1]),
+                "shape":list(array.shape), "dtype":str(array.dtype),
+                "returned_sha256":hashlib.sha256(array.tobytes(order="C")).hexdigest()}
         else:
             non_rgb.update(path.encode("utf-8"))
             non_rgb.update(str(array.shape).encode("ascii"))
@@ -110,10 +112,11 @@ def _observation_binding(observation, comparison):
     walk(observation, "observation")
     if comparison.get("returned_non_rgb_sha256") != non_rgb.hexdigest():
         raise ValueError("initial typed observation non-RGB digest differs from trace")
-    legacy._passing_observation_comparison(comparison, initial=True, camera_reference=cameras)
+    from .rgb_revalidation import comparison as check_comparison
+    check_comparison(comparison, initial=True, camera_reference=cameras, profile=profile, revalidate=revalidate)
 
 
-def _candidate(task, index, manifest_path, *, normal=False, protocol=None):
+def _candidate(task, index, manifest_path, *, normal=False, protocol=None, revalidate_profile=None):
     protocol = protocol or ("normal00-control" if normal else "selected-mask10")
     _identity(task, index, protocol)
     mp = Path(manifest_path).resolve()
@@ -127,7 +130,9 @@ def _candidate(task, index, manifest_path, *, normal=False, protocol=None):
     verify_state_file(e, mp.parent)
     state = np.load(io.BytesIO(state_raw), allow_pickle=False)
     audit = legacy._json(files.read("manifest", e["construction"]["technical_audit"]))
-    if not normal and (audit.get("technical_acceptance") is False or audit.get("static_acceptance") is False
+    if not (manifest.get("observation_profile") == e.get("observation_profile") == audit.get("observation_profile")):
+        raise ValueError("manifest/episode/construction observation profile mismatch")
+    if not normal and revalidate_profile is None and (audit.get("technical_acceptance") is False or audit.get("static_acceptance") is False
                        or audit.get("dynamic_stability") is False):
         raise FailedSourceError("selected construction explicitly failed")
     trace = audit.get("trace")
@@ -140,22 +145,25 @@ def _candidate(task, index, manifest_path, *, normal=False, protocol=None):
     if not legacy._digest(initial_hash): raise ValueError("initial observation digest missing")
     if e.get("initial_observation") is None: raise MissingSourceError("typed initial observation missing")
     observation = files.observation("manifest", ".", e["initial_observation"], initial_hash)
-    _observation_binding(observation, comparison)
+    _observation_binding(observation, comparison, profile=audit.get("observation_profile"), revalidate=revalidate_profile is not None)
     construction = legacy._audit(audit, e, state, steps=0 if normal else audit.get("requested_steps"),
-                                 initial_hash=initial_hash, initial_only=normal, fixed=True)
+                                 initial_hash=initial_hash, initial_only=normal, fixed=True, revalidate_profile=revalidate_profile)
     result = {"manifest": manifest, "episode": e, "construction": construction,
         "selected_files": files.finish(), "source_manifest_sha256": legacy._sha(raw),
         "source_content_hash": manifest["content_hash"]}
     return result, files, audit, state
 
 
-def inspect_candidate(task, index, manifest_path, *, protocol=None):
+def inspect_candidate(task, index, manifest_path, *, protocol=None, rgb_certificate=None):
     """Return manifest, episode, construction, selected_files and original hashes.
 
     Construction is validated for >=150 steps with the frozen physical rules.
     No replay is required/read. MissingSourceError denotes absent evidence,
     FailedSourceError an explicit failure, ValueError malformed/binding evidence.
     """
+    if rgb_certificate is not None:
+        from .rgb_revalidation import inspect_certified_candidate
+        return _guard(lambda: inspect_certified_candidate(task,index,manifest_path,rgb_certificate,protocol=protocol))
     return _guard(lambda: _candidate(task, index, manifest_path, protocol=protocol)[0])
 
 
@@ -167,6 +175,12 @@ def _initialization(files, origin, candidate, state):
         raise ValueError("initialization report SHA256 required")
     report = legacy._json(files.read("initialization", path.name, origin["initialization_sha256"]))
     e, manifest = candidate["episode"], candidate["manifest"]
+    from ..validation import V6_PROFILE,observation_profile_config
+    if e.get("observation_profile") == V6_PROFILE:
+        config=observation_profile_config(V6_PROFILE)
+        if (report.get("observation_profile") != V6_PROFILE or report.get("observation_audit_rule") != config["rule"]
+                or report.get("observation_audit_limits") != config["limits"]):
+            raise ValueError("v6 initialization profile/rule/limits mismatch")
     groups = report.get("groups")
     if not isinstance(groups, list): raise ValueError("initialization source groups missing")
     matches = [g for g in groups if isinstance(g, dict) and g.get("task_id") == e["task_id"]
@@ -205,7 +219,13 @@ def _resolve(protocol, task, index, origin):
         if not legacy._digest(origin.get(key)): raise ValueError(f"source origin needs {key}")
     normal = protocol in ("normal00-control", "nine-normal00")
     nine = protocol in NINE_PROTOCOLS
-    candidate, files, audit, state = _candidate(task, index, origin["manifest"], normal=normal, protocol=protocol)
+    certificate = None
+    if origin.get("rgb_certificate"):
+        from .rgb_revalidation import verify_certificate
+        certificate = verify_certificate(task,index,origin,protocol=protocol)
+    revalidate_profile = certificate.get("observation_profile") if certificate else None
+    candidate, files, audit, state = _candidate(task, index, origin["manifest"], normal=normal, protocol=protocol,
+                                               revalidate_profile=revalidate_profile)
     if (candidate["source_manifest_sha256"] != origin["manifest_sha256"]
             or candidate["source_content_hash"] != origin["content_hash"]):
         raise ValueError("original manifest hash binding mismatch")
@@ -226,7 +246,7 @@ def _resolve(protocol, task, index, origin):
                 or not isinstance(report.get("episodes"), list)):
             raise ValueError("independent replay original-source binding mismatch")
         for row in report.get("episodes", []):
-            if isinstance(row, dict) and row.get("episode_id") == e["episode_id"] and row.get("technical_acceptance") is False:
+            if certificate is None and isinstance(row, dict) and row.get("episode_id") == e["episode_id"] and row.get("technical_acceptance") is False:
                 raise FailedSourceError("selected replay explicitly failed")
         repeats = report.get("repeats")
         rows = [r for r in report.get("episodes", []) if isinstance(r, dict) and r.get("episode_id") == e["episode_id"]]
@@ -235,7 +255,8 @@ def _resolve(protocol, task, index, origin):
             if all(type(k) is int for k in keys) and len(keys) == len(set(keys)) and set(keys) < set(range(repeats)):
                 raise MissingSourceError("selected independent replay repetitions missing")
         manifest, raw, replay_bytes, evidence = legacy._load_mask10_source(task, origin["manifest"], rp,
-                                                                          indices=[index], fixed=True, protocol=protocol)
+                                                                          indices=[index], fixed=True, protocol=protocol,
+                                                                          revalidate_profile=revalidate_profile)
         if raw != Path(origin["manifest"]).read_bytes() or legacy._sha(raw) != origin["manifest_sha256"] or replay_bytes != replay_raw:
             raise ValueError("source changed during scoped validation")
         evidence.update(schema_version=NINE_SELECTED_SCHEMA if nine else SELECTED_SCHEMA, status="ready", acceptance_scope="selected10")
@@ -255,6 +276,13 @@ def _resolve(protocol, task, index, origin):
                 "Fresh-observation correspondence uses original recorded state-bound checks; typed returned artifact hashes and geometry are revalidated, not a new refresh.",
                 "Original full audit and aggregate failures are retained byte-for-byte."]}
         snapshots["initialization"] = Path(origin["initialization"]).name
+    if certificate is not None:
+        path = Path(origin["rgb_certificate"])
+        evidence["selected_files"].append({"root":"rgb_certificate", "path":path.name, "sha256":legacy._sha(path.read_bytes())})
+        evidence["rgb_revalidation"] = {"observation_profile":revalidate_profile, "scope":certificate["scope"],
+            "certificate_sha256":legacy._sha(path.read_bytes()), "recorded_diagnostics_revalidated":True,
+            "new_native_steps":0, "limitation":certificate["limitation"]}
+        snapshots["rgb_certificate"] = path.name
     evidence.pop("evidence_sha256", None)
     evidence["evidence_sha256"] = legacy._canonical(evidence)
     episode = deepcopy(e)
@@ -286,7 +314,7 @@ def _plan_identity(plan):
 
 def _roots(directory):
     base = Path(directory).resolve()
-    return {key: legacy._contained(base, f"source/{key}_files") for key in ("manifest", "replay", "initialization")}
+    return {key: legacy._contained(base, f"source/{key}_files") for key in ("manifest", "replay", "initialization", "rgb_certificate")}
 
 
 def archive_source(directory, plan):
@@ -294,7 +322,7 @@ def archive_source(directory, plan):
     _plan_identity(plan)
     source = plan["source"]
     origins = {"manifest": Path(source["manifest"]).resolve().parent}
-    for key, field in (("replay", "candidate_replay"), ("initialization", "initialization")):
+    for key, field in (("replay", "candidate_replay"), ("initialization", "initialization"), ("rgb_certificate", "rgb_certificate")):
         if field in source: origins[key] = Path(source[field]).resolve().parent
     roots = _roots(directory)
     for item in plan["source_acceptance"]["selected_files"]:
@@ -313,10 +341,12 @@ def validate_snapshot(directory, plan):
     _plan_identity(plan)
     roots = _roots(directory)
     required = {"manifest", "initialization" if plan["protocol"] in ("normal00-control", "nine-normal00") else "replay"}
+    if plan["source"].get("rgb_certificate"):
+        required.add("rgb_certificate")
     if set(plan.get("source_snapshot_files", {})) != required:
         raise ValueError("snapshot must supply every protocol-specific archived report")
     origin = deepcopy(plan["source"])
-    for key, field in (("manifest", "manifest"), ("replay", "candidate_replay"), ("initialization", "initialization")):
+    for key, field in (("manifest", "manifest"), ("replay", "candidate_replay"), ("initialization", "initialization"), ("rgb_certificate", "rgb_certificate")):
         if key in plan["source_snapshot_files"]:
             origin[field] = str(legacy._contained(roots[key], legacy._safe_name(plan["source_snapshot_files"][key])))
     for item in plan["source_acceptance"]["selected_files"]:

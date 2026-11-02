@@ -67,7 +67,7 @@ def _origin(origin, base):
     if not isinstance(origin, dict):
         raise ValueError("source origin must be an object or null")
     result = deepcopy(origin)
-    for key in ("manifest", "candidate_replay", "initialization"):
+    for key in ("manifest", "candidate_replay", "initialization", "rgb_certificate"):
         if key in result:
             if not isinstance(result[key], str) or not result[key]:
                 raise ValueError(f"origin {key} must be a path")
@@ -97,6 +97,8 @@ def _inspect(protocol, task, index, origin):
     if protocol in ("selected-mask10", "nine-mask10"):
         try:
             options = {"protocol": protocol} if protocol in NINE_PROTOCOLS else {}
+            if origin.get("rgb_certificate"):
+                options["rgb_certificate"] = origin["rgb_certificate"]
             candidate = sources.inspect_candidate(task, index, origin["manifest"], **options)
         except FileNotFoundError:
             return row
@@ -154,7 +156,8 @@ def _run_counted(function, owner, attribute, path, identity):
     return result, report
 
 
-def _native(operation, task, index, origin, output, protocol, *, construction_method=None):
+def _native(operation, task, index, origin, output, protocol, *, construction_method=None,
+            observation_profile=None):
     """Lazy native boundary. Called only by an explicitly selected native mode."""
     output = Path(output)
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -162,6 +165,8 @@ def _native(operation, task, index, origin, output, protocol, *, construction_me
                 "initial_state_index": index, "output": str(output)}
     if construction_method is not None:
         identity["construction_method"] = construction_method
+    if observation_profile is not None:
+        identity["observation_profile"] = observation_profile
     ledger_path = output.with_name(output.name + ".control_ledger.json")
     # Import errors before a hook is installed leave unknown evidence, never 0.
     try:
@@ -169,12 +174,18 @@ def _native(operation, task, index, origin, output, protocol, *, construction_me
             producer = importlib.import_module("benchmark.remaining_goals.selected_build")
             owner = importlib.import_module("benchmark.remaining_goals.build")
             options = {"construction_method": construction_method} if construction_method is not None else {}
+            if observation_profile is not None:
+                options["observation_profile"] = observation_profile
             function = lambda: producer.build(output, task=task, index=index, protocol=protocol, **options)
             attribute = "_step"
         else:
             producer = importlib.import_module("benchmark.remaining_goals.selected_replay")
             owner = importlib.import_module("benchmark.remaining_goals.replay_candidates").ReplayAuditEnv
             options = {"protocol": protocol} if protocol in NINE_PROTOCOLS else {}
+            if observation_profile is not None:
+                options["observation_profile"] = observation_profile
+            if origin.get("rgb_certificate"):
+                options["rgb_certificate"] = origin["rgb_certificate"]
             function = lambda: producer.replay(origin["manifest"], output, task=task, index=index, **options)
             attribute = "step"
     except BaseException as error:
@@ -208,7 +219,7 @@ def _native(operation, task, index, origin, output, protocol, *, construction_me
 
 def prepare(inventory_path, output, *, mode="inspect", indices=None, tasks=None,
             protocol=None, allow_failed_retry=False, continuation=False, construction_method=None,
-            replace_failed_originals=False):
+            replace_failed_originals=False, observation_profile=None):
     """Inspect or explicitly prepare selected sources, preserving a full denominator."""
     if mode not in MODES:
         raise ValueError("invalid preparation mode")
@@ -222,6 +233,10 @@ def prepare(inventory_path, output, *, mode="inspect", indices=None, tasks=None,
         raise ValueError("explicit R2 construction method is only valid for nine-mask10")
     if type(replace_failed_originals) is not bool or replace_failed_originals and construction_method != R2_METHOD:
         raise ValueError("replacing failed original sources requires the explicit R2 method")
+    if observation_profile is not None:
+        from ..validation import V6_PROFILE
+        if observation_profile != V6_PROFILE or protocol not in NINE_PROTOCOLS:
+            raise ValueError("explicit v6 observation profile requires a nine-task protocol")
     tasks, indices = _selection(tasks, indices, protocol)
     if protocol in NINE_PROTOCOLS:
         from .nine_planning import expected_episodes
@@ -246,6 +261,7 @@ def prepare(inventory_path, output, *, mode="inspect", indices=None, tasks=None,
         report = _read(report_path)
         if (report.get("schema_version") != REPORT_SCHEMA or report.get("inventory_sha256") != _hash(inventory_raw)
                 or report.get("protocol") != protocol or report.get("construction_method") != construction_method
+                or report.get("observation_profile") != observation_profile
                 or report.get("replace_failed_originals", False) != replace_failed_originals):
             raise ValueError("continuation inventory identity mismatch")
     else:
@@ -255,6 +271,8 @@ def prepare(inventory_path, output, *, mode="inspect", indices=None, tasks=None,
                   "expected": expected, "sources": [], "policy_called": False, "model_rollouts": 0}
         if construction_method is not None:
             report["construction_method"] = construction_method
+        if observation_profile is not None:
+            report["observation_profile"] = observation_profile
         if replace_failed_originals:
             report["replace_failed_originals"] = True
     prior = {(r["task_id"], r["initial_state_index"]): r for r in report["sources"]}
@@ -349,6 +367,8 @@ def prepare(inventory_path, output, *, mode="inspect", indices=None, tasks=None,
                     row.update(actual_control_steps=None, count_status="unknown")
                     persist()
                     options = {"construction_method": construction_method} if construction_method is not None else {}
+                    if observation_profile is not None:
+                        options["observation_profile"] = observation_profile
                     origin, ledger = _native(operation, task, index, origin, root / operation, protocol, **options)
                     row["operations"][-1].update(status="completed", ledger=ledger)
                     inspected = _inspect(protocol, task, index, origin)
@@ -388,12 +408,15 @@ def main(argv=None):
     parser.add_argument("--continue", dest="continuation", action="store_true")
     parser.add_argument("--construction-method", choices=(R2_METHOD,),
                         help="Explicit R2 candidate construction; legacy and normal00 remain unchanged.")
+    from ..validation import V6_PROFILE
+    parser.add_argument("--observation-profile", choices=(V6_PROFILE,),
+                        help="Explicit adjudicated v6 comparison; absent retains legacy behavior.")
     parser.add_argument("--allow-failed-retry", action="store_true",
                         help="Explicit new attempt with unchanged fixed physical rules; preserve prior failure evidence. Does not relax stability requirements.")
     args = parser.parse_args(argv)
     report = prepare(args.inventory, args.output, mode=args.mode, indices=args.indices, tasks=args.tasks,
                      protocol=args.protocol, allow_failed_retry=args.allow_failed_retry, continuation=args.continuation,
-                     construction_method=args.construction_method)
+                     construction_method=args.construction_method, observation_profile=args.observation_profile)
     tasks, indices = _selection(args.tasks, args.indices, report.get("protocol", args.protocol))
     selected = [row for row in report["sources"] if row["task_id"] in tasks and row["initial_state_index"] in indices]
     return 0 if selected and all(row["status"] == "ready" for row in selected) else 2

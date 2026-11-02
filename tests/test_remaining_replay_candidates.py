@@ -105,7 +105,8 @@ def pack(tmp_path, monkeypatch):
             record.closed = True
 
     class NativeSnapshot:
-        def __init__(self, env, state, goals):
+        def __init__(self, env, state, goals, *, task_semantics=None):
+            assert task_semantics is None  # These legacy fixtures have no nine-task mapping.
             self.adapter = env.owner
 
         def validation_snapshot(self):
