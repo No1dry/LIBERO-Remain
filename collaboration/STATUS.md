@@ -1,5 +1,31 @@
 # 当前协作状态
 
+## 2026-11-02：R5真实首源仍失败；用户已同意版本化A位姿稳定修订，交X实现
+
+用户本轮R5真实结果ready20/failed1/not_attempted9，准备66.67%；index0的24候选各400 HOLD都未达20连续低速帧，最长3；9680实际控制调用，约221秒。首0门控正确停止其余9，policy_called=false/model_rollouts=0。R6软件验收保留，但不称R5物理已修好。
+
+[033 R7审查](reviews/033_round7.md)：完整原9600采样点已取回归档，同SHA。24候选末150采样点均保持native10/Open，杯子位置跨度约0.11132mm/姿态约0.08643°，却各118/150=78.67%点A瞬时qvel超0.01。[逐候选纯文件分析](tasks/033_r5_recorded_motion_analysis.json)。这些是末150采样点，不是正式150步/151观测的构造+回放认证；缺完整state/接触，不能离线造ready。继续只改摆放或加等待缺乏依据，速度与位姿稳定关系需纠正，未声称精确证明求解器成因。
+
+用户已明确同意[033 R7版本化位姿稳定工单](tasks/033_round7_pose_stability_revision.md)：A杯子完整150步位置≤5mm、姿态≤1°，A瞬时qvel保留诊断；非A速度、原谓词/穿透/机器人/观测及paired150不变。独立物理stability_profile，与现有RGB v6分开；旧profile/失败/raw/20ready保留。X现可实现+必要CPU/fake，Codex审查部署，用户启动真实补建；不再重复问同一选择，不加几何/等待预算，不从旧settle日志补造证书。
+
+30齐备后用户一次评30的决定不变：不部分20、不allow-missing，不重跑00/旧六/旧20。新三模型0/30、完整10模型覆盖仍60/90；00完整78/90=86.67%保留。新profile尚未实现/部署，不宣称已可评测。[阶段记录](../docs/stage_summaries/2026-11-02_task033_r5_real_failure_and_pose_revision.md)。033open，无自动实验/训练/merge/清理，待删=[]。
+
+---
+
+## 2026-11-02：033 R5软件accepted并部署，用户可直接启动仅微波炉补建
+
+已审PR #14固定942db12f（实现fc2dd617），[033 R6](reviews/033_round6.md)裁决accepted限软件与部署，无返修阻断，不等X再确认。独立45项定向CPU/fake全部通过、0skip、3.10秒；包括固定06817e61旧reader对新工件/归档和缺回放拒绝的兼容性测试，不重跑53/234/280全组。
+
+新方法microwave_gravity_support_pose_transplant_v3逐四姿态重算实际碰撞承托/容积/墙门余量，只改A种子qpos、保留qvel，实际落稳后移植完整分量；24/400、min80、连续20/qvel0.01、150+paired300及评分/v6均未放宽。固定0源真ready才派发1..9，失败停止，不盲跑10遍。
+
+代码已隔离上传 /HUBU-AI096/zp/ICML/LIBERO-Remain-task033-r5-942db12f，输出根task033_r5_942db12f。归档/四源码SHA与本地一致，原R3两个输入SHA不变；服务器纯文件_inputs复验20个旧ready及证书，固定两个实际XML同SHA，22.09秒，无native/model。microwave_repair输出尚未创建，未代用户启动。
+
+[用户完整python命令](../docs/experiment_plans/2026-11-02_task033_r5_server_commands.md)已准备；[阶段记录](../docs/stage_summaries/2026-11-02_task033_r5_review_and_file_deployment.md)。当前真实准备仍20/30=66.67%、微波炉待补10，新三模型0/30，正式10模型覆盖60/90=66.67%；00完整78/90=86.67%、覆盖100%，不重跑。按用户决定齐30后一次评30，不启动部分20或allow-missing，不自动串联模型。
+
+X本轮无修复待办。用户启动必要准备，Codex读回实际结果后给模型命令；软件验收不是物理成功。033整体open，PR未自动merge，不清理，待删=[]。
+
+---
+
 ## 2026-11-02：X交付033 R5微波炉承托/姿态构造，待审查与真实验证
 
 沿用 [PR #14](https://github.com/No1dry/LIBERO-Remain/pull/14)，R5实现 `fc2dd617b9434a82d27710d1da023101e87af1f5`。见 [033 R5回复](responses/033_round5.md) 与 [完整命令](../docs/task033_r5_microwave_runbook.md)。只增加微波炉显式v3方法：真实有限底板、全部39杯碰撞盒、4个直立yaw逐姿态重算；仅改A pose种子，实际base qvel及settled quat/qvel保留，原24/400及150+300判据不变。
