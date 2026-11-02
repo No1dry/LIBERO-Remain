@@ -1,5 +1,17 @@
 # 当前协作状态
 
+## 2026-11-02：九任务00完整86.67%；R2物理修复软件通过，RGB统一v6收尾
+
+用户新三30条00模型全部completed，26/30成功（86.67%）；结合旧六60复用，正式九任务00为78/90=86.67%，覆盖100%，UNKNOWN/技术/工件/模型身份异常均0。新增task3/8/9为90%/80%/90%。[完整00结果](../docs/stage_summaries/2026-11-02_task033_nine_normal00_complete.md)与30条原视频已取回并校验归档SHA；不重跑00。当前10只旧六60条已评，新三30未启；总模型记录覆盖150/180=83.33%，不能报全九10 SR。
+
+已审[PR #14](https://github.com/No1dry/LIBERO-Remain/pull/14)固定e336ee12（实现e850ae6a）：抽屉有向In、微波炉真实有界收敛、续跑及解释器修复software accepted。独立280项CPU/fake通过，原venv软链接复现也1 passed，不是物理25条ready。X正确保留旧v4并提交RGB提案，未擅改旧失败。
+
+[033 R3裁决](reviews/033_round3.md)：原完整source0重复0的step15已出现10像素差1、state/nonRGB一致，9像素提案仍会拒绝同一来源。[完整证据](tasks/033_rgb_adjudication_evidence.json)。采用任务无关v6：同状态、相机/来源/hash及非RGB原规则通过时，uint8最大通道差≤1，面积仅诊断；物理与计分门槛不变，旧v4不改，不声称GL成因已校准。
+
+[最后接入工单](tasks/033_round3_rgb_profile_implementation.md)已交X：仅完成v6全链/legacy reader与最小必要证据复用，不返修已通过R2两项、不重跑280全组。五条旧ready/旧六/00复用；有完整原窗口优先file-only派生，缺窗口仍用户补，不伪造新fresh像素或旧通过。为避免仍受v4面积门槛阻塞的重复准备，待v6接入后一次隔离部署/给必要补建命令；当前不交旧v4的20条新native命令，不自动启用提案或运行模型。033未closed，PR未merge，资料不清理，待删=[]。
+
+---
+
 ## 2026-11-02：X交付033 R2构造修复与RGB提案，待Codex审查
 
 先fetch main `6e43f010`，独立分支 `x/task033-r2-sources` 继承已审aedfe169；实现commit `e850ae6a2494d08a7314c39e7783d4a70f94765a`。aedfe169工作树未热改。见[033 R2回复](responses/033_round2.md)、[仅补原失败来源完整命令](../docs/task033_r2_source_repair_runbook.md)、[RGB版本提案](../docs/task033_r2_rgb_proposal.md)。
