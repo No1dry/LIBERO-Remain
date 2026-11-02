@@ -1,5 +1,17 @@
 # 当前协作状态
 
+## 2026-11-02：新三30个10来源真实ready100%，配置完成，用户直接启动30条模型评测
+
+用户R7实际结果30ready，微波炉10个完整150构造+分别恢复的150/150回放通过，各610实际控制调用，共6100；抽屉/双壶20来源复用。policy_called=false/model_rollouts=0，准备100%不是VLA成功率，原失败/profile保留。
+
+[033 R9审查](reviews/033_round9.md)接受来源准备与文件配置。Codex只执行configure/dry-plan，两者exit0，正式reader核对selected30/ready30、expected90、旧六reuse_only60、runtime_errors=[]；runtime与原冻结配置字节相同，无仿真/模型加载。新三固定task3/8/9各10、原SOG10/crop/proprio/全精度/seed7/chunk8/H520/完整指令及评分不变。
+
+[正式模型启动命令](../docs/experiment_plans/2026-11-02_task033_new30_mask10_eval_commands.md)已给，[阶段记录](../docs/stage_summaries/2026-11-02_task033_new30_ready_and_eval_handoff.md)同步本地。用户现在可一次启动新增30条10，不再做补建/回放/probe/测试，不等待X另一次确认；旧六60只读复用，00完整90/官方78成功不重跑。当前模型覆盖60/90=66.67%、新增0/30，三十完成后summary合并成正式90条10结果，视频全程保存。
+
+固定源码d8541ef4，配置task033_r7_d8541ef4/configs/mask10-new3.json，输出runs/mask10-new3-001未创建。Codex没有启动/排队/监督任何真实作业；不部分20、不allow-missing、无FINISH/selector/训练。X本轮无实现待办；033整体open直到模型结果审查，PR未自动merge，不清理，待删=[]。
+
+---
+
 ## 2026-11-02：R7软件accepted并隔离部署，用户可启动新版微波炉补建
 
 已审PR #14固定d8541ef4（实现c8c50e63），[033 R8](reviews/033_round8.md)accepted限软件/文件检查/部署，无返修阻断，用户不必等待X再确认。独立本轮95项CPU/fake全部通过、0skip、10.01秒；复用X已交153项受影响旧回归，不重跑历史大组或几何。
