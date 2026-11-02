@@ -19,6 +19,7 @@ REPORT_SCHEMA = "remaining-headless-selected-preparation-v1"
 TASKS = ("frypan_stove9", "cabinet_close_top_bowl")
 PROTOCOLS = ("selected-mask10", "normal00-control", *NINE_PROTOCOLS)
 MODES = ("inspect", "build-missing", "replay-missing", "prepare-missing")
+R2_METHOD = "selected_A_only_bounded_settle_component_transplant_v2"
 
 
 def _hash(raw):
@@ -153,19 +154,22 @@ def _run_counted(function, owner, attribute, path, identity):
     return result, report
 
 
-def _native(operation, task, index, origin, output, protocol):
+def _native(operation, task, index, origin, output, protocol, *, construction_method=None):
     """Lazy native boundary. Called only by an explicitly selected native mode."""
     output = Path(output)
     output.parent.mkdir(parents=True, exist_ok=True)
     identity = {"operation": operation, "protocol": protocol, "task_id": task,
                 "initial_state_index": index, "output": str(output)}
+    if construction_method is not None:
+        identity["construction_method"] = construction_method
     ledger_path = output.with_name(output.name + ".control_ledger.json")
     # Import errors before a hook is installed leave unknown evidence, never 0.
     try:
         if operation == "build":
             producer = importlib.import_module("benchmark.remaining_goals.selected_build")
             owner = importlib.import_module("benchmark.remaining_goals.build")
-            function = lambda: producer.build(output, task=task, index=index, protocol=protocol)
+            options = {"construction_method": construction_method} if construction_method is not None else {}
+            function = lambda: producer.build(output, task=task, index=index, protocol=protocol, **options)
             attribute = "_step"
         else:
             producer = importlib.import_module("benchmark.remaining_goals.selected_replay")
@@ -203,7 +207,8 @@ def _native(operation, task, index, origin, output, protocol):
 
 
 def prepare(inventory_path, output, *, mode="inspect", indices=None, tasks=None,
-            protocol=None, allow_failed_retry=False, continuation=False):
+            protocol=None, allow_failed_retry=False, continuation=False, construction_method=None,
+            replace_failed_originals=False):
     """Inspect or explicitly prepare selected sources, preserving a full denominator."""
     if mode not in MODES:
         raise ValueError("invalid preparation mode")
@@ -213,6 +218,10 @@ def prepare(inventory_path, output, *, mode="inspect", indices=None, tasks=None,
     protocol = protocol or inventory.get("protocol")
     if protocol not in PROTOCOLS or inventory.get("protocol") != protocol or inventory.get("schema_version") != SCHEMA:
         raise ValueError("inventory protocol/schema mismatch")
+    if construction_method is not None and (construction_method != R2_METHOD or protocol != "nine-mask10"):
+        raise ValueError("explicit R2 construction method is only valid for nine-mask10")
+    if type(replace_failed_originals) is not bool or replace_failed_originals and construction_method != R2_METHOD:
+        raise ValueError("replacing failed original sources requires the explicit R2 method")
     tasks, indices = _selection(tasks, indices, protocol)
     if protocol in NINE_PROTOCOLS:
         from .nine_planning import expected_episodes
@@ -236,13 +245,18 @@ def prepare(inventory_path, output, *, mode="inspect", indices=None, tasks=None,
             raise FileExistsError("output exists; explicit continuation is required")
         report = _read(report_path)
         if (report.get("schema_version") != REPORT_SCHEMA or report.get("inventory_sha256") != _hash(inventory_raw)
-                or report.get("protocol") != protocol):
+                or report.get("protocol") != protocol or report.get("construction_method") != construction_method
+                or report.get("replace_failed_originals", False) != replace_failed_originals):
             raise ValueError("continuation inventory identity mismatch")
     else:
         output.mkdir(parents=True, exist_ok=False)
         report = {"schema_version": REPORT_SCHEMA, "protocol": protocol,
                   "inventory": str(inventory_path), "inventory_sha256": _hash(inventory_raw),
                   "expected": expected, "sources": [], "policy_called": False, "model_rollouts": 0}
+        if construction_method is not None:
+            report["construction_method"] = construction_method
+        if replace_failed_originals:
+            report["replace_failed_originals"] = True
     prior = {(r["task_id"], r["initial_state_index"]): r for r in report["sources"]}
     if continuation:
         # Readiness is current file evidence, while physical operations/counts
@@ -307,7 +321,8 @@ def prepare(inventory_path, output, *, mode="inspect", indices=None, tasks=None,
             elif old and old.get("operations"):
                 row["previous_attempts"].append({k: deepcopy(v) for k, v in old.items() if k != "previous_attempts"})
             prior[key] = row
-            if row["status"] == "ready" or mode == "inspect" or (row["status"] == "failed" and not allow_failed_retry):
+            replace_original = replace_failed_originals and not (old and old.get("operations"))
+            if row["status"] == "ready" or mode == "inspect" or (row["status"] == "failed" and not (allow_failed_retry or replace_original)):
                 persist()
                 continue
             if row["status"] == "failed":
@@ -333,7 +348,8 @@ def prepare(inventory_path, output, *, mode="inspect", indices=None, tasks=None,
                     row["operations"].append({"operation": operation, "status": "running", "output": str(root / operation)})
                     row.update(actual_control_steps=None, count_status="unknown")
                     persist()
-                    origin, ledger = _native(operation, task, index, origin, root / operation, protocol)
+                    options = {"construction_method": construction_method} if construction_method is not None else {}
+                    origin, ledger = _native(operation, task, index, origin, root / operation, protocol, **options)
                     row["operations"][-1].update(status="completed", ledger=ledger)
                     inspected = _inspect(protocol, task, index, origin)
                     for field in ("status", "phase", "candidate", "origin", "episode_id", "acceptance", "reason"):
@@ -370,11 +386,14 @@ def main(argv=None):
     parser.add_argument("--tasks", nargs="+", choices=(*TASKS, *NEW_TASKS))
     parser.add_argument("--indices", nargs="+", type=int)
     parser.add_argument("--continue", dest="continuation", action="store_true")
+    parser.add_argument("--construction-method", choices=(R2_METHOD,),
+                        help="Explicit R2 candidate construction; legacy and normal00 remain unchanged.")
     parser.add_argument("--allow-failed-retry", action="store_true",
                         help="Explicit new attempt with unchanged fixed physical rules; preserve prior failure evidence. Does not relax stability requirements.")
     args = parser.parse_args(argv)
     report = prepare(args.inventory, args.output, mode=args.mode, indices=args.indices, tasks=args.tasks,
-                     protocol=args.protocol, allow_failed_retry=args.allow_failed_retry, continuation=args.continuation)
+                     protocol=args.protocol, allow_failed_retry=args.allow_failed_retry, continuation=args.continuation,
+                     construction_method=args.construction_method)
     tasks, indices = _selection(args.tasks, args.indices, report.get("protocol", args.protocol))
     selected = [row for row in report["sources"] if row["task_id"] in tasks and row["initial_state_index"] in indices]
     return 0 if selected and all(row["status"] == "ready" for row in selected) else 2

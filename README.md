@@ -1,5 +1,7 @@
 # LIBERO-Remain
 
+> **Task033 R2:** accepted30 normal00 sources continue on the frozen aedfe169 checkout. The isolated [failed-source repair runbook](docs/task033_r2_source_repair_runbook.md) addresses drawer geometry and microwave convergence, preserves the five accepted mask10 sources, and keeps five RGB gaps pending an explicit policy decision. No historical failures or RGB acceptance thresholds are rewritten.
+
 > **2026-11-02 current scope / 当前正式范围：** nine compound tasks from official LIBERO-10 (default IDs 0,1,2,3,4,6,7,8,9), with 90 episodes each for 00 and 10. Reuse 120 historical episodes and execute only 60 new episodes. Follow the [Task033 nine-task runbook](docs/task033_nine_task_runbook.md) and [Plan6](docs/experiment_plans/2026-11-02_libero10_nine_compound_tasks.md). LIBERO-90 is outside new plans; its historical artifacts remain intact. The unexecuted `frypan_stove9` / `cabinet_close_top_bowl` preparation and evaluation commands are cancelled.
 
 **Partial-completion evaluation for vision-language-action models on LIBERO.** Given the original instruction and the current observation, can a VLA complete the remaining goals while preserving what has already been achieved?

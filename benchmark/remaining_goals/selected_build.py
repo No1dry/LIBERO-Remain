@@ -20,7 +20,11 @@ from .nine_catalog import (NEW_TASKS, NINE_PROTOCOLS, get_task, episode_fields,
 
 SELECTED_TASKS = ("frypan_stove9", "cabinet_close_top_bowl")
 METHOD = "selected_A_only_settle_component_transplant_v1"
+METHOD_R2 = "selected_A_only_bounded_settle_component_transplant_v2"
 NORMAL_METHOD = "official_fixed_init_settle_initial_only_v1"
+BOUNDED_SETTLE = {"schema_version": "remaining-selected-component-settle-v2", "min_steps": 80,
+                  "max_steps": 400, "required_stable_observations": 20,
+                  "velocity_limit": .01, "position_span_limit": .005}
 
 
 def _sha(raw):
@@ -51,28 +55,76 @@ def _official_asset(suite, task_index):
     return {"asset": path.relative_to(root).as_posix(), "sha256": _sha(path.read_bytes())}
 
 
-def build(output, *, task, index, protocol="selected-mask10", max_candidates=24):
+def _settle_component(b, env, profile, semantics, whitelist, evidence):
+    """Observe bounded real HOLD convergence; never edit a measured velocity."""
+    layout = b.ms.StateLayout.from_model(env.sim.model)
+    entry = b.ms.resolve_free_joint(env.sim.model, profile["goals"][0]["predicates"][0][1])
+    position_indices = list(range(1 + entry.qpos_adr, 1 + entry.qpos_adr + 3))
+    qpos_indices = [i for i in whitelist if layout.qpos_slice.start <= i < layout.qpos_slice.stop]
+    qvel_indices = [i for i in whitelist if layout.qvel_slice.start <= i < layout.qvel_slice.stop]
+    if not set(position_indices).issubset(whitelist) or not qvel_indices:
+        raise ValueError("bounded settling requires the selected object's actual position and velocity whitelist")
+    evidence.update(deepcopy(BOUNDED_SETTLE), mode="bounded_convergence", attempted_steps=0,
+        completed_steps=0, exception_calls=0, converged=False, stop_reason="running", samples=[],
+        count_scope="candidate HOLD only; excludes base80 and construction audit150")
+    positions = []
+    for step in range(1, evidence["max_steps"] + 1):
+        evidence["attempted_steps"] += 1
+        try:
+            b._step(env, b.HOLD)
+        except BaseException:
+            evidence["exception_calls"] += 1
+            evidence["stop_reason"] = "step_exception"
+            raise
+        evidence["completed_steps"] += 1
+        state = b._state(env)
+        if not np.isfinite(state).all():
+            evidence["stop_reason"] = "nonfinite_state"
+            raise ValueError("bounded settle produced a nonfinite physical state")
+        facts = read_goal_facts(env.env._eval_predicate, env.check_success(), semantics)
+        max_velocity = float(np.max(np.abs(state[layout.qvel_slice])))
+        eligible = max_velocity <= evidence["velocity_limit"] and facts["goals"] == [True, False] and initial_constraints_match(facts)
+        positions = (positions + [state[position_indices].copy()])[-evidence["required_stable_observations"]:] if eligible else []
+        span = float(np.linalg.norm(np.ptp(np.asarray(positions), axis=0))) if positions else None
+        evidence["samples"].append({"step": step, "max_abs_qvel": max_velocity,
+            "selected_qpos": state[qpos_indices].tolist(), "selected_qvel": state[qvel_indices].tolist(),
+            "goal_facts": facts, "eligible": bool(eligible), "stable_observations": len(positions),
+            "position_span_m": span})
+        if (step >= evidence["min_steps"] and len(positions) == evidence["required_stable_observations"]
+                and span <= evidence["position_span_limit"]):
+            evidence.update(converged=True, stop_reason="bounded_settle_converged", state_array_sha256=_array_sha(state))
+            return state
+    evidence["stop_reason"] = "bounded_settle_not_converged"
+    return None
+
+
+def build(output, *, task, index, protocol="selected-mask10", max_candidates=24, construction_method=None):
     """Produce one fixed official source, always in a fresh directory.
 
-    The physical limits, HOLD action, source seed, settle80 and selected150 are
-    pinned. Failed audits remain in the new output and never replace old files.
+    Default v1 keeps settle80. Explicit R2 microwave convergence is bounded at
+    400 HOLD steps; base80 and selected150 audit remain unchanged. Failed
+    candidates stay in the new output and never replace old files.
     """
     nine = protocol in NINE_PROTOCOLS
     if (task not in (NEW_TASKS if nine else SELECTED_TASKS) or type(index) is not int or index not in range(10)
             or protocol not in ("selected-mask10", "normal00-control", *NINE_PROTOCOLS)
             or type(max_candidates) is not int or not 1 <= max_candidates <= 24):
         raise ValueError("selected builder requires one fixed task/index and at most 24 A candidates")
+    r2 = construction_method == METHOD_R2
+    if construction_method not in (None, METHOD, METHOD_R2) or r2 and (protocol != "nine-mask10" or task not in NEW_TASKS):
+        raise ValueError("R2 construction is explicit and limited to new-three nine-mask10 sources")
     output = Path(output)
     output.mkdir(parents=True, exist_ok=False)
     b = _backend()
     profile = get_task(task) if nine else TASKS[task]
     normal = protocol in ("normal00-control", "nine-normal00")
+    method = NORMAL_METHOD if normal else METHOD_R2 if r2 else METHOD
     identity = b.environment_identity(20)
     manifest = {"schema_version": "remaining-goals-v0.1", "environment": identity, "episodes": []}
     group = {"task_id": task, "suite": profile["suite"], "task_name": profile["name"],
              "initial_state_index": index, "seed": index, "complete": False, "attempts": []}
-    report = {"kind": "normal00_initialization_v1" if normal else "selected_mask10_candidate_construction_v1",
-              "protocol": protocol, "method": NORMAL_METHOD if normal else METHOD,
+    report = {"kind": "normal00_initialization_v1" if normal else "selected_mask10_candidate_construction_v2" if r2 else "selected_mask10_candidate_construction_v1",
+              "protocol": protocol, "method": method,
               "environment": identity, "hold_action": b.HOLD.tolist(), "settle_steps": 80,
               "validation_steps": 0 if normal else 150, "initialization_kind": "settled_base",
               "construction_scope": "initial_only_00" if normal else "selected_A_only_actual10",
@@ -82,6 +134,9 @@ def build(output, *, task, index, protocol="selected-mask10", max_candidates=24)
                                          for name in ("selected_build.py", "build.py", "construction.py", "validation.py", "task_catalog.py")
                                          + (("nine_catalog.py", "libero_env.py") if nine else ())},
               "groups": [group]}
+    if r2:
+        report["candidate_settle_contract"] = deepcopy(BOUNDED_SETTLE) if task == "mug_microwave_close" else {"mode": "fixed80", "steps": 80}
+        report["seed_velocity_policy"] = "preserve_entire_real_settled_base_qvel_before_native_restore"
     env = None
     try:
         suite = _suite(profile)
@@ -125,11 +180,11 @@ def build(output, *, task, index, protocol="selected-mask10", max_candidates=24)
                     "libero_task_id": task_index, "task_name": official_task.name, "instruction": official_task.language,
                     **deepcopy(fields), "initial_mask": [False, False] if normal else [True, False],
                     "source_id": f"{task}_official_{index}", "initial_state_index": index, "seed": index,
-                    "split": "test", "pose_id": "official_settled_initial_only_v1" if normal else "selected_A_settled_transplant_v1",
+                    "split": "test", "pose_id": "official_settled_initial_only_v1" if normal else "selected_A_settled_transplant_v2" if r2 else "selected_A_settled_transplant_v1",
                     "horizon": 520, "retention_steps": 150,
                     "state_path": f"states/{episode_id}.npy", "bddl_sha256": _sha(bddl.read_bytes()),
                     "model_xml_sha256": reset_xml_hash, "reference_robot_qpos": base_q.tolist(),
-                    "construction": {"method": NORMAL_METHOD if normal else METHOD, "legal": False,
+                    "construction": {"method": method, "legal": False,
                                      "reviewed_by": "pending_semantic_and_execution_review",
                                      "technical_audit": (relative / "audit.json").as_posix(),
                                      "protocol": protocol}}, relative
@@ -162,6 +217,8 @@ def build(output, *, task, index, protocol="selected-mask10", max_candidates=24)
             # partner audit or eligibility role in this new construction method.
             active_profile = deepcopy(profile)
             active_profile["goals"] = [deepcopy(profile["goals"][0])]
+            if r2 and task == "bowl_drawer_close":
+                active_profile["in_volume_regions"] = ["white_cabinet_1_bottom_region"]
             per_goal = b._per_goal(env, base, active_profile, max_candidates)
             active_candidates = per_goal[0]
             if not active_candidates:
@@ -173,10 +230,35 @@ def build(output, *, task, index, protocol="selected-mask10", max_candidates=24)
             for number, candidate in enumerate(candidates):
                 if set(candidate["allowed_indices"]) != set(whitelist):
                     raise ValueError("composed A whitelist differs from generated candidates")
-                b.restore_raw_state(env, candidate["state"])
-                for _ in range(80):
-                    b._step(env, b.HOLD)
-                settled = b._state(env)
+                seed = candidate["state"].copy()
+                settling = None
+                seed_provenance = {}
+                if r2:
+                    layout = b.ms.StateLayout.from_model(env.sim.model)
+                    # Existing seed generators may zero a free object's velocity.
+                    # R2 retains the *measured* base qvel before any native restore;
+                    # neither final convergence nor audit is obtained by clearing it.
+                    seed[layout.qvel_slice] = base[layout.qvel_slice]
+                    seed_provenance = {"seed_velocity_policy": report["seed_velocity_policy"],
+                        "seed_qvel": seed[layout.qvel_slice].tolist(),
+                        "seed_qvel_array_sha256": _array_sha(seed[layout.qvel_slice])}
+                b.restore_raw_state(env, seed)
+                if r2 and task == "mug_microwave_close":
+                    settling = {}
+                    try:
+                        settled = _settle_component(b, env, profile, fields["task_semantics"], whitelist, settling)
+                    except BaseException:
+                        group["attempts"].append({"candidate": number, "technical_acceptance": False,
+                            "candidate_settle": settling, "candidate_diagnostics": candidate["diagnostics"], **seed_provenance})
+                        raise
+                    if settled is None:
+                        group["attempts"].append({"candidate": number, "technical_acceptance": False,
+                            "candidate_settle": settling, "candidate_diagnostics": candidate["diagnostics"], **seed_provenance})
+                        continue
+                else:
+                    for _ in range(80):
+                        b._step(env, b.HOLD)
+                    settled = b._state(env)
                 frozen = base.copy()
                 frozen[whitelist] = settled[whitelist]
                 whitelist_audit = b.state_diff_whitelist(base, frozen, env.sim.model, whitelist)
@@ -187,6 +269,10 @@ def build(output, *, task, index, protocol="selected-mask10", max_candidates=24)
                               "selected_component": {"goal_index": 0, "indices": whitelist,
                                                      "values": values.tolist(), "values_sha256": _array_sha(values)},
                               "whitelist": whitelist_audit, "candidate_diagnostics": candidate["diagnostics"]}
+                if r2:
+                    provenance.update(seed_provenance)
+                    if settling is not None:
+                        provenance["candidate_settle"] = settling
                 if audit_and_export(frozen, number, provenance):
                     break
             if not group["complete"]:
@@ -212,8 +298,9 @@ def main(argv=None):
     parser.add_argument("--task", required=True, choices=(*SELECTED_TASKS, *NEW_TASKS))
     parser.add_argument("--index", required=True, type=int)
     parser.add_argument("--protocol", choices=("selected-mask10", "normal00-control", *NINE_PROTOCOLS), default="selected-mask10")
+    parser.add_argument("--construction-method", choices=(METHOD, METHOD_R2))
     args = parser.parse_args(argv)
-    if not build(args.out, task=args.task, index=args.index, protocol=args.protocol)["complete"]:
+    if not build(args.out, task=args.task, index=args.index, protocol=args.protocol, construction_method=args.construction_method)["complete"]:
         raise SystemExit("source construction failed; inspect construction_report.json")
 
 

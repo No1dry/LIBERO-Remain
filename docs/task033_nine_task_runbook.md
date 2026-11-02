@@ -1,5 +1,7 @@
 # Task033：九个 LIBERO-10 复合任务完整运行说明
 
+> 真实来源状态已更新：aedfe169的00共30条已accepted，可直接按冻结配置评测；10五条ready、25缺口。后续来源修复仅用[033 R2独立目录与失败来源命令](task033_r2_source_repair_runbook.md)，不要重跑下文的全部来源prepare命令或热改原目录。双壶RGB提案未裁决，不启动部分10。
+
 本轮唯一正式人口为官方默认 task_id **0,1,2,3,4,6,7,8,9**，每项固定 init index0..9。00、10各90条；旧六任务各60条只读复用，只执行新3/8/9各30条，合计新增60条模型评测。四个 LIBERO-90 退出当前计划；旧两个90任务的未执行补建/补测已取消。旧定义、原80/100报告和原视频保留，取消不代表物理问题解决。
 
 权威实现来自 LIBERO-Remain 的033独立PR；代码parent为已审031 `ac1301779cf6ae4c34ebc80c20936a4f7a4953be`，并同步main `c9145d17a3c279ad7384ad357118095c6b648061` 的032/033/Plan6。新协议版本为 `remaining-headless-nine-normal00-v1`、`remaining-headless-nine-mask10-v1`，评分版本为 `remaining-headless-official00-drop-diagnostic-v1`。旧013支撑v2和031 R2续跑保护均保留。CPU/fake通过仅验证实现，不证明真实状态或模型成功。

@@ -208,10 +208,11 @@ def _per_goal(env, base, profile, max_candidates):
             reserved = [g["predicates"][0][1] for g in profile["goals"]
                         if len(g["predicates"][0]) == 3 and g["predicates"][0][2] == predicate[2]]
             reserved = profile.get("reservation_objects", {}).get(predicate[2], reserved)
+            geometry_options = {"in_volume": True} if predicate[2] in profile.get("in_volume_regions", []) else {}
             candidates = placement_candidates(base, model, data, predicate[1], predicate[2],
                                               relation=predicate[0], reservation_objects=reserved,
                                               target_kind="object" if predicate[2] in profile.get("object_supports", []) else "region",
-                                              max_candidates=max_candidates)
+                                              max_candidates=max_candidates, **geometry_options)
         elif predicate[0] == "turnon":
             candidates = []
             for joint in ms.iter_joints(model):

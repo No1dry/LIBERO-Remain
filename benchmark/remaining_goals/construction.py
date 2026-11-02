@@ -8,7 +8,10 @@ The current placement search preserves object orientation and supports box
 regions whose local z axis is within five degrees of world up, including yaw
 rotation. Small settled tilt is allowed only for conservative candidate search;
 gravity settling and full physical validation remain mandatory downstream.
-Unknown geometry and larger or inverted support tilts fail explicitly.
+Unknown geometry and larger or inverted support tilts fail explicitly. The
+explicit R2 ``in_volume`` path instead treats the site's original orientation as
+membership coordinates and finds a real owned floor relative to world gravity;
+it does not reinterpret the site's local z as a support normal.
 """
 
 from __future__ import annotations
@@ -140,11 +143,13 @@ def _geom_bounds(model, data, geom, origin, frame):
     return center - extent, center + extent
 
 
-def region_geometry(model, data, site_name: str) -> dict:
-    """Read a named near-horizontal box site's full world pose, without leveling it.
+def region_geometry(model, data, site_name: str, *, in_volume: bool = False) -> dict:
+    """Read a box site's full world pose, without leveling it.
 
     Accepting a small tilt does not establish a stable support surface. Candidate
     positions retain the measured rotation and still require gravity settling.
+    ``in_volume`` reads membership axes only; its caller must independently find
+    a physical floor and cannot treat these coordinates as a support frame.
     """
     try:
         site = int(model.site_name2id(site_name))
@@ -162,7 +167,7 @@ def region_geometry(model, data, site_name: str) -> dict:
     tilt = float(np.arctan2(np.linalg.norm(normal[:2]), normal[2]))
     # One floating-point step allows the inclusive five-degree boundary without
     # introducing a physical tolerance above the stated construction limit.
-    if tilt > np.nextafter(REGION_TILT_LIMIT_RAD, np.inf):
+    if not in_volume and tilt > np.nextafter(REGION_TILT_LIMIT_RAD, np.inf):
         raise ValueError("tilted/inverted support regions exceed the candidate construction limit: "
                          f"region_tilt_rad={tilt:.12g}, "
                          f"region_tilt_limit_rad={REGION_TILT_LIMIT_RAD:.12g}")
@@ -171,6 +176,101 @@ def region_geometry(model, data, site_name: str) -> dict:
             "rotation": rotation, "half_size": size,
             "region_tilt_rad": tilt, "region_tilt_limit_rad": REGION_TILT_LIMIT_RAD,
             "body_id": int(_field(model, "site_bodyid", site, "site", "bodyid"))}
+
+
+def _in_volume_candidates(base, model, data, object_name, region_site, heights, margin, limit):
+    """Seed a box volume using gravity and its owned collision floor, not site-z.
+
+    A site encodes membership coordinates; its local axes do not identify a
+    physical support plane. Only a thin collision box's upward broad face can
+    seed this bounded drawer path. Other geometry remains an obstacle, never an
+    AABB-derived substitute floor. Native predicates and settling remain required.
+    """
+    region = region_geometry(model, data, region_site, in_volume=True)
+    rotation, center, half = region["rotation"], region["center"], region["half_size"]
+    if np.any(half <= 0):
+        raise ValueError("In volume requires three positive dimensions")
+    entry, _, local_lo, local_hi = _object_geometry(base, model, data, object_name, rotation)
+    _, _, world_lo, world_hi = _object_geometry(base, model, data, object_name, np.eye(3))
+    if np.any(local_hi - local_lo + 2 * margin > 2 * half):
+        return []
+    geoms = _collision_geoms(model, region["body_id"])
+    bounds = {geom: _geom_bounds(model, data, geom, np.zeros(3), np.eye(3)) for geom in geoms}
+    floors = []
+    for geom in geoms:
+        if ms.geom_type(model, geom) != 6:
+            continue
+        size = _array(_field(model, "geom_size", geom, "geom", "size"), (3,), "geom_size")
+        axes = _rotation(data.geom_xmat[geom], "geom_xmat")
+        thin = int(np.argmin(size))
+        # Walls also have horizontal caps. Their thinnest axis is horizontal,
+        # and their broad faces therefore cannot support gravity from below.
+        normal = axes[:, thin].copy()
+        normal *= 1 if normal[2] >= 0 else -1
+        tilt = float(np.arctan2(np.linalg.norm(normal[:2]), normal[2]))
+        if tilt > np.nextafter(REGION_TILT_LIMIT_RAD, np.inf):
+            continue
+        face = _array(data.geom_xpos[geom], (3,), "geom_xpos") + normal * size[thin]
+        if face[2] >= center[2]:
+            continue
+        floors.append((geom, size, axes, thin, normal, face, tilt))
+    if not floors:
+        raise ValueError("In volume has no supported owned near-horizontal box floor")
+    world_half = np.abs(rotation) @ half
+    low = center[:2] - world_half[:2] + margin - world_lo[:2]
+    high = center[:2] + world_half[:2] - margin - world_hi[:2]
+    if np.any(low > high):
+        return []
+    offsets = ((0., 0.), (-.75, 0.), (.75, 0.), (0., -.75), (0., .75),
+               (-.75, -.75), (.75, .75), (-.75, .75), (.75, -.75))
+    layout = ms.StateLayout.from_model(model)
+    allowed = list(range(1 + entry.qpos_adr, 1 + entry.qpos_adr + entry.qpos_dim))
+    allowed += list(range(layout.qvel_slice.start + entry.dof_adr,
+                          layout.qvel_slice.start + entry.dof_adr + entry.dof_dim))
+    output = []
+    for plan, offset in enumerate(offsets):
+        xy = (low + high) / 2 + np.asarray(offset) * (high - low) / 2
+        footprint = np.asarray([[xy[0] + x, xy[1] + y] for x in (world_lo[0], world_hi[0])
+                                 for y in (world_lo[1], world_hi[1])])
+        for geom, size, axes, thin, normal, face, tilt in sorted(floors, key=lambda f: (-f[5][2], f[0])):
+            z = face[2] - ((footprint - face[:2]) @ normal[:2]) / normal[2]
+            face_points = np.c_[footprint, z]
+            face_local = (face_points - data.geom_xpos[geom]) @ axes
+            broad = [axis for axis in range(3) if axis != thin]
+            if np.any(np.abs(face_local[:, broad]) > size[broad] - margin):
+                continue
+            floor = float(z.max())
+            for clearance in heights:
+                position = np.r_[xy, floor - world_lo[2] + clearance]
+                local = rotation.T @ (position - center)
+                if np.any(local + local_lo < -half + margin) or np.any(local + local_hi > half - margin):
+                    continue
+                object_lo, object_hi = position + world_lo, position + world_hi
+                if any(np.all(np.minimum(object_hi, hi) > np.maximum(object_lo, lo))
+                       for other, (lo, hi) in bounds.items() if other != geom):
+                    continue
+                state = ms.set_object_pos(base, model, entry.name, position)
+                placement = {"object": object_name, "joint": entry.name, "region": region_site,
+                    "target_kind": "region", "relation": "in", "position": position.tolist(),
+                    "aabb_min": object_lo.tolist(), "aabb_max": object_hi.tolist(),
+                    "reservation_objects": [object_name], "reservation_plan": plan,
+                    "slot_index": 0, "clearance": float(clearance)}
+                output.append(_candidate(base, state, model, allowed, [entry.name], [placement], {
+                    "method": "oriented_in_volume_world_gravity_v1", "region_center": center.tolist(),
+                    "region_half_size": half.tolist(), "region_rotation": rotation.tolist(),
+                    "region_tilt_rad": region["region_tilt_rad"], "site_axes_are_support_axes": False,
+                    "support_frame": "world_gravity", "support_geom_id": geom,
+                    "support_body_id": ms.geom_bodyid(model, geom), "region_body_id": region["body_id"],
+                    "support_normal": normal.tolist(), "support_tilt_rad": tilt,
+                    "support_tilt_limit_rad": REGION_TILT_LIMIT_RAD,
+                    "support_world_z": floor, "candidate_local_origin": local.tolist(),
+                    "full_collision_volume_contained": True, "gravity_settle_required": True,
+                    "seed_orientation_preserved": True, "seed_velocity_preserved": True,
+                    "settled_component_includes_orientation": True,
+                }))
+                if len(output) >= limit:
+                    return output
+    return output
 
 
 def _object_geometry(base, model, data, object_name, frame):
@@ -256,7 +356,8 @@ def _candidate(base, state, model, allowed, joints, placements, diagnostics):
 def placement_candidates(base_state, model, data, object_name: str, region_site: str, *,
                          relation: str = "in", reservation_objects=None,
                          clearances=(0.002, 0.01, 0.025), max_candidates: int = 24,
-                         horizontal_margin: float = 0.001, target_kind: str = "region") -> list[dict]:
+                         horizontal_margin: float = 0.001, target_kind: str = "region",
+                         in_volume: bool = False) -> list[dict]:
     """Enumerate fixed slot/height candidates using collision support geometry.
 
     Provide the same ordered ``reservation_objects`` in every mask (including
@@ -270,6 +371,9 @@ def placement_candidates(base_state, model, data, object_name: str, region_site:
     Near-horizontal support tilt is retained, not corrected. Local-frame AABBs
     only provide conservative seeds; gravity settling and full physical checks
     must reject unstable, colliding, or goal-invalid candidates.
+
+    ``in_volume=True`` is an explicitly versioned single-object In extension;
+    the default legacy behavior and every On support keep their original limits.
     """
     base, layout = _base(base_state, model)
     limit = _limit(max_candidates, "max_candidates")
@@ -290,6 +394,12 @@ def placement_candidates(base_state, model, data, object_name: str, region_site:
     reservations = list(reservation_objects) if reservation_objects is not None else [object_name]
     if object_name not in reservations or len(set(reservations)) != len(reservations):
         raise ValueError("reservation_objects must include the object exactly once")
+    if type(in_volume) is not bool:
+        raise ValueError("in_volume must be an explicit boolean")
+    if in_volume:
+        if relation != "in" or target_kind != "region" or reservations != [object_name]:
+            raise ValueError("oriented In volume requires one object and a region target")
+        return _in_volume_candidates(base, model, data, object_name, region_site, heights, margin, limit)
     region = (object_support_geometry(base, model, data, region_site) if target_kind == "object"
               else region_geometry(model, data, region_site))
     rotation, center, half = region["rotation"], region["center"], region["half_size"]

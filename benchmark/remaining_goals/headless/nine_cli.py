@@ -45,7 +45,9 @@ def main(argv=None):
         template = Path(__file__).resolve().parents[3] / "configs/remaining_goals/runtime/openvla_oft_sog10.json"
         result = p.read_json(template)
         result["adapter_options"].update(repo_path=str(args.oft_repo.resolve()), checkpoint=str(args.checkpoint.resolve()))
-        result["runtime"].update(python_executable=str(args.model_python.resolve()), cuda_visible_devices=args.cuda_visible_devices)
+        # Preserve a venv/bin/python alias; resolving its symlink selects the
+        # base interpreter and can silently discard the requested environment.
+        result["runtime"].update(python_executable=str(args.model_python.expanduser().absolute()), cuda_visible_devices=args.cuda_visible_devices)
         result["notes"] = "Task033 new-three only; original SOG10 crop/proprio/full precision/seed7/chunk8. No weights loaded by configuration."
         write_json(args.out, result)
         p.load_runtime(args.out)
