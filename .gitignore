@@ -43,3 +43,4 @@ configs/remaining_goals/local/
 .vscode/
 .DS_Store
 Thumbs.db
+.review-cpu-*/

@@ -21,9 +21,12 @@ libero-remain-finish = "benchmark.remaining_goals.finish.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["benchmark*", "scripts*"]
+include = ["benchmark*", "scripts*", "libero_remain_reporting*"]
 exclude = ["tests*"]
 namespaces = true
+
+[tool.setuptools.package-data]
+libero_remain_reporting = ["accepted_core.json"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
