@@ -1,5 +1,7 @@
 # LIBERO-Remain 协议与候选状态规范
 
+> 本页保留v0.2 pilot的历史通用协议、十任务与全mask构造说明。当前正式范围为033的九个LIBERO-10任务，仅00/10各90条；旧六120条只读复用、新三60条新增。当前配置与命令见[九任务 runbook](task033_nine_task_runbook.md)，本页LIBERO-90补齐安排不适用于新作业。
+
 版本：v0.2 pilot。LIBERO-Remain 是 Learning_Not_to_Act 项目的可复用评测套件，基于 [LIBERO](https://github.com/Lifelong-Robot-Learning/LIBERO)，并非LIBERO官方基准版本。改名与录像功能更新不等于重新构造或重新验收历史状态。
 
 研究问题是：当人或外部过程提前完成任意合法部分任务后，VLA能否从当前观测识别剩余目标，并在保留已有成果的同时完成任务？本仓库实现状态构造、独立回放、统一rollout、计分和六模型接口。快速开始见 [README](../README.md)，真实模型配置见[六模型指南](remaining_goals_six_model_evaluation.md)。

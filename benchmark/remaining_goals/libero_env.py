@@ -409,6 +409,7 @@ class LiberoGoalEnv:
         self._ready = False
         self.task_key = None
         self.predicates = []
+        self.task_semantics = None
         self._last_action = None
         self._hold = config.get("hold_action")
         self._hold_contract = config.get("hold_contract")
@@ -447,6 +448,7 @@ class LiberoGoalEnv:
         self._ready = False
         self.inner = None
         self.predicates = []
+        self.task_semantics = None
         self._last_action = None
         state_file = verify_state_file(episode, self.base_dir)
         # verify_state_file validates its own bytes. Re-hash the exact bytes we
@@ -466,7 +468,12 @@ class LiberoGoalEnv:
             raise ValueError("goal groups must be nonempty conjunctions")
         official = [_predicate(p) for p in inner.parsed_problem["goal_state"]]
         grouped = [_predicate(p) for g in groups for p in g["predicates"]]
-        if len(grouped) != len(set(grouped)) or sorted(grouped) != sorted(official):
+        semantics = None
+        if "task_semantics" in episode:
+            from .nine_catalog import validate_episode_semantics, validate_task_semantics
+            semantics = validate_episode_semantics(episode)
+            validate_task_semantics(semantics, official_predicates=official)
+        elif len(grouped) != len(set(grouped)) or sorted(grouped) != sorted(official):
             raise ValueError("goal groups must partition the official final predicates exactly")
         xml_hash = model_xml_hash(self.env)
         if not episode.get("model_xml_sha256") or episode["model_xml_sha256"] != xml_hash:
@@ -474,16 +481,26 @@ class LiberoGoalEnv:
         observation = restore_raw_state(self.env, state)
         self.inner = inner
         self.predicates = [[list(_predicate(p)) for p in g["predicates"]] for g in groups]
+        self.task_semantics = semantics
         self._ready = True
         return observation
 
     def goal_values(self) -> list[bool]:
         if not self._ready:
             raise RuntimeError("a successful reset is required before evaluating goals")
+        if getattr(self, "task_semantics", None) is not None:
+            return self.goal_facts()["goals"]
         values = [all(bool(self.inner._eval_predicate(p)) for p in group) for group in self.predicates]
         if all(values) != bool(self.env.check_success()):
             raise RuntimeError("grouped predicates disagree with official task success")
         return values
+
+    def goal_facts(self):
+        """Read active, invariant and full native truth without advancing physics."""
+        if not self._ready or getattr(self, "task_semantics", None) is None:
+            raise RuntimeError("nine-task facts require a successful versioned reset")
+        from .nine_catalog import read_goal_facts
+        return read_goal_facts(self.inner._eval_predicate, self.env.check_success(), self.task_semantics)
 
     def step(self, action) -> dict:
         if not self._ready:
@@ -516,6 +533,7 @@ class LiberoGoalEnv:
         self.task_key = None
         self.inner = None
         self.predicates = []
+        self.task_semantics = None
         self._ready = False
         self._last_action = None
         if env is not None:

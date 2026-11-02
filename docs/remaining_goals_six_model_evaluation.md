@@ -1,5 +1,7 @@
 # LIBERO-Remain 六模型统一评测指南
 
+> 本页是历史通用六模型接口说明。当前033正式作业使用原SOG10、九个LIBERO-10任务和固定60条新增预算，复用旧六任务120条记录；只准备00/10。按[九任务 runbook](task033_nine_task_runbook.md)执行，本页全mask、LIBERO-90、probe与六模型matrix示例不属于本轮作业。
+
 更新日期：2026 年 10 月 4 日。
 
 本项目研究：**当人或外部过程提前完成任意部分任务后，VLA 能否根据当前观测确定剩余目标，并保留已有成果？** 本文说明如何用同一批冻结状态、同一 rollout 和同一评分程序评测 OpenVLA、OpenVLA-OFT、π0、π0.5、GR00T N1.7 和 UniVLA。

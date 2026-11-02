@@ -16,6 +16,7 @@ finish-data = ["h5py>=3.8,<4"]
 
 [project.scripts]
 libero-remain = "benchmark.remaining_goals.evaluation:main"
+libero-remain-nine = "benchmark.remaining_goals.headless.nine_cli:main"
 libero-pab = "benchmark.remaining_goals.evaluation:main"
 libero-remain-finish = "benchmark.remaining_goals.finish.cli:main"
 

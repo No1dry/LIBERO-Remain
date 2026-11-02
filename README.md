@@ -1,6 +1,6 @@
 # LIBERO-Remain
 
-> **2026-11-02 approved scope update / 当前范围修订：** the active target is the nine compound tasks from official LIBERO-10 (default IDs 0,1,2,3,4,6,7,8,9), not the historical six-LIBERO-10 plus four-LIBERO-90 mix. LIBERO-90 leaves new default plans; historical artifacts remain intact. Implementation is pending [Task033](collaboration/tasks/033_libero10_nine_compound_tasks.md); do not treat the old runbooks below as an already-updated nine-task release. See [Plan6](docs/experiment_plans/2026-11-02_libero10_nine_compound_tasks.md).
+> **2026-11-02 current scope / 当前正式范围：** nine compound tasks from official LIBERO-10 (default IDs 0,1,2,3,4,6,7,8,9), with 90 episodes each for 00 and 10. Reuse 120 historical episodes and execute only 60 new episodes. Follow the [Task033 nine-task runbook](docs/task033_nine_task_runbook.md) and [Plan6](docs/experiment_plans/2026-11-02_libero10_nine_compound_tasks.md). LIBERO-90 is outside new plans; its historical artifacts remain intact. The unexecuted `frypan_stove9` / `cabinet_close_top_bowl` preparation and evaluation commands are cancelled.
 
 **Partial-completion evaluation for vision-language-action models on LIBERO.** Given the original instruction and the current observation, can a VLA complete the remaining goals while preserving what has already been achieved?
 
@@ -10,14 +10,26 @@ LIBERO-Remain is the evaluation contribution of the **Learning_Not_to_Act** proj
 
 LIBERO-Remain 是 Learning_Not_to_Act 的可复用评测套件。仓库改名和录像功能更新不表示已重新构造历史状态；工件仍按其实际版本、环境指纹和验证记录解释。
 
+**当前 Task033 + Task032**：九个 LIBERO-10 复合任务，每任务官方初态0..9，仅00/10，各90条；每条件复用旧六任务60条，只执行新三任务30条。00主分数为官方任务成功率，10另报保留其余违规条件的合规成功率，table_drop保留为诊断。入口 `python -m benchmark.remaining_goals.headless.nine_cli --help`；来源盘点、只补新三任务、评测与汇总见[九任务 runbook](docs/task033_nine_task_runbook.md)。真实制备、回放和模型作业由用户启动，CPU/fake结果不表示真实实验完成。
+
+**历史 Stage05 / 011（legacy）**：旧十任务、100条mask10基线及LIBERO-90迁移轨的协议和证据保留在[旧十任务 runbook](docs/headless_ten_task_baseline_runbook.md)。下述FINISH、全mask构造和六模型入口也保留各自历史协议，当前九任务作业按033入口执行。
+
+**Task012** 新增显式 mask10 来源验收，可在独立 checkout 只读复用已有状态与回放，保留旧全 mask 失败和默认行为，不追加准备或模型预算。见[配置与运行说明](docs/task012_mask10_scoped_acceptance.md)。
+
+**Task013** 为桌面支撑的 body 原点误判提供版本化修正及只读离线重评分：原 v1 和原始证据不改，统一处理已执行记录并保留固定 100 条分母。见[离线重评分说明](docs/task013_table_support_rescore.md)。
+
+**历史 Task031（legacy）**：原 `normal00-control` 分阶段run与prior引用、selected-mask10制备和证据入口保留。旧六任务00/10各60条由033只读引用；原计划中两个LIBERO-90任务的补建及20条00、20条10补测已取消，不再等待或要求启动。见[031历史命令与证据边界](docs/task031_normal00_selected_preparation.md)。
+
 Stage04 新增独立 **FINISH-v1**：basket / 冻结 SOG10 OFT 的只读 action-token 特征与小停止头、主动／shadow 评测、物理保持、自动禁止投放判定、实际输入与录像证据。008将HDF头训练轨迹与official init评测初态分为两个明确来源域，实际文件与分组身份贯穿audit/cache/head/calibration/job；物理祖源独立性仍未证明。入口 `python -m benchmark.remaining_goals.finish.cli --help`；新实验完整逐步命令见 [两来源域runbook](docs/finish_two_domains_runbook.md)，[007旧手册](docs/finish_v1_runbook.md)保留追踪。所有真实实验由用户启动；旧评测入口、JSR/UIR 和历史结果保持原协议。
 
 ## 当前范围
 
 | 内容 | 状态 |
 |---|---|
-| 任务 | 10 个双目标任务：LIBERO-10 主轨6个，LIBERO-90 扩展轨4个；分轨构建、运行和报告 |
-| 配对状态 | 每来源构建 `00/10/01/11`；三个来源的参考规模为120个候选，两个suite各自保存 |
+| 任务 | 官方 LIBERO-10 九个复合任务：ID 0、1、2、3、4、6、7、8、9；排除单目标ID5及LIBERO-90 |
+| 条件与分母 | 仅 `00/10`，每任务官方index0..9，各90条；新三任务只准备这两种条件 |
+| 复用与新增 | 旧六任务每条件复用60条，共120条；新三任务每条件新增30条，共60条模型episode |
+| 评分 | 00官方SR、10官方目标达成率与10合规SR分开；成功条件下TCP长度保留覆盖，00不同终点分组解释 |
 | 工程 | 状态构造、技术验收、重复回放、统一rollout、离线重评分、缺失/异常统计已实现 |
 | 模型接口 | 六模型factory及独立Python worker已实现；权重、模型环境与实际00回归需配置 |
 | 数据身份 | 自动输出仍为 `construction.legal=false` 的候选；技术稳定不认证语义、可见性或剩余可执行性 |
@@ -52,7 +64,9 @@ python -m benchmark.remaining_goals.cli demo --out reports/video_smoke --scenes 
 
 首个episode录像保存为 `reports/video_smoke/run/videos/000000.mp4`。这是录像接口的smoke，不是真实机器人或六模型GPU推理；未激活环境时，将 `python` 替换为上述 `.venv` 解释器路径。
 
-## 2. 一键初始化仿真并重建候选
+## 2. 历史通用仿真初始化与候选重建（legacy）
+
+本节保留旧双suite、全mask候选接口供历史复现。当前九任务的来源准备只补新三任务00/10，按[033 runbook](docs/task033_nine_task_runbook.md)执行；已有120条结果只读复用。
 
 需要可用的 **Python 3.10**、网络和OpenGL驱动；Linux无显示器环境默认EGL，Windows使用GLFW。安装器会创建独立仿真环境，下载固定版本CPU PyTorch与LIBERO资源，执行doctor，再构建两轨候选并各重复回放两次。它不安装VLA模型。
 
@@ -75,7 +89,9 @@ python scripts/bootstrap_remaining_benchmark.py simulation \
 
 初态XML身份包含资源绝对路径，复制预构建状态到新机器通常不能直接复用。应在最终安装路径重建，不能改指纹绕过校验。预构建证据的边界见 [data/README.md](data/README.md)。
 
-## 3. 接入已有权重并运行模型
+## 3. 历史六模型接口与运行示例（legacy）
+
+本节是通用适配器的历史用法。当前033使用原SOG10、固定九任务与60条新增预算；其正式作业命令见[033 runbook](docs/task033_nine_task_runbook.md)，不追加本节的probe或六模型matrix作业。
 
 按[六模型指南](docs/remaining_goals_six_model_evaluation.md)建立或复用各模型自己的环境。将 [`configs/remaining_goals/runtime/`](configs/remaining_goals/runtime/) 中的配置复制到 `configs/remaining_goals/local/`，填写解释器、官方源码和真实checkpoint路径。π0需要提供已复现的LIBERO微调权重；不会自动替换为基础模型。
 
@@ -116,7 +132,8 @@ python scripts/remaining_libero.py evaluate matrix \
 
 ## 文档与数据
 
-- 默认 `report.md` 主表展示 Joint Success Rate / UIR；人工 UIR 未标注时为 N/A。用 `evaluate uir-template` 创建独立模板，`evaluate report --out 新目录` 生成只读派生报告，详见[人工 UIR 与报告指南](docs/remaining_goals_uir.md)。原指标及详细 JSON 保留。
+- [当前九任务配置、旧结果复用与新三任务运行](docs/task033_nine_task_runbook.md)
+- 历史通用 `report.md` 主表展示 Joint Success Rate / UIR；人工 UIR 未标注时为 N/A。用 `evaluate uir-template` 创建独立模板，`evaluate report --out 新目录` 生成只读派生报告，详见[人工 UIR 与报告指南](docs/remaining_goals_uir.md)。原指标及详细 JSON 保留。
 - [完整协议、状态构造与计分](docs/remaining_goals_benchmark.md)
 - [六模型安装、权重来源与统一命令](docs/remaining_goals_six_model_evaluation.md)
 - [官方 / Remain normal-00 能力回归](docs/remaining_goals_normal00_regression.md)：任务 003 独立入口，固定初态索引、分协议统计与 dry-run；真实 GPU 分数尚未验证。

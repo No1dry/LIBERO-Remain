@@ -204,7 +204,7 @@ def _contact_pairs(pairs) -> set[tuple[str, str]]:
     return output
 
 
-def _snapshot(snapshot: dict, initial_mask: list[bool], ignored_pairs: set[tuple[str, str]]) -> dict:
+def _snapshot(snapshot: dict, initial_mask: list[bool], ignored_pairs: set[tuple[str, str]], semantics=None) -> dict:
     if not isinstance(snapshot, dict):
         raise ValueError("validation_snapshot must return a dictionary")
     goals = snapshot.get("goals")
@@ -243,11 +243,17 @@ def _snapshot(snapshot: dict, initial_mask: list[bool], ignored_pairs: set[tuple
     if "state_before_refresh" in snapshot:
         before = _vector(snapshot["state_before_refresh"], "snapshot.state_before_refresh")
         refresh_unchanged = before.shape == state.shape and bool(np.array_equal(before.view(np.uint64), state.view(np.uint64)))
+    extra = {}
+    if semantics is not None:
+        from .nine_catalog import validate_goal_facts, FACT_FIELDS
+        validate_goal_facts(snapshot, semantics)
+        extra = {field: deepcopy(snapshot[field]) for field in FACT_FIELDS if field != "goals"}
     return {
         "state": state, "qvel": qvel, "robot_qpos": robot,
         "goals": list(goals), "object_positions": parsed_positions,
         "penetrations": contacts, "fresh_observation": snapshot["fresh_observation"],
         "refresh_state_unchanged": refresh_unchanged,
+        **extra,
     }
 
 
@@ -348,6 +354,11 @@ def validate_candidate(
             "Monitored world positions do not fully characterize object orientation, force, or reachability.",
         ],
     }
+    semantics = episode.get("task_semantics")
+    if semantics is not None:
+        from .nine_catalog import validate_episode_semantics
+        semantics = validate_episode_semantics(episode)
+        audit["task_semantics"] = deepcopy(semantics)
     if rgb_enabled:
         audit["limitations"].append(RGB_QUANTIZATION_LIMITATION)
     phase = "restore_candidate"
@@ -360,7 +371,7 @@ def validate_candidate(
                 returned = deepcopy(env.step(action.copy()))
                 audit["completed_steps"] = step
             phase = "validation_snapshot"
-            snapshot = _snapshot(env.validation_snapshot(), initial_mask, ignored_pairs)
+            snapshot = _snapshot(env.validation_snapshot(), initial_mask, ignored_pairs, semantics)
             if first is None:
                 first = snapshot
                 if reference is not None and reference.shape != first["robot_qpos"].shape:
@@ -399,6 +410,9 @@ def validate_candidate(
             }
             if rgb_enabled:
                 checks["rgb_allowance_state_verified"] = snapshot["refresh_state_unchanged"] is True
+            if semantics is not None:
+                from .nine_catalog import initial_constraints_match
+                checks["initial_constraints_match"] = initial_constraints_match(snapshot)
             row = {
                 "step": step, "goals": snapshot["goals"],
                 "action": None if step == 0 else action.tolist(),
@@ -412,6 +426,9 @@ def validate_candidate(
                 "checks": checks,
             }
             audit["trace"].append(row)
+            if semantics is not None:
+                from .nine_catalog import FACT_FIELDS
+                row.update({field: deepcopy(snapshot[field]) for field in FACT_FIELDS})
             if step == 0:
                 audit["static_acceptance"] = all(value is not False for value in checks.values())
     except Exception as exc:
