@@ -1,5 +1,7 @@
 # LIBERO-Remain
 
+> **2026-11-02 approved scope update / 当前范围修订：** the active target is the nine compound tasks from official LIBERO-10 (default IDs 0,1,2,3,4,6,7,8,9), not the historical six-LIBERO-10 plus four-LIBERO-90 mix. LIBERO-90 leaves new default plans; historical artifacts remain intact. Implementation is pending [Task033](collaboration/tasks/033_libero10_nine_compound_tasks.md); do not treat the old runbooks below as an already-updated nine-task release. See [Plan6](docs/experiment_plans/2026-11-02_libero10_nine_compound_tasks.md).
+
 **Partial-completion evaluation for vision-language-action models on LIBERO.** Given the original instruction and the current observation, can a VLA complete the remaining goals while preserving what has already been achieved?
 
 LIBERO-Remain is the evaluation contribution of the **Learning_Not_to_Act** project. Built on [LIBERO](https://github.com/Lifelong-Robot-Learning/LIBERO), it provides paired-state construction, independent simulator replay, a shared rollout and scoring interface, and adapters for OpenVLA, OpenVLA-OFT, π0, π0.5, GR00T N1.7 and UniVLA. It is not an official LIBERO release. Model weights and installed environments are not included.
