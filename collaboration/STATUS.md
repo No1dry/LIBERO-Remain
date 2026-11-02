@@ -1,5 +1,17 @@
 # 当前协作状态
 
+## 2026-11-02真实制备：00全部就绪，可直接模型评测；10仅16.67%就绪
+
+用户已执行两条真实制备命令，原报告policy_called=false/model_rollouts=0。00三任务各10/10，共30/30 ready（100%）；Codex纯文件configure/dry-plan确认selected30/ready30、expected90、旧六reuse_only，正式模型配置已准备，未代启。用户现在可先跑新三任务30条00，不等待10修复。
+
+10为5/30 ready（16.67%）、25 failed：抽屉0/10、微波炉0/10、双壶5/10（index1/3/4/5/6）。这是来源准备失败，不是模型成功率0%。抽屉候选在90°In容积site朝向被旧水平支撑假设拒绝；微波炉候选杯子角速度超0.01；双壶若干构造/回放仅有微小RGB比较失败，已核实示例7–9像素差1、非RGB/状态精确一致，不冒充明显物理无效。
+
+[033 R2审查](reviews/033_round2.md)、[实际修复工单](tasks/033_round2_source_construction_fixes.md)、[精简原始数值](tasks/033_preparation_findings.json)已交X。仅修25缺口，旧六、00三十和五条有效10都复用，失败原样保留；不热改可能运行00的aedfe169目录，不通过清零速度/改官方几何/隐式抬阈值凑通过。RGB容差若需版本修订须明确提案，不擅改旧failed为ready。
+
+[真实制备阶段记录](../docs/stage_summaries/2026-11-02_task033_real_preparation_result.md)与原始审计归档已本地备份；归档SHA核对一致。下一步用户启动00模型，X修10源构造/兼容性，Codex审查后给仅补25来源命令；当前不启动部分10、不加probe/训练、不重跑旧六/90。033仍开放，不自动merge/清理，待删=[]。
+
+---
+
 ## 2026-11-02 R1：九任务运行路线软件accepted，部署/文件准备完成
 
 已审[PR #13](https://github.com/No1dry/LIBERO-Remain/pull/13)固定aedfe169（实现1b2ce8b7），独立187项定向CPU/fake全部通过、0 skip，18.67秒。九任务名单、新3/8/9语义、00官方终点、10保持/违规、032掉桌降诊断和旧六只读复用均核对。[033 R1](reviews/033_round1.md)裁决accepted限软件与已配置运行路线；真实来源/模型/Eval尚未完成，033整体不closed，PR未自动merge。
