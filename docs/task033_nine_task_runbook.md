@@ -128,4 +128,4 @@ reuse-index优先读取原00 summary/原10的013派生报告；仅在必要字�
 python scripts/export_task033_eval.py --source-revision ACCEPTED_FULL_COMMIT_SHA --output /path/to/new/LIBERO-Remain-Eval-task033.zip
 ```
 
-清单包含九任务catalog、必要benchmark源（含只读legacy兼容依赖）、SOG10 runtime、新九任务配置、此runbook、导出README、安装元数据和许可证；不带原始数据/权重/研究讨论/旧90默认配置。`SOURCE_EXPORT.json`给出source commit和逐文件hash。源变化后重新从同commit生成，不能在Eval手工维护另一套实现。方法库只同步范围及源PR链接。
+清单包含九任务catalog、必要benchmark源（含只读legacy兼容依赖）、SOG10 runtime、新九任务配置、此runbook、导出README、安装元数据及源commit中存在的许可证；若源库缺许可证则如实记not_present。不带原始数据/权重/研究讨论/旧90默认配置。`SOURCE_EXPORT.json`给出source commit和逐文件hash。源变化后重新从同commit生成，不能在Eval手工维护另一套实现。方法库只同步范围及源PR链接。

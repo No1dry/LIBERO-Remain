@@ -70,4 +70,4 @@ Offline interfaces:
 - [x] README/default examples point to nine-task CLI; legacy90 future commands carry cancellation notices. Write full inventory, source preparation, new00/new10 execution, inspect and summarize commands using real flags.
 - [x] Provide source-version export manifest/script for future Eval sync after acceptance; do not update Eval now or duplicate method implementation.
 - [x] Run focused combined CPU/fake checks and final independent review. No full-suite/GPU/native gate.
-- [ ] Commit implementation; write `033_round1.md`, linked `032_round1.md`, STATUS, test evidence and limitations. Push independent PR, verify remote HEAD/tree and reply with link. Do not merge.
+- [x] Commit implementation; write `033_round1.md`, linked `032_round1.md`, STATUS, test evidence and limitations. Push independent PR, verify remote HEAD/tree and reply with link. Do not merge. PR13 open/unmerged; implementation1b2ce8b, final targeted187 passed.

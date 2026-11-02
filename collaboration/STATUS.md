@@ -2,7 +2,7 @@
 
 ## 2026-11-02：X交付033九任务实现及032评分，待Codex审查
 
-实现 `1b2ce8b7f88026e6c3aeee1cae22f864e266d183`，独立分支 `x/task033-libero10-nine`；基于已审031 ac130177，先同步main c9145d1的033/Plan6/范围JSON/032。见[033完整回复](responses/033_round1.md)、[032回复](responses/032_round1.md)、[完整命令](../docs/task033_nine_task_runbook.md)。
+实现 `1b2ce8b7f88026e6c3aeee1cae22f864e266d183`，独立[PR #13](https://github.com/No1dry/LIBERO-Remain/pull/13)，分支 `x/task033-libero10-nine`，已上传且未合并；基于已审031 ac130177，先同步main c9145d1的033/Plan6/范围JSON/032。见[033完整回复](responses/033_round1.md)、[032回复](responses/032_round1.md)、[完整命令](../docs/task033_nine_task_runbook.md)。
 
 新默认正式范围九个LIBERO-10任务，00/10各90；旧六各60条只读复用，只执行新3/8/9共60条。抽屉/微波炉10物入门开，双壶保留完整Turnon/invariant；新00官方成功即停，新10保留原连续确认。新报告分别列官方SR/合规SR与覆盖，旧80/100报告和四90历史工件不改。旧两个90未执行补建/补测取消，不表示物理已修好。
 

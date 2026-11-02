@@ -6,6 +6,7 @@
 
 - 实现SHA：`1b2ce8b7f88026e6c3aeee1cae22f864e266d183`。
 - 独立分支：`x/task033-libero10-nine`，目标main；不自动合并本PR或历史PR。
+- 独立PR：[No1dry/LIBERO-Remain #13](https://github.com/No1dry/LIBERO-Remain/pull/13)，已上传代码、回复及命令文档，保持open/unmerged。
 - 已先fetch最新main并读取033、Plan6、范围JSON和032。main基点为 `c9145d17a3c279ad7384ad357118095c6b648061`；复用已审031 `ac1301779cf6ae4c34ebc80c20936a4f7a4953be`，同步commit `7059092533b30573c3b219ec6454aa1ff342f580` 只合并最新需求记录，未用main缺失的旧headless假装完整实现。保留013 v2与031 R2保护。因031尚未合入main，本PR包含该已审代码祖先，不意味着要求自动merge PR12。
 - 正式task IDs为 **0,1,2,3,4,6,7,8,9**。catalog的官方完整名称、A/B、invariant和Open要求逐项与批准JSON核对一致。
 - 00/10各90条；旧六各60条只读复用，总120；新3/8/9各30条，新增模型总60。旧四90不进新默认计划、分母、主表或导出配置。旧两个90未执行补建/补测取消，历史原文件及80/100报告不删、不改；没有宣称物理故障解决。
