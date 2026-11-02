@@ -1,5 +1,17 @@
 # 当前协作状态
 
+## 2026-11-02 R1：九任务运行路线软件accepted，部署/文件准备完成
+
+已审[PR #13](https://github.com/No1dry/LIBERO-Remain/pull/13)固定aedfe169（实现1b2ce8b7），独立187项定向CPU/fake全部通过、0 skip，18.67秒。九任务名单、新3/8/9语义、00官方终点、10保持/违规、032掉桌降诊断和旧六只读复用均核对。[033 R1](reviews/033_round1.md)裁决accepted限软件与已配置运行路线；真实来源/模型/Eval尚未完成，033整体不closed，PR未自动merge。
+
+另发现一处runtime-config解引用venv解释器的P2，1个新增CPU复现失败；已在[033任务](tasks/033_libero10_nine_compound_tasks.md)列最小工具修复。当前部署不用该生成器，逐字节复用原冻结runtime并保留worker venv路径，故不阻塞用户开跑，不要求等待X再交整轮或重跑状态。
+
+已隔离上传固定源码，归档SHA核对，生成实际复用索引/每条件90、selected30预算/来源空模板/只读汇总。旧六00/10各60条可复用，reuse/model compatibility issues均=[]；正式记录覆盖120/180=66.67%。同口径官方目标达成：00为86.67%（52/60），10为53.33%（32/60）；10合规35.00%（21/60）另列。00主UNKNOWN=0，旧诊断不删。
+
+下一步用户启动新三任务00来源与10构造/既定独立回放（不是模型评测）；Codex读取真实准备结果再给新增30+30模型命令。新来源inspect各30 missing，exit2原样保留，无native/model调用；新60条模型仍0%。旧六/旧90不重跑，不加probe/训练。[阶段记录](../docs/stage_summaries/2026-11-02_task033_review_and_file_deployment.md)同步GitHub/本地；不清理，待删=[]。
+
+---
+
 ## 2026-11-02用户新决定：九个LIBERO-10复合任务，移除90
 
 正式范围改为官方LIBERO-10 task_id 0、1、2、3、4、6、7、8、9，排除单最终目标id5；四个90退出所有新默认计划/分母/主表，历史结果不删。旧frypan_stove9与cabinet_close_top_bowl未执行补建/00/10由用户取消，不再启动此前031命令，不称物理已修好。
