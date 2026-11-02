@@ -1,0 +1,82 @@
+{
+  "schema_version": "remaining-task033-rgb-adjudication-evidence-v1",
+  "date": "2026-11-02",
+  "source_code_commit": "aedfe1692004d46488dd7544353ba4f58b60d51d",
+  "source_audit": "preparation/mask10/attempts/two_pots/source_00/attempt_001/replay/group_000/repeat_00/mask_00/audit.json",
+  "original_audit_sha256": "26c1efc4738bad3db9f5a1237ec936f3bfd28c77206d2d92f6a42391e3400a54",
+  "trace_count": 151,
+  "error": null,
+  "frame": {
+    "step": 15,
+    "camera": "observation.robot0_eye_in_hand_image",
+    "changed_pixels": 10,
+    "total_pixels": 65536,
+    "max_abs_error": 1,
+    "non_rgb_bit_exact": true,
+    "refresh_did_not_step": true
+  },
+  "other_read_audits": [
+    {
+      "index": 0,
+      "repetition": 1,
+      "frames": 151,
+      "max_changed_pixels": 9
+    },
+    {
+      "index": 2,
+      "repetition": 0,
+      "frames": 151,
+      "max_changed_pixels": 5
+    },
+    {
+      "index": 2,
+      "repetition": 1,
+      "frames": 151,
+      "max_changed_pixels": 7
+    },
+    {
+      "index": 8,
+      "repetition": 0,
+      "frames": 151,
+      "max_changed_pixels": 8
+    },
+    {
+      "index": 8,
+      "repetition": 1,
+      "frames": 151,
+      "max_changed_pixels": 5
+    },
+    {
+      "index": 7,
+      "repetition": 0,
+      "frames": 151,
+      "max_changed_pixels": 6
+    },
+    {
+      "index": 7,
+      "repetition": 1,
+      "frames": 0,
+      "reset_max_changed_pixels": 7,
+      "window_complete": false
+    },
+    {
+      "index": 9,
+      "candidate": 0,
+      "frames": 151,
+      "max_changed_pixels": 7
+    },
+    {
+      "index": 9,
+      "candidate": 1,
+      "frames": 151,
+      "max_changed_pixels": 8
+    }
+  ],
+  "all_listed_comparisons_max_channel_error": 1,
+  "all_listed_comparisons_non_rgb_bit_exact": true,
+  "adjudication": "Do not use a 9-pixel area cap. Implement explicitly versioned task-independent RGB max-channel error <=1 with unchanged state/non-RGB/source/camera requirements; keep area diagnostic only.",
+  "original_failed_flags_changed": false,
+  "new_rgb_pixels_recomputed": false,
+  "new_native_steps": 0,
+  "limitation": "These are verified recorded diagnostics and original-file hashes, not an independent renderer calibration or a claim that all unlisted server frames were read."
+}
