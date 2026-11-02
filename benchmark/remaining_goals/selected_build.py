@@ -21,6 +21,7 @@ from .nine_catalog import (NEW_TASKS, NINE_PROTOCOLS, get_task, episode_fields,
 SELECTED_TASKS = ("frypan_stove9", "cabinet_close_top_bowl")
 METHOD = "selected_A_only_settle_component_transplant_v1"
 METHOD_R2 = "selected_A_only_bounded_settle_component_transplant_v2"
+METHOD_R5 = "microwave_gravity_support_pose_transplant_v3"
 NORMAL_METHOD = "official_fixed_init_settle_initial_only_v1"
 BOUNDED_SETTLE = {"schema_version": "remaining-selected-component-settle-v2", "min_steps": 80,
                   "max_steps": 400, "required_stable_observations": 20,
@@ -38,6 +39,11 @@ def _array_sha(state):
 def _backend():
     from . import build
     return build
+
+
+def _microwave_candidates(base, model, data, *, max_candidates):
+    from .microwave_candidates import microwave_candidates
+    return microwave_candidates(base, model, data, max_candidates=max_candidates)
 
 
 def _suite(profile):
@@ -104,7 +110,8 @@ def build(output, *, task, index, protocol="selected-mask10", max_candidates=24,
 
     Default v1 keeps settle80. Explicit R2 microwave convergence is bounded at
     400 HOLD steps; base80 and selected150 audit remain unchanged. Failed
-    candidates stay in the new output and never replace old files.
+    candidates stay in the new output and never replace old files. Explicit R5
+    changes only microwave pose seeds, retaining R2's bounded real HOLD rules.
     """
     nine = protocol in NINE_PROTOCOLS
     from .validation import observation_profile_config, V6_PROFILE
@@ -116,19 +123,22 @@ def build(output, *, task, index, protocol="selected-mask10", max_candidates=24,
             or type(max_candidates) is not int or not 1 <= max_candidates <= 24):
         raise ValueError("selected builder requires one fixed task/index and at most 24 A candidates")
     r2 = construction_method == METHOD_R2
-    if construction_method not in (None, METHOD, METHOD_R2) or r2 and (protocol != "nine-mask10" or task not in NEW_TASKS):
+    r5 = construction_method == METHOD_R5
+    if construction_method not in (None, METHOD, METHOD_R2, METHOD_R5) or r2 and (protocol != "nine-mask10" or task not in NEW_TASKS):
         raise ValueError("R2 construction is explicit and limited to new-three nine-mask10 sources")
+    if r5 and (protocol != "nine-mask10" or task != "mug_microwave_close" or observation_profile != V6_PROFILE):
+        raise ValueError("R5 construction requires nine-mask10/mug_microwave_close with explicit v6")
     output = Path(output)
     output.mkdir(parents=True, exist_ok=False)
     b = _backend()
     profile = get_task(task) if nine else TASKS[task]
     normal = protocol in ("normal00-control", "nine-normal00")
-    method = NORMAL_METHOD if normal else METHOD_R2 if r2 else METHOD
+    method = NORMAL_METHOD if normal else METHOD_R5 if r5 else METHOD_R2 if r2 else METHOD
     identity = b.environment_identity(20)
     manifest = {"schema_version": "remaining-goals-v0.1", "environment": identity, "episodes": []}
     group = {"task_id": task, "suite": profile["suite"], "task_name": profile["name"],
              "initial_state_index": index, "seed": index, "complete": False, "attempts": []}
-    report = {"kind": "normal00_initialization_v1" if normal else "selected_mask10_candidate_construction_v2" if r2 else "selected_mask10_candidate_construction_v1",
+    report = {"kind": "normal00_initialization_v1" if normal else "selected_mask10_candidate_construction_v3" if r5 else "selected_mask10_candidate_construction_v2" if r2 else "selected_mask10_candidate_construction_v1",
               "protocol": protocol, "method": method,
               "environment": identity, "hold_action": b.HOLD.tolist(), "settle_steps": 80,
               "validation_steps": 0 if normal else 150, "initialization_kind": "settled_base",
@@ -137,14 +147,15 @@ def build(output, *, task, index, protocol="selected-mask10", max_candidates=24,
               "policy_called": False, "release_authorized": False, "complete": False,
               "builder_sources_sha256": {name: _sha((Path(__file__).parent / name).read_bytes())
                                          for name in ("selected_build.py", "build.py", "construction.py", "validation.py", "task_catalog.py")
-                                         + (("nine_catalog.py", "libero_env.py") if nine else ())},
+                                         + (("nine_catalog.py", "libero_env.py") if nine else ())
+                                         + (("microwave_candidates.py",) if r5 else ())},
               "groups": [group]}
     if observation_profile is not None:
         manifest["observation_profile"] = report["observation_profile"] = observation_profile
         report.update(observation_audit_limits=observation_config["limits"],
                       observation_audit_rule=observation_config["rule"],
                       observation_audit_limitation=observation_config["limitation"])
-    if r2:
+    if r2 or r5:
         report["candidate_settle_contract"] = deepcopy(BOUNDED_SETTLE) if task == "mug_microwave_close" else {"mode": "fixed80", "steps": 80}
         report["seed_velocity_policy"] = "preserve_entire_real_settled_base_qvel_before_native_restore"
     env = None
@@ -190,7 +201,7 @@ def build(output, *, task, index, protocol="selected-mask10", max_candidates=24,
                     "libero_task_id": task_index, "task_name": official_task.name, "instruction": official_task.language,
                     **deepcopy(fields), "initial_mask": [False, False] if normal else [True, False],
                     "source_id": f"{task}_official_{index}", "initial_state_index": index, "seed": index,
-                    "split": "test", "pose_id": "official_settled_initial_only_v1" if normal else "selected_A_settled_transplant_v2" if r2 else "selected_A_settled_transplant_v1",
+                    "split": "test", "pose_id": "official_settled_initial_only_v1" if normal else METHOD_R5 if r5 else "selected_A_settled_transplant_v2" if r2 else "selected_A_settled_transplant_v1",
                     "horizon": 520, "retention_steps": 150,
                     "state_path": f"states/{episode_id}.npy", "bddl_sha256": _sha(bddl.read_bytes()),
                     "model_xml_sha256": reset_xml_hash, "reference_robot_qpos": base_q.tolist(),
@@ -229,25 +240,43 @@ def build(output, *, task, index, protocol="selected-mask10", max_candidates=24,
         else:
             # Only A is enumerated. B has no candidate generation, settling,
             # partner audit or eligibility role in this new construction method.
-            active_profile = deepcopy(profile)
-            active_profile["goals"] = [deepcopy(profile["goals"][0])]
-            if r2 and task == "bowl_drawer_close":
-                active_profile["in_volume_regions"] = ["white_cabinet_1_bottom_region"]
-            per_goal = b._per_goal(env, base, active_profile, max_candidates)
-            active_candidates = per_goal[0]
-            if not active_candidates:
-                raise ValueError("no active-A construction candidates")
-            whitelist = list(active_candidates[0]["allowed_indices"])
-            if not whitelist or any(list(item["allowed_indices"]) != whitelist for item in active_candidates):
-                raise ValueError("active A candidate whitelist is empty or changes")
-            candidates = b.combine_goal_candidates(base, env.sim.model, per_goal, [True], max_candidates=max_candidates)
+            if r5:
+                candidates = _microwave_candidates(base, env.sim.model, env.sim.data, max_candidates=max_candidates)
+                if not 1 <= len(candidates) <= max_candidates:
+                    raise ValueError("R5 requires 1..max_candidates feasible A pose seeds")
+                layout = b.ms.StateLayout.from_model(env.sim.model)
+                entry = b.ms.resolve_free_joint(env.sim.model, profile["goals"][0]["predicates"][0][1])
+                pose_indices = list(range(1 + entry.qpos_adr, 1 + entry.qpos_adr + 7))
+                whitelist = pose_indices + list(range(layout.qvel_slice.start + entry.dof_adr,
+                    layout.qvel_slice.start + entry.dof_adr + 6))
+                unchanged = [i for i in range(len(base)) if i not in pose_indices]
+                # Validate *every* seed before any candidate native restore. The
+                # geometry producer may change A pose only, not qvel, B or robot.
+                for item in candidates:
+                    state = np.asarray(item["state"])
+                    if (list(item["allowed_indices"]) != whitelist or state.shape != base.shape
+                            or not np.isfinite(state).all() or not np.array_equal(state[unchanged], base[unchanged])):
+                        raise ValueError("R5 pose seed must preserve base outside the exact A free-joint qpos")
+            else:
+                active_profile = deepcopy(profile)
+                active_profile["goals"] = [deepcopy(profile["goals"][0])]
+                if r2 and task == "bowl_drawer_close":
+                    active_profile["in_volume_regions"] = ["white_cabinet_1_bottom_region"]
+                per_goal = b._per_goal(env, base, active_profile, max_candidates)
+                active_candidates = per_goal[0]
+                if not active_candidates:
+                    raise ValueError("no active-A construction candidates")
+                whitelist = list(active_candidates[0]["allowed_indices"])
+                if not whitelist or any(list(item["allowed_indices"]) != whitelist for item in active_candidates):
+                    raise ValueError("active A candidate whitelist is empty or changes")
+                candidates = b.combine_goal_candidates(base, env.sim.model, per_goal, [True], max_candidates=max_candidates)
             for number, candidate in enumerate(candidates):
                 if set(candidate["allowed_indices"]) != set(whitelist):
                     raise ValueError("composed A whitelist differs from generated candidates")
                 seed = candidate["state"].copy()
                 settling = None
                 seed_provenance = {}
-                if r2:
+                if r2 or r5:
                     layout = b.ms.StateLayout.from_model(env.sim.model)
                     # Existing seed generators may zero a free object's velocity.
                     # R2 retains the *measured* base qvel before any native restore;
@@ -257,7 +286,7 @@ def build(output, *, task, index, protocol="selected-mask10", max_candidates=24,
                         "seed_qvel": seed[layout.qvel_slice].tolist(),
                         "seed_qvel_array_sha256": _array_sha(seed[layout.qvel_slice])}
                 b.restore_raw_state(env, seed)
-                if r2 and task == "mug_microwave_close":
+                if (r2 or r5) and task == "mug_microwave_close":
                     settling = {}
                     try:
                         settled = _settle_component(b, env, profile, fields["task_semantics"], whitelist, settling)
@@ -283,7 +312,7 @@ def build(output, *, task, index, protocol="selected-mask10", max_candidates=24,
                               "selected_component": {"goal_index": 0, "indices": whitelist,
                                                      "values": values.tolist(), "values_sha256": _array_sha(values)},
                               "whitelist": whitelist_audit, "candidate_diagnostics": candidate["diagnostics"]}
-                if r2:
+                if r2 or r5:
                     provenance.update(seed_provenance)
                     if settling is not None:
                         provenance["candidate_settle"] = settling
@@ -312,7 +341,7 @@ def main(argv=None):
     parser.add_argument("--task", required=True, choices=(*SELECTED_TASKS, *NEW_TASKS))
     parser.add_argument("--index", required=True, type=int)
     parser.add_argument("--protocol", choices=("selected-mask10", "normal00-control", *NINE_PROTOCOLS), default="selected-mask10")
-    parser.add_argument("--construction-method", choices=(METHOD, METHOD_R2))
+    parser.add_argument("--construction-method", choices=(METHOD, METHOD_R2, METHOD_R5))
     from .validation import V6_PROFILE, RGB_QUANTIZATION_RULE
     parser.add_argument("--observation-profile", choices=(RGB_QUANTIZATION_RULE["rule_id"], V6_PROFILE))
     args = parser.parse_args(argv)

@@ -20,6 +20,7 @@ TASKS = ("frypan_stove9", "cabinet_close_top_bowl")
 PROTOCOLS = ("selected-mask10", "normal00-control", *NINE_PROTOCOLS)
 MODES = ("inspect", "build-missing", "replay-missing", "prepare-missing")
 R2_METHOD = "selected_A_only_bounded_settle_component_transplant_v2"
+R5_METHOD = "microwave_gravity_support_pose_transplant_v3"
 
 
 def _hash(raw):
@@ -229,15 +230,19 @@ def prepare(inventory_path, output, *, mode="inspect", indices=None, tasks=None,
     protocol = protocol or inventory.get("protocol")
     if protocol not in PROTOCOLS or inventory.get("protocol") != protocol or inventory.get("schema_version") != SCHEMA:
         raise ValueError("inventory protocol/schema mismatch")
-    if construction_method is not None and (construction_method != R2_METHOD or protocol != "nine-mask10"):
+    if construction_method is not None and (construction_method not in (R2_METHOD, R5_METHOD) or protocol != "nine-mask10"):
         raise ValueError("explicit R2 construction method is only valid for nine-mask10")
-    if type(replace_failed_originals) is not bool or replace_failed_originals and construction_method != R2_METHOD:
-        raise ValueError("replacing failed original sources requires the explicit R2 method")
+    if type(replace_failed_originals) is not bool or replace_failed_originals and construction_method not in (R2_METHOD, R5_METHOD):
+        raise ValueError("replacing failed original sources requires an explicit R2/R5 method")
     if observation_profile is not None:
         from ..validation import V6_PROFILE
         if observation_profile != V6_PROFILE or protocol not in NINE_PROTOCOLS:
             raise ValueError("explicit v6 observation profile requires a nine-task protocol")
     tasks, indices = _selection(tasks, indices, protocol)
+    if construction_method == R5_METHOD:
+        from ..validation import V6_PROFILE
+        if tasks != ["mug_microwave_close"] or observation_profile != V6_PROFILE:
+            raise ValueError("R5 requires only mug_microwave_close with the explicit v6 profile")
     if protocol in NINE_PROTOCOLS:
         from .nine_planning import expected_episodes
     else:
@@ -406,8 +411,8 @@ def main(argv=None):
     parser.add_argument("--tasks", nargs="+", choices=(*TASKS, *NEW_TASKS))
     parser.add_argument("--indices", nargs="+", type=int)
     parser.add_argument("--continue", dest="continuation", action="store_true")
-    parser.add_argument("--construction-method", choices=(R2_METHOD,),
-                        help="Explicit R2 candidate construction; legacy and normal00 remain unchanged.")
+    parser.add_argument("--construction-method", choices=(R2_METHOD, R5_METHOD),
+                        help="Explicit R2 or microwave-only R5 construction; legacy and normal00 remain unchanged.")
     from ..validation import V6_PROFILE
     parser.add_argument("--observation-profile", choices=(V6_PROFILE,),
                         help="Explicit adjudicated v6 comparison; absent retains legacy behavior.")
