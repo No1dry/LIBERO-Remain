@@ -1,0 +1,339 @@
+{
+  "schema": "task033-microwave-real-findings-v1",
+  "source_archive_sha256": "0b32def4bc29b6c2664e8921efafc68d0cf22fb7deb8ffa45e3e52ac3816b3ec",
+  "preparation_report_sha256": "195c8a38c8bb8f4683cf0a4d3925348b5f08e64941621b3379a0ffec57a61f04",
+  "preparation_counts": {
+    "ready": 20,
+    "failed": 10
+  },
+  "actual_control_steps_total": 103810,
+  "new_native_steps_in_this_readout": 0,
+  "model_rollouts": 0,
+  "source_count": 10,
+  "candidate_count": 240,
+  "saved_sample_count": 96000,
+  "all_stop_reasons": [
+    "bounded_settle_not_converged"
+  ],
+  "sources": [
+    {
+      "index": 0,
+      "construction_report": "/HUBU-AI096/zp/ICML/task033_r3_06817e61/preparation/sources/mug_microwave_close/source_00/attempts/mug_microwave_close/source_00/attempt_001/build/construction_report.json",
+      "construction_report_sha256": "0f7fbcc7595b76762b9938f1b7189695f746d8b2fc438ce78484dde6100fd2b6",
+      "actual_control_steps": 9680,
+      "candidates": 24,
+      "samples": 9600,
+      "best_streak": 13,
+      "under_velocity_count": 1107
+    },
+    {
+      "index": 1,
+      "construction_report": "/HUBU-AI096/zp/ICML/task033_r3_06817e61/preparation/sources/mug_microwave_close/source_01/attempts/mug_microwave_close/source_01/attempt_001/build/construction_report.json",
+      "construction_report_sha256": "6a4c65b7aa85dfccae77300314c2c3fd1c4d6c58f5244bb3b676b3d0d52c7124",
+      "actual_control_steps": 9680,
+      "candidates": 24,
+      "samples": 9600,
+      "best_streak": 13,
+      "under_velocity_count": 1107
+    },
+    {
+      "index": 2,
+      "construction_report": "/HUBU-AI096/zp/ICML/task033_r3_06817e61/preparation/sources/mug_microwave_close/source_02/attempts/mug_microwave_close/source_02/attempt_001/build/construction_report.json",
+      "construction_report_sha256": "c228637ed5016ae0acc60e06a68577b4dc232580cb139622dd04c3e6a7268bcc",
+      "actual_control_steps": 9680,
+      "candidates": 24,
+      "samples": 9600,
+      "best_streak": 13,
+      "under_velocity_count": 1107
+    },
+    {
+      "index": 3,
+      "construction_report": "/HUBU-AI096/zp/ICML/task033_r3_06817e61/preparation/sources/mug_microwave_close/source_03/attempts/mug_microwave_close/source_03/attempt_001/build/construction_report.json",
+      "construction_report_sha256": "299531998ece329a908149b663ea6c2feb86d409b6219614b6d699f0a6e9f9a0",
+      "actual_control_steps": 9680,
+      "candidates": 24,
+      "samples": 9600,
+      "best_streak": 13,
+      "under_velocity_count": 1107
+    },
+    {
+      "index": 4,
+      "construction_report": "/HUBU-AI096/zp/ICML/task033_r3_06817e61/preparation/sources/mug_microwave_close/source_04/attempts/mug_microwave_close/source_04/attempt_001/build/construction_report.json",
+      "construction_report_sha256": "98e9bfe3b9f67c64da22da3d2aec4f85a31dd8d3302d372ead9642d2ec3fd7af",
+      "actual_control_steps": 9680,
+      "candidates": 24,
+      "samples": 9600,
+      "best_streak": 13,
+      "under_velocity_count": 1107
+    },
+    {
+      "index": 5,
+      "construction_report": "/HUBU-AI096/zp/ICML/task033_r3_06817e61/preparation/sources/mug_microwave_close/source_05/attempts/mug_microwave_close/source_05/attempt_001/build/construction_report.json",
+      "construction_report_sha256": "0bd781aedecd03a028b4376031f38562e8ee1be07c7911b19d04edd0215559d8",
+      "actual_control_steps": 9680,
+      "candidates": 24,
+      "samples": 9600,
+      "best_streak": 13,
+      "under_velocity_count": 1107
+    },
+    {
+      "index": 6,
+      "construction_report": "/HUBU-AI096/zp/ICML/task033_r3_06817e61/preparation/sources/mug_microwave_close/source_06/attempts/mug_microwave_close/source_06/attempt_001/build/construction_report.json",
+      "construction_report_sha256": "7005b22f170f6fafd165b65df98ad266de3687aee20558199c928dec3cfff96f",
+      "actual_control_steps": 9680,
+      "candidates": 24,
+      "samples": 9600,
+      "best_streak": 13,
+      "under_velocity_count": 1107
+    },
+    {
+      "index": 7,
+      "construction_report": "/HUBU-AI096/zp/ICML/task033_r3_06817e61/preparation/sources/mug_microwave_close/source_07/attempts/mug_microwave_close/source_07/attempt_001/build/construction_report.json",
+      "construction_report_sha256": "f11f42368523ab6c571a700b6fc1040f0d61a30c52ad3492be8d771b5e4f08f1",
+      "actual_control_steps": 9680,
+      "candidates": 24,
+      "samples": 9600,
+      "best_streak": 13,
+      "under_velocity_count": 1107
+    },
+    {
+      "index": 8,
+      "construction_report": "/HUBU-AI096/zp/ICML/task033_r3_06817e61/preparation/sources/mug_microwave_close/source_08/attempts/mug_microwave_close/source_08/attempt_001/build/construction_report.json",
+      "construction_report_sha256": "47c457d3c9b9cf9422d0c66b975d683d6c95d667991c7154b66af1c607879184",
+      "actual_control_steps": 9680,
+      "candidates": 24,
+      "samples": 9600,
+      "best_streak": 13,
+      "under_velocity_count": 1107
+    },
+    {
+      "index": 9,
+      "construction_report": "/HUBU-AI096/zp/ICML/task033_r3_06817e61/preparation/sources/mug_microwave_close/source_09/attempts/mug_microwave_close/source_09/attempt_001/build/construction_report.json",
+      "construction_report_sha256": "156955eeff3d471b82bec596fe004bbd01eace9e0816349730a5f2304f5b7cd4",
+      "actual_control_steps": 9680,
+      "candidates": 24,
+      "samples": 9600,
+      "best_streak": 13,
+      "under_velocity_count": 1107
+    }
+  ],
+  "source0_candidates": [
+    {
+      "candidate": 0,
+      "max_stable_observations": 1,
+      "speed_le_0_01_count": 1,
+      "velocity_min": 0.007021351119033316,
+      "velocity_median": 0.13201275109891733,
+      "velocity_max": 0.5891413863902403,
+      "xyz_span_last20_m": 0.00020354994829700762
+    },
+    {
+      "candidate": 1,
+      "max_stable_observations": 1,
+      "speed_le_0_01_count": 3,
+      "velocity_min": 0.006833439790338856,
+      "velocity_median": 0.13023045251511972,
+      "velocity_max": 0.6839313479681164,
+      "xyz_span_last20_m": 0.00017887241133569278
+    },
+    {
+      "candidate": 2,
+      "max_stable_observations": 1,
+      "speed_le_0_01_count": 2,
+      "velocity_min": 0.004948486654231046,
+      "velocity_median": 0.13004922378288317,
+      "velocity_max": 0.5945988311535475,
+      "xyz_span_last20_m": 0.0001847271763448477
+    },
+    {
+      "candidate": 3,
+      "max_stable_observations": 1,
+      "speed_le_0_01_count": 1,
+      "velocity_min": 0.007021351119033265,
+      "velocity_median": 0.13201275109892044,
+      "velocity_max": 0.5891413863902293,
+      "xyz_span_last20_m": 0.00020354994829701044
+    },
+    {
+      "candidate": 4,
+      "max_stable_observations": 1,
+      "speed_le_0_01_count": 3,
+      "velocity_min": 0.006833439790339677,
+      "velocity_median": 0.1302304525151232,
+      "velocity_max": 0.683931347968115,
+      "xyz_span_last20_m": 0.00017887241133568907
+    },
+    {
+      "candidate": 5,
+      "max_stable_observations": 1,
+      "speed_le_0_01_count": 2,
+      "velocity_min": 0.004948486654236153,
+      "velocity_median": 0.13004922378288514,
+      "velocity_max": 0.5945988311535467,
+      "xyz_span_last20_m": 0.000184727176344838
+    },
+    {
+      "candidate": 6,
+      "max_stable_observations": 13,
+      "speed_le_0_01_count": 67,
+      "velocity_min": 0.002225933982312454,
+      "velocity_median": 0.09995679753848154,
+      "velocity_max": 0.5364664084651863,
+      "xyz_span_last20_m": 0.00033695295773184767
+    },
+    {
+      "candidate": 7,
+      "max_stable_observations": 3,
+      "speed_le_0_01_count": 97,
+      "velocity_min": 0.0023649246096638108,
+      "velocity_median": 0.020424277104803427,
+      "velocity_max": 2.5410167780714863,
+      "xyz_span_last20_m": 0.00010841455616542456
+    },
+    {
+      "candidate": 8,
+      "max_stable_observations": 4,
+      "speed_le_0_01_count": 98,
+      "velocity_min": 0.001655119846935942,
+      "velocity_median": 0.019370282374337574,
+      "velocity_max": 2.541016778071688,
+      "xyz_span_last20_m": 7.364635957541376e-05
+    },
+    {
+      "candidate": 9,
+      "max_stable_observations": 4,
+      "speed_le_0_01_count": 106,
+      "velocity_min": 0.0016551198469391343,
+      "velocity_median": 0.01692583882012865,
+      "velocity_max": 0.14691378673705086,
+      "xyz_span_last20_m": 6.397051262058059e-05
+    },
+    {
+      "candidate": 10,
+      "max_stable_observations": 3,
+      "speed_le_0_01_count": 95,
+      "velocity_min": 0.0020455763803932303,
+      "velocity_median": 0.01876018341205383,
+      "velocity_max": 0.1469137867370505,
+      "xyz_span_last20_m": 0.0001061203104256852
+    },
+    {
+      "candidate": 11,
+      "max_stable_observations": 4,
+      "speed_le_0_01_count": 94,
+      "velocity_min": 0.0027432387495232233,
+      "velocity_median": 0.018927600191475054,
+      "velocity_max": 0.4894658605356064,
+      "xyz_span_last20_m": 6.969603808225965e-05
+    },
+    {
+      "candidate": 12,
+      "max_stable_observations": 2,
+      "speed_le_0_01_count": 8,
+      "velocity_min": 0.004107948134966948,
+      "velocity_median": 0.13049340886698885,
+      "velocity_max": 3.743626045672755,
+      "xyz_span_last20_m": 0.000181883149453534
+    },
+    {
+      "candidate": 13,
+      "max_stable_observations": 1,
+      "speed_le_0_01_count": 6,
+      "velocity_min": 0.00403752348949057,
+      "velocity_median": 0.11893877944968426,
+      "velocity_max": 1.079907086885574,
+      "xyz_span_last20_m": 0.0001435350018323951
+    },
+    {
+      "candidate": 14,
+      "max_stable_observations": 1,
+      "speed_le_0_01_count": 7,
+      "velocity_min": 0.004122553093648203,
+      "velocity_median": 0.12455459828910548,
+      "velocity_max": 2.608965045704809,
+      "xyz_span_last20_m": 0.000135565724111515
+    },
+    {
+      "candidate": 15,
+      "max_stable_observations": 4,
+      "speed_le_0_01_count": 106,
+      "velocity_min": 0.001655119846939306,
+      "velocity_median": 0.016925838820128672,
+      "velocity_max": 0.1469137867370557,
+      "xyz_span_last20_m": 6.397051262058022e-05
+    },
+    {
+      "candidate": 16,
+      "max_stable_observations": 3,
+      "speed_le_0_01_count": 95,
+      "velocity_min": 0.0020455763803930763,
+      "velocity_median": 0.018760183412053835,
+      "velocity_max": 0.14691378673705066,
+      "xyz_span_last20_m": 0.00010612031042557433
+    },
+    {
+      "candidate": 17,
+      "max_stable_observations": 4,
+      "speed_le_0_01_count": 94,
+      "velocity_min": 0.002743238749523213,
+      "velocity_median": 0.01892760019147993,
+      "velocity_max": 0.4894658605356064,
+      "xyz_span_last20_m": 6.969603808226003e-05
+    },
+    {
+      "candidate": 18,
+      "max_stable_observations": 1,
+      "speed_le_0_01_count": 1,
+      "velocity_min": 0.007374968236685045,
+      "velocity_median": 0.11981638513770365,
+      "velocity_max": 2.764930048600763,
+      "xyz_span_last20_m": 0.00016166652807327313
+    },
+    {
+      "candidate": 19,
+      "max_stable_observations": 3,
+      "speed_le_0_01_count": 100,
+      "velocity_min": 0.00165130640213011,
+      "velocity_median": 0.019230459979948704,
+      "velocity_max": 2.7649300486011366,
+      "xyz_span_last20_m": 0.00010915902412122404
+    },
+    {
+      "candidate": 20,
+      "max_stable_observations": 3,
+      "speed_le_0_01_count": 100,
+      "velocity_min": 0.0016513064021324991,
+      "velocity_median": 0.01996632964697486,
+      "velocity_max": 2.7649300486015354,
+      "xyz_span_last20_m": 0.00010837522458581924
+    },
+    {
+      "candidate": 21,
+      "max_stable_observations": 2,
+      "speed_le_0_01_count": 8,
+      "velocity_min": 0.004107948134967872,
+      "velocity_median": 0.13049340886698635,
+      "velocity_max": 3.7436260456727477,
+      "xyz_span_last20_m": 0.00018188314945356116
+    },
+    {
+      "candidate": 22,
+      "max_stable_observations": 1,
+      "speed_le_0_01_count": 6,
+      "velocity_min": 0.004037523489490994,
+      "velocity_median": 0.11893877944969236,
+      "velocity_max": 1.0799070868855711,
+      "xyz_span_last20_m": 0.00014353500183239977
+    },
+    {
+      "candidate": 23,
+      "max_stable_observations": 1,
+      "speed_le_0_01_count": 7,
+      "velocity_min": 0.004122553093648291,
+      "velocity_median": 0.12455459828910569,
+      "velocity_max": 2.608965045704807,
+      "xyz_span_last20_m": 0.00013556572411150953
+    }
+  ],
+  "limitation": "Summary of recorded settling diagnostics only; no contact/penetration certificate or new native replay. Original full ten reports and 96000 samples remain in the archive. All qvel values use the existing mixed generalized-coordinate criterion; do not call every entry m/s or rad/s."
+}
