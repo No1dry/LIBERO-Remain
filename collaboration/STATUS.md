@@ -1,5 +1,17 @@
 # 当前协作状态
 
+## 2026-11-02：R5真实首源仍失败；用户已同意版本化A位姿稳定修订，交X实现
+
+用户本轮R5真实结果ready20/failed1/not_attempted9，准备66.67%；index0的24候选各400 HOLD都未达20连续低速帧，最长3；9680实际控制调用，约221秒。首0门控正确停止其余9，policy_called=false/model_rollouts=0。R6软件验收保留，但不称R5物理已修好。
+
+[033 R7审查](reviews/033_round7.md)：完整原9600采样点已取回归档，同SHA。24候选末150采样点均保持native10/Open，杯子位置跨度约0.11132mm/姿态约0.08643°，却各118/150=78.67%点A瞬时qvel超0.01。[逐候选纯文件分析](tasks/033_r5_recorded_motion_analysis.json)。这些是末150采样点，不是正式150步/151观测的构造+回放认证；缺完整state/接触，不能离线造ready。继续只改摆放或加等待缺乏依据，速度与位姿稳定关系需纠正，未声称精确证明求解器成因。
+
+用户已明确同意[033 R7版本化位姿稳定工单](tasks/033_round7_pose_stability_revision.md)：A杯子完整150步位置≤5mm、姿态≤1°，A瞬时qvel保留诊断；非A速度、原谓词/穿透/机器人/观测及paired150不变。独立物理stability_profile，与现有RGB v6分开；旧profile/失败/raw/20ready保留。X现可实现+必要CPU/fake，Codex审查部署，用户启动真实补建；不再重复问同一选择，不加几何/等待预算，不从旧settle日志补造证书。
+
+30齐备后用户一次评30的决定不变：不部分20、不allow-missing，不重跑00/旧六/旧20。新三模型0/30、完整10模型覆盖仍60/90；00完整78/90=86.67%保留。新profile尚未实现/部署，不宣称已可评测。[阶段记录](../docs/stage_summaries/2026-11-02_task033_r5_real_failure_and_pose_revision.md)。033open，无自动实验/训练/merge/清理，待删=[]。
+
+---
+
 ## 2026-11-02：033 R5软件accepted并部署，用户可直接启动仅微波炉补建
 
 已审PR #14固定942db12f（实现fc2dd617），[033 R6](reviews/033_round6.md)裁决accepted限软件与部署，无返修阻断，不等X再确认。独立45项定向CPU/fake全部通过、0skip、3.10秒；包括固定06817e61旧reader对新工件/归档和缺回放拒绝的兼容性测试，不重跑53/234/280全组。
