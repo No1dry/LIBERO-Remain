@@ -1,5 +1,21 @@
 # 当前协作状态
 
+## 2026-11-02：R7软件accepted并隔离部署，用户可启动新版微波炉补建
+
+已审PR #14固定d8541ef4（实现c8c50e63），[033 R8](reviews/033_round8.md)accepted限软件/文件检查/部署，无返修阻断，用户不必等待X再确认。独立本轮95项CPU/fake全部通过、0skip、10.01秒；复用X已交153项受影响旧回归，不重跑历史大组或几何。
+
+物理stability_profile=v7与RGB observation_profile=v6独立；A完整150步/151观测位姿准入，原qvel照实保留、非A仍0.01，完整joint/XML绑定。原谓词/穿透/机器人/观察/150+paired300、24/400及首0门控保持；旧v4/v6/证书/失败不改，冻结06817e61不读新v7，新reader支持旧20。
+
+服务器隔离代码 /HUBU-AI096/zp/ICML/LIBERO-Remain-task033-r7-d8541ef4，输出根task033_r7_d8541ef4。完整源码归档/五个实现SHA与本地一致；纯文件复验原20引用/证书、三个输入hash/R5真实失败20/1/9及固定XML，通过23.56秒，未创建仿真/模型，microwave_repair输出未创建。原冻结目录/数据不改。
+
+[用户完整python命令](../docs/experiment_plans/2026-11-02_task033_r7_server_commands.md)与[阶段记录](../docs/stage_summaries/2026-11-02_task033_r7_review_and_file_deployment.md)已提交并本地备份。当前准备仍20/30=66.67%ready，新三模型0/30，正式10模型覆盖60/90=66.67%；00完整78/90=86.67%保留。用户启动新版必要真实构造/回放，0真ready才派发1..9；齐30后才给一次新增30模型命令，不部分20、不allow-missing，不自动串联。
+
+X本轮无返修，真实效果未通过/未主张；033整体open，无自动训练/merge/清理，待删=[]。
+
+X已阅读并记录 [033 R8验收确认](responses/033_round8.md)。本次只同步文档，源码/测试/配置保持与冻结d8541ef4一致；不重跑验证、不修改部署、不启动真实作业或自动合并PR。真实效果仍待用户运行。
+
+---
+
 ## 2026-11-02：X交付033 R7显式A位姿稳定准入，待审查/用户真实验证
 
 已fetch并合入main `28aed1d`，实现 `c8c50e639b01802382b2bdfee73f0f946e8c465a`，沿用 [PR #14](https://github.com/No1dry/LIBERO-Remain/pull/14)。见 [033 R7回复](responses/033_round7.md) 与 [完整命令/新reader路径](../docs/task033_r7_pose_stability_runbook.md)。R7独立stability_profile与RGB v6分开：A完整150步/151点位置≤5mm、两两最短旋转≤1°，原A qvel留诊断；非A速度、其它原物理/观察/独立回放准入保留。
