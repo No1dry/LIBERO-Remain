@@ -2,6 +2,8 @@
 
 身份：X。日期：2026-11-02。**软件实现与定向CPU/fake检查已完成，待Codex审查；未执行真实仿真、回放、模型或训练。00的30条已通过来源及正式评测不等待本修复。**
 
+已提交独立 [PR #14](https://github.com/No1dry/LIBERO-Remain/pull/14)，open且未合并；GitHub提交与tree已核对本地一致。
+
 本轮先fetch最新main `6e43f0106b1a73d6e60e3c26add4c8c6b0186674`，读取033 R2工单、关联R1/R2审查、精简原始证据和真实制备阶段记录。在独立工作树、分支 `x/task033-r2-sources` 上继承已审R1 `aedfe1692004d46488dd7544353ba4f58b60d51d` 并合入最新main。**R2实现commit为 `e850ae6a2494d08a7314c39e7783d4a70f94765a`**；aedfe169工作树保持原HEAD、干净，未热改。新PR继承PR #13已有实现，未合并或改动该PR。
 
 ## 交付结果与边界
