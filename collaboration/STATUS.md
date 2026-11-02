@@ -1,5 +1,15 @@
 # 当前协作状态
 
+## 2026-11-02：X交付033 R7显式A位姿稳定准入，待审查/用户真实验证
+
+已fetch并合入main `28aed1d`，实现 `c8c50e639b01802382b2bdfee73f0f946e8c465a`，沿用 [PR #14](https://github.com/No1dry/LIBERO-Remain/pull/14)。见 [033 R7回复](responses/033_round7.md) 与 [完整命令/新reader路径](../docs/task033_r7_pose_stability_runbook.md)。R7独立stability_profile与RGB v6分开：A完整150步/151点位置≤5mm、两两最短旋转≤1°，原A qvel留诊断；非A速度、其它原物理/观察/独立回放准入保留。
+
+复用R5几何、24/400预算、旧20及证书；绑定R3来源和R5实际失败报告，新输出、首0真ready才派发1..9。新schema/完整raw及实际joint/XML绑定贯通producer、回放和reader；旧profile/失败/raw不重写，冻结06817e61不能被伪装为支持v7，新工件由新隔离reader读取。
+
+最终95项新增CPU/fake通过，153项受影响旧用例通过，独立审阅及末轮delta复核无未关闭问题。**未启动真实仿真/制备/回放实验/模型/训练，真实状态仍20ready/1failed/9not_attempted**。这是已批准的事后来源测量修订，须在新增30模型评测前披露并固定；仍等30齐备一次评30，不评部分20，不自动merge/清理，033整体open。
+
+---
+
 ## 2026-11-02：R5真实首源仍失败；用户已同意版本化A位姿稳定修订，交X实现
 
 用户本轮R5真实结果ready20/failed1/not_attempted9，准备66.67%；index0的24候选各400 HOLD都未达20连续低速帧，最长3；9680实际控制调用，约221秒。首0门控正确停止其余9，policy_called=false/model_rollouts=0。R6软件验收保留，但不称R5物理已修好。
