@@ -1,5 +1,17 @@
 # 当前协作状态
 
+## 2026-11-02：X交付033 R2构造修复与RGB提案，待Codex审查
+
+先fetch main `6e43f010`，独立分支 `x/task033-r2-sources` 继承已审aedfe169；实现commit `e850ae6a2494d08a7314c39e7783d4a70f94765a`。aedfe169工作树未热改。见[033 R2回复](responses/033_round2.md)、[仅补原失败来源完整命令](../docs/task033_r2_source_repair_runbook.md)、[RGB版本提案](../docs/task033_r2_rgb_proposal.md)。
+
+抽屉以真实有向In容积、父体collision floor与世界重力生成候选；微波炉显式v2有界HOLD收敛后复制实际完整pose/velocity，保留0.01阈值和原150/2×150审计，不清零qvel。25原缺口固定编排：20条物理修复可交用户执行，双壶0/2/7/8/9共5条保持review_blocked，已交只读诊断及明确待裁决v5提案，未更改v4准入或原失败bool。旧5ready、30条00及旧六任务只读复用。
+
+定向CPU/fake **280 passed（13.86s）**；独立复核关闭首条中断后遗漏剩余未尝试来源的续跑P1，强化第三次continue断言后R2文件 **43 passed（1.44s，与280重叠）**，无未关闭软件阻断。R1解释器venv路径P2同轮修复。没有真实制备、回放、模型或训练；这些结果不代表20条新来源已ready，也不代表25缺口已清零。
+
+下一步Codex审查并裁决RGB提案、隔离部署，用户运行必要补建；00正式评测直接继续，无需等待本轮。未自动merge、未更新Eval、未清理历史；033整体仍open，待删=[]。
+
+---
+
 ## 2026-11-02真实制备：00全部就绪，可直接模型评测；10仅16.67%就绪
 
 用户已执行两条真实制备命令，原报告policy_called=false/model_rollouts=0。00三任务各10/10，共30/30 ready（100%）；Codex纯文件configure/dry-plan确认selected30/ready30、expected90、旧六reuse_only，正式模型配置已准备，未代启。用户现在可先跑新三任务30条00，不等待10修复。
