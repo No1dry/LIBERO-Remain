@@ -15,6 +15,7 @@ import numpy as np
 from . import source_acceptance as legacy
 from ..schema import manifest_hash, validate_manifest, verify_state_file
 from ..task_catalog import COMMON_TEN_TASKS, TASKS
+from ..nine_catalog import NINE_PROTOCOLS, NINE_TASKS, get_task, validate_episode_semantics
 from ..validation import _array_hash
 
 NORMAL_SCHEMA = "remaining-headless-normal00-source-acceptance-v1"
@@ -22,7 +23,11 @@ SELECTED_SCHEMA = "remaining-headless-selected10-source-acceptance-v1"
 SELECTED_TASKS = ("frypan_stove9", "cabinet_close_top_bowl")
 HOLD = [0., 0., 0., 0., 0., 0., -1.]
 VERSIONS = {"normal00-control": "remaining-headless-normal00-control-v1",
-            "selected-mask10": "remaining-headless-goal-endpoint-v1"}
+            "selected-mask10": "remaining-headless-goal-endpoint-v1",
+            "nine-normal00": "remaining-headless-nine-normal00-v1",
+            "nine-mask10": "remaining-headless-nine-mask10-v1"}
+NINE_NORMAL_SCHEMA = "remaining-headless-nine-normal00-source-acceptance-v1"
+NINE_SELECTED_SCHEMA = "remaining-headless-nine-selected10-source-acceptance-v1"
 
 
 class MissingSourceError(FileNotFoundError):
@@ -45,12 +50,12 @@ def _guard(operation):
 
 
 def _identity(task, index, protocol):
-    allowed = SELECTED_TASKS if protocol == "selected-mask10" else COMMON_TEN_TASKS
+    allowed = NINE_TASKS if protocol in NINE_PROTOCOLS else SELECTED_TASKS if protocol == "selected-mask10" else COMMON_TEN_TASKS
     if protocol not in VERSIONS or task not in allowed or type(index) is not int or index not in range(10):
         raise ValueError("source protocol/task/fixed official index identity mismatch")
 
 
-def _episode(manifest, task, index, mask):
+def _episode(manifest, task, index, mask, *, protocol=None):
     identifier = f"{task}_s{index:03d}_{''.join(str(int(b)) for b in mask)}"
     entries = manifest.get("episodes")
     if not isinstance(entries, list): raise ValueError("source manifest episodes missing")
@@ -59,7 +64,9 @@ def _episode(manifest, task, index, mask):
     if not matches: raise MissingSourceError(f"selected episode missing: {identifier}")
     if len(matches) != 1: raise ValueError("selected episode duplicated")
     e = matches[0]
-    catalog = TASKS[task]
+    catalog = get_task(task) if protocol in NINE_PROTOCOLS else TASKS[task]
+    if protocol in NINE_PROTOCOLS:
+        validate_episode_semantics(e)
     instruction = re.split(r"SCENE\d+_", catalog["name"], maxsplit=1)[1].replace("_", " ")
     if (e.get("episode_id") != identifier or e.get("task_id") != task or e.get("suite") != catalog["suite"]
             or e.get("task_name") != catalog["name"] or e.get("goal_specs") != catalog["goals"]
@@ -106,8 +113,8 @@ def _observation_binding(observation, comparison):
     legacy._passing_observation_comparison(comparison, initial=True, camera_reference=cameras)
 
 
-def _candidate(task, index, manifest_path, *, normal=False):
-    protocol = "normal00-control" if normal else "selected-mask10"
+def _candidate(task, index, manifest_path, *, normal=False, protocol=None):
+    protocol = protocol or ("normal00-control" if normal else "selected-mask10")
     _identity(task, index, protocol)
     mp = Path(manifest_path).resolve()
     files = legacy._Files(mp, mp)
@@ -115,7 +122,7 @@ def _candidate(task, index, manifest_path, *, normal=False):
     manifest = legacy._json(raw)
     if manifest.get("content_hash") != manifest_hash(manifest) or manifest.get("environment", {}).get("name") != "libero":
         raise ValueError("source manifest content/environment identity mismatch")
-    e = _episode(manifest, task, index, [False, False] if normal else [True, False])
+    e = _episode(manifest, task, index, [False, False] if normal else [True, False], protocol=protocol)
     state_raw = files.read("manifest", e["state_path"], e["state_sha256"])
     verify_state_file(e, mp.parent)
     state = np.load(io.BytesIO(state_raw), allow_pickle=False)
@@ -142,14 +149,14 @@ def _candidate(task, index, manifest_path, *, normal=False):
     return result, files, audit, state
 
 
-def inspect_candidate(task, index, manifest_path):
+def inspect_candidate(task, index, manifest_path, *, protocol=None):
     """Return manifest, episode, construction, selected_files and original hashes.
 
     Construction is validated for >=150 steps with the frozen physical rules.
     No replay is required/read. MissingSourceError denotes absent evidence,
     FailedSourceError an explicit failure, ValueError malformed/binding evidence.
     """
-    return _guard(lambda: _candidate(task, index, manifest_path)[0])
+    return _guard(lambda: _candidate(task, index, manifest_path, protocol=protocol)[0])
 
 
 def _initialization(files, origin, candidate, state):
@@ -180,7 +187,7 @@ def _initialization(files, origin, candidate, state):
         kind = "settled_base"
     elif report.get("kind") == "normal00_initialization_v1":
         kind = report.get("initialization_kind")
-        if (report.get("protocol") != "normal00-control" or (kind, steps) not in (("settled_base", 80), ("raw_official", 0))
+        if (report.get("protocol") != ("nine-normal00" if "task_semantics" in e else "normal00-control") or (kind, steps) not in (("settled_base", 80), ("raw_official", 0))
                 or group.get("episode_id") != e["episode_id"] or group.get("state_sha256") != e["state_sha256"]
                 or group.get("initial_observation_sha256") != e["initial_observation"]["sha256"]):
             raise ValueError("normal00 initialization provenance mismatch")
@@ -196,14 +203,16 @@ def _resolve(protocol, task, index, origin):
         raise MissingSourceError("source manifest missing")
     for key in ("manifest_sha256", "content_hash"):
         if not legacy._digest(origin.get(key)): raise ValueError(f"source origin needs {key}")
-    candidate, files, audit, state = _candidate(task, index, origin["manifest"], normal=protocol == "normal00-control")
+    normal = protocol in ("normal00-control", "nine-normal00")
+    nine = protocol in NINE_PROTOCOLS
+    candidate, files, audit, state = _candidate(task, index, origin["manifest"], normal=normal, protocol=protocol)
     if (candidate["source_manifest_sha256"] != origin["manifest_sha256"]
             or candidate["source_content_hash"] != origin["content_hash"]):
         raise ValueError("original manifest hash binding mismatch")
     e = candidate["episode"]
     selection = {"task_id": task, "mask": e["initial_mask"], "indices": [index], "episode_ids": [e["episode_id"]]}
     snapshots = {"manifest": Path(origin["manifest"]).name}
-    if protocol == "selected-mask10":
+    if not normal:
         if not origin.get("candidate_replay"): raise MissingSourceError("independent replay missing")
         if not legacy._digest(origin.get("replay_sha256")): raise ValueError("source replay SHA256 required")
         rp = Path(origin["candidate_replay"])
@@ -226,14 +235,14 @@ def _resolve(protocol, task, index, origin):
             if all(type(k) is int for k in keys) and len(keys) == len(set(keys)) and set(keys) < set(range(repeats)):
                 raise MissingSourceError("selected independent replay repetitions missing")
         manifest, raw, replay_bytes, evidence = legacy._load_mask10_source(task, origin["manifest"], rp,
-                                                                          indices=[index], fixed=True)
+                                                                          indices=[index], fixed=True, protocol=protocol)
         if raw != Path(origin["manifest"]).read_bytes() or legacy._sha(raw) != origin["manifest_sha256"] or replay_bytes != replay_raw:
             raise ValueError("source changed during scoped validation")
-        evidence.update(schema_version=SELECTED_SCHEMA, status="ready", acceptance_scope="selected10")
+        evidence.update(schema_version=NINE_SELECTED_SCHEMA if nine else SELECTED_SCHEMA, status="ready", acceptance_scope="selected10")
         snapshots["replay"] = rp.name
     else:
         initialization = _initialization(files, origin, candidate, state)
-        evidence = {"schema_version": NORMAL_SCHEMA, "status": "ready", "acceptance_scope": "initial00",
+        evidence = {"schema_version": NINE_NORMAL_SCHEMA if nine else NORMAL_SCHEMA, "status": "ready", "acceptance_scope": "initial00",
             "selection": selection, "selection_sha256": legacy._canonical(selection),
             "selected_episode_ids": [e["episode_id"]], "source_manifest_sha256": origin["manifest_sha256"],
             "source_content_hash": origin["content_hash"], "selected_files": files.finish(),
@@ -257,6 +266,9 @@ def _resolve(protocol, task, index, origin):
         "environment_config": {"manifest_dir": str(Path(origin["manifest"]).resolve().parent),
             "environment": candidate["manifest"]["environment"], "image_size": 256, "control_freq": 20}}
     result["source_plan_sha256"] = legacy._canonical(result)
+    if nine:
+        result["environment_config"]["protocol"] = protocol
+        result["source_plan_sha256"] = legacy._canonical({k: v for k, v in result.items() if k != "source_plan_sha256"})
     return result
 
 
@@ -300,7 +312,7 @@ def validate_snapshot(directory, plan):
     """Re-run acceptance solely against contained archived original dependencies."""
     _plan_identity(plan)
     roots = _roots(directory)
-    required = {"manifest", "initialization" if plan["protocol"] == "normal00-control" else "replay"}
+    required = {"manifest", "initialization" if plan["protocol"] in ("normal00-control", "nine-normal00") else "replay"}
     if set(plan.get("source_snapshot_files", {})) != required:
         raise ValueError("snapshot must supply every protocol-specific archived report")
     origin = deepcopy(plan["source"])

@@ -221,7 +221,8 @@ class ReplayAuditEnv:
         _image(self.frames_dir / "start.png", observation)
         if not all(self.reset_checks.values()):
             raise ValueError(f"formal reset differs from construction: {self.reset_checks}")
-        self.native = CandidateAuditEnv(self.adapter.env, self.expected_state, episode["goal_specs"])
+        self.native = CandidateAuditEnv(self.adapter.env, self.expected_state, episode["goal_specs"],
+                                        task_semantics=episode.get("task_semantics"))
         return observation
 
     def step(self, action):
@@ -234,6 +235,8 @@ class ReplayAuditEnv:
     def validation_snapshot(self):
         snapshot = self.native.validation_snapshot()
         snapshot["goals"] = self.adapter.goal_values()
+        if getattr(self.adapter, "task_semantics", None) is not None:
+            snapshot.update(self.adapter.goal_facts())
         return snapshot
 
 

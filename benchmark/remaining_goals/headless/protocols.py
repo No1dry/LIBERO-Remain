@@ -5,6 +5,9 @@ LEGACY_PROTOCOL = "mask10"
 NORMAL00_PROTOCOL = "normal00-control"
 NORMAL00_VERSION = "remaining-headless-normal00-control-v1"
 NORMAL00_RESULT_SCHEMA = "remaining-headless-normal00-episode-v1"
+NINE_NORMAL00 = "nine-normal00"
+NINE_MASK10 = "nine-mask10"
+NINE_PROTOCOLS = (NINE_NORMAL00, NINE_MASK10)
 
 
 @dataclass(frozen=True)
@@ -21,6 +24,8 @@ class Protocol:
     horizon: int = 520
     confirmation_steps: int = 4
     max_chunk_steps: int = 8
+    nine_semantics: bool = False
+    official_endpoint: bool = False
 
     def validate_mask(self, mask):
         if (not isinstance(mask, list) or len(mask) != 2 or
@@ -35,9 +40,9 @@ class Protocol:
         version = identity.get("protocol_version")
         if version is not None and version != self.protocol_version:
             raise ValueError("run identity protocol differs from execution protocol")
-        if self.key == NORMAL00_PROTOCOL and version != self.protocol_version:
+        if (self.key == NORMAL00_PROTOCOL or self.nine_semantics) and version != self.protocol_version:
             raise ValueError("normal00 run identity requires explicit protocol_version")
-        if self.key == NORMAL00_PROTOCOL and "source_acceptance" in identity:
+        if (self.key == NORMAL00_PROTOCOL or self.nine_semantics) and "source_acceptance" in identity:
             acceptance = identity["source_acceptance"]
             if not isinstance(acceptance, dict) or acceptance.get("schema_version") != self.source_acceptance_schema:
                 raise ValueError("normal00 source acceptance schema differs from protocol")
@@ -54,6 +59,14 @@ _PROTOCOLS = {
         "remaining-headless-normal00-batch-config-v1", "remaining-headless-normal00-batch-plan-v1",
         "remaining-headless-normal00-source-acceptance-v1", (False, False), (),
         "remaining-headless-normal00-summary-v1"),
+    NINE_NORMAL00: Protocol(NINE_NORMAL00, "remaining-headless-nine-normal00-v1",
+        "remaining-headless-nine-normal00-episode-v1", "remaining-headless-nine-config-v1",
+        "remaining-headless-nine-plan-v1", "remaining-headless-nine-normal00-source-acceptance-v1",
+        (False, False), (), "remaining-headless-nine-summary-v1", nine_semantics=True, official_endpoint=True),
+    NINE_MASK10: Protocol(NINE_MASK10, "remaining-headless-nine-mask10-v1",
+        "remaining-headless-nine-mask10-episode-v1", "remaining-headless-nine-config-v1",
+        "remaining-headless-nine-plan-v1", "remaining-headless-nine-selected10-source-acceptance-v1",
+        (True, False), (0,), "remaining-headless-nine-summary-v1", nine_semantics=True),
 }
 
 

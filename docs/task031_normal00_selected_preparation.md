@@ -1,10 +1,12 @@
-# 031：normal00 对照与缺失两任务的局部制备
+# 031：normal00 对照与缺失两任务的局部制备（legacy）
+
+> **033范围替代 / cancelled：** 当前正式作业使用[九任务 runbook](task033_nine_task_runbook.md)和 `python -m benchmark.remaining_goals.headless.nine_cli --help`：仅LIBERO-10九任务，00/10各90条，复用120条、只新增60条。本文的 `frypan_stove9`、`cabinet_close_top_bowl` 补建、回放及补20条00/20条10安排已取消；下列旧命令保留追溯，不再要求启动，也不表示物理问题已经修复。原run、prior引用、raw、视频和失败证据继续保留。
 
 031 的代码属于 LIBERO-Remain。基于已审 `c6dc98de0c54517c976057598b60f4cedf7fa3e5`，新增独立入口；旧 `headless.cli` 的 mask10 默认协议、旧80条 raw／评分v2与原全mask构造入口继续保留。此文是代码交付与命令草稿，**不表示真实来源已齐、不表示两任务物理故障已修复**。真实制备、回放和模型作业由用户启动，Codex先核对服务器路径、隔离部署与完整环境命令。
 
 031 R2仅修制备续跑边界：制备修正版应部署到独立目录。首批80条及后续20条normal00评测继续使用已冻结的 `a23a8116e5e2e2bcd344242b170e787e50535a42` 源码；不热改该评测目录，不因制备小修切换prior-run代码身份或重跑80条。
 
-## 顺序与预算
+## 原计划顺序与预算（legacy，已由033替代）
 
 | 阶段 | 协议／population | 固定来源 | 新模型上限 |
 |---|---|---|---:|
@@ -66,15 +68,15 @@ python -m benchmark.remaining_goals.headless.selected_preparation --inventory re
 
 模板在manifest同目录寻找construction_report；若旧报告位于别处，准确填写initialization路径与hash，再dry-plan，不能凭pose_id猜等待步数。旧18个构造来源逐条显示candidate／constructed／replayed／failed／missing；没有独立回放不能写ready。
 
-## 用户启动的真实作业草稿
+## 原真实作业命令（legacy，已取消的补测勿启动）
 
-先启动80条正常00；不需等待缺失两任务。
+历史首批80条正常00的命令如下。当前由033只读复用其中旧六任务记录，不再按本节重跑。
 
 ```bash
 python -m benchmark.remaining_goals.headless.scoped_cli run --config configs/remaining_goals/headless/normal00-control.example.json --out reports/task031/normal00-eight
 ```
 
-单独补10；`prepare-missing`按文件证据决定构造或回放：ready零物理调用、有效构造缺回放只回放原manifest。仅这两任务，可用 `--tasks frypan_stove9 --indices 4`限定一次固定来源尝试。
+已取消的旧补10命令：`prepare-missing`按文件证据决定构造或回放，ready零物理调用、有效构造缺回放只回放原manifest；原接口的 `--tasks frypan_stove9 --indices 4` 示例仅保留追溯。
 
 ```bash
 python -m benchmark.remaining_goals.headless.selected_preparation --inventory reports/task031/selected10-sources.json --output reports/task031/selected10-prepare --mode prepare-missing
@@ -85,7 +87,7 @@ python -m benchmark.remaining_goals.headless.selected_preparation --inventory re
 
 **曾ready后失效的来源单独处理**：包括首次从原库存直接验收、`operations=[]` 的来源。依赖丢失或损坏后，原输出中的任何 `--continue` 只重新验收文件并保留missing／failed、旧验收历史、原origin和物理计数；即使带 `--allow-failed-retry` 也不构建／回放。恢复原文件后可再次验收ready，历史与 `ready_origin_invalidated` 标记仍保留。需要新的物理尝试时，由用户显式指定一个尚不存在的 `--output`，保留旧报告和原始工件；若现有证据明确失败，仍须按原规则显式retry，不能改阈值或来源index。CLI报告的 `recovery_action` 会提示这一区别。
 
-待两任务来源证据通过，检查与运行：
+已取消的旧两任务检查与运行命令（不再等待来源或启动补测）：
 
 ```bash
 python -m benchmark.remaining_goals.headless.scoped_cli dry-plan --config configs/remaining_goals/headless/normal00-missing-two.example.json --out reports/task031/normal00-two-plan
@@ -108,4 +110,4 @@ python -m benchmark.remaining_goals.headless.scoped_cli summarize --run reports/
 python -m benchmark.remaining_goals.headless.scoped_cli summarize --run reports/task031/selected10-two --out reports/task031/selected10-summary
 ```
 
-旧 `headless.cli rescore`只用于旧10，不可拿来重算00。031不再增加benchmark分数、不自动训练030、不维护第二份Eval导出包。真实00结果、20条10是否补齐、两项物理故障是否解决，均需用户运行后由Codex审查。
+旧 `headless.cli rescore`只用于旧10，不可拿来重算00。当前032评分与033九任务汇总见[新 runbook](task033_nine_task_runbook.md)。旧两任务未完成部分按范围修订取消；本页不要求追加真实作业，也不把取消解释为物理故障修复。

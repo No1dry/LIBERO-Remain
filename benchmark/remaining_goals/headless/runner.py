@@ -5,7 +5,7 @@ import math
 from ..runner import _observation, _actions
 from ..pilot_evidence import observation_sha256
 from .schema import (PROTOCOL, RESULT_SCHEMA, EVENTS, canonical_hash, integer,
-                     validate_evaluator_state, analyze_trace)
+                     validate_evaluator_state, analyze_trace, initial_matches)
 from .protocols import get_protocol, LEGACY_PROTOCOL, NORMAL00_PROTOCOL
 
 
@@ -17,6 +17,10 @@ def run_episode(env, policy, episode, *, horizon=520, confirmation_steps=4,
     if horizon > 520 or confirmation_steps != 4 or type(confirmation_steps) is not int or max_chunk_steps > 8:
         raise ValueError("task011 fixes H<=520/K4/chunk<=8; smaller H is CPU-fixture only")
     descriptor.validate_mask(episode.get("initial_mask"))
+    semantics = None
+    if descriptor.nine_semantics:
+        from ..nine_catalog import validate_episode_semantics, validate_goal_facts
+        semantics = validate_episode_semantics(episode)
     if identity is None and evidence is not None:
         identity = evidence.identity
     if evidence is not None and identity != evidence.identity:
@@ -26,6 +30,9 @@ def run_episode(env, policy, episode, *, horizon=520, confirmation_steps=4,
         "initial_state_index", "initial_mask", "state_sha256", "model_xml_sha256", "bddl_sha256")}
     if "task_name" in episode:
         result["task_name"] = deepcopy(episode["task_name"])
+    if descriptor.nine_semantics:
+        result.update(task_semantics=deepcopy(semantics),
+            endpoint_rule="official_success_or_horizon" if descriptor.official_endpoint else "all_goals_release_five_observations_or_horizon")
     result.update(schema_version=descriptor.result_schema, protocol_version=descriptor.protocol_version,
         configuration={"horizon": horizon, "confirmation_steps": 4, "max_chunk_steps": max_chunk_steps},
         identity_sha256=canonical_hash(identity) if identity is not None else None,
@@ -42,14 +49,19 @@ def run_episode(env, policy, episode, *, horizon=520, confirmation_steps=4,
     event_counts, events, streak = {}, [], 0
     preservation = bool(descriptor.preserved_goal_indices)
     regression, length, previous, inventory = False if preservation else None, 0., None, None
+    invariant_regression = False if preservation and descriptor.nine_semantics else None
 
     def record(step, raw, event=None):
-        nonlocal streak, regression, length, previous, inventory
+        nonlocal streak, regression, length, previous, inventory, invariant_regression
         # Obtain only the existing returned observation. No render/update/step.
         observation = _observation(raw)
         if recorder is not None:
             recorder.capture(observation, step=step)
         facts = validate_evaluator_state(env.evaluator_state())
+        if descriptor.nine_semantics:
+            validate_goal_facts(facts, semantics)
+        elif "official_success" in facts:
+            raise ValueError("nine-task facts require an explicit nine-task protocol")
         from .environment import validate_evaluator_evidence
         validate_evaluator_evidence(facts, result["measurement_static"])
         current_inventory = {"tcp": {key: facts["tcp"][key] for key in ("site_id", "site_name", "frame")},
@@ -64,7 +76,11 @@ def run_episode(env, policy, episode, *, horizon=520, confirmation_steps=4,
         previous = position
         if preservation:
             regression = regression or any(not facts["goals"][index] for index in descriptor.preserved_goal_indices)
-        streak = streak + 1 if all(facts["goals"]) and facts["released"] is True else 0
+            if descriptor.nine_semantics:
+                invariant_regression = invariant_regression or not all(facts["invariant_values"])
+                regression = regression or invariant_regression
+        official = facts["official_success"] if descriptor.nine_semantics else all(facts["goals"])
+        streak = streak + 1 if official and (descriptor.official_endpoint or facts["released"] is True) else 0
         for kind in EVENTS:
             for name, candidate in facts["event_candidates"][kind].items():
                 key = (kind, name)
@@ -78,6 +94,8 @@ def run_episode(env, policy, episode, *, horizon=520, confirmation_steps=4,
             "confirmed_events": deepcopy(events)})
         if not preservation:
             result["trace"][-1]["preservation_applicable"] = False
+        if descriptor.nine_semantics:
+            result["trace"][-1]["invariant_regression"] = invariant_regression
         return observation
 
     try:
@@ -100,7 +118,7 @@ def run_episode(env, policy, episode, *, horizon=520, confirmation_steps=4,
         validate_measurement_static(result["measurement_static"], episode=episode, **static_options)
         phase = "evaluator_state"
         observation = record(0, observation)
-        if tuple(result["trace"][0]["goals"]) != descriptor.initial_mask:
+        if not initial_matches(result["trace"][0], descriptor):
             result.update(status="invalid_initial_state", exit_reason="invalid_initial_state", error=f"actual initial goals differ from {protocol}", error_phase="initial_mask")
         else:
             while result["n_steps"] < horizon:
@@ -138,10 +156,10 @@ def run_episode(env, policy, episode, *, horizon=520, confirmation_steps=4,
                         raise ValueError("environment mutated the original policy action")
                     phase = "evaluator_state"
                     observation = record(step, raw, event)
-                    if streak >= 5 or step == horizon:
+                    if streak >= (1 if descriptor.official_endpoint else 5) or step == horizon:
                         break
-                if streak >= 5:
-                    result.update(status="completed", exit_reason="goal_confirmed")
+                if streak >= (1 if descriptor.official_endpoint else 5):
+                    result.update(status="completed", exit_reason="official_success" if descriptor.official_endpoint else "goal_confirmed")
                     break
                 if result["n_steps"] == horizon:
                     result.update(status="completed", exit_reason="horizon")
@@ -150,7 +168,8 @@ def run_episode(env, policy, episode, *, horizon=520, confirmation_steps=4,
         result.update(status="runtime_error", exit_reason="technical_error", error=f"{type(error).__name__}: {error}",
                       error_phase=phase, interrupted=isinstance(error, (KeyboardInterrupt, SystemExit)))
     finally:
-        result.update({key: value for key, value in analyze_trace(result["trace"], protocol=protocol).items() if key != "frames"})
+        result.update({key: value for key, value in analyze_trace(result["trace"], protocol=protocol,
+            task_semantics=semantics).items() if key != "frames"})
         if recorder is not None:
             try:
                 video = recorder.close()

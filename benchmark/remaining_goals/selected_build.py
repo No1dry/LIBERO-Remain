@@ -15,6 +15,8 @@ import numpy as np
 
 from .schema import manifest_hash
 from .task_catalog import TASKS
+from .nine_catalog import (NEW_TASKS, NINE_PROTOCOLS, get_task, episode_fields,
+                           read_goal_facts, initial_constraints_match)
 
 SELECTED_TASKS = ("frypan_stove9", "cabinet_close_top_bowl")
 METHOD = "selected_A_only_settle_component_transplant_v1"
@@ -55,15 +57,16 @@ def build(output, *, task, index, protocol="selected-mask10", max_candidates=24)
     The physical limits, HOLD action, source seed, settle80 and selected150 are
     pinned. Failed audits remain in the new output and never replace old files.
     """
-    if (task not in SELECTED_TASKS or type(index) is not int or index not in range(10)
-            or protocol not in ("selected-mask10", "normal00-control")
+    nine = protocol in NINE_PROTOCOLS
+    if (task not in (NEW_TASKS if nine else SELECTED_TASKS) or type(index) is not int or index not in range(10)
+            or protocol not in ("selected-mask10", "normal00-control", *NINE_PROTOCOLS)
             or type(max_candidates) is not int or not 1 <= max_candidates <= 24):
         raise ValueError("selected builder requires one fixed task/index and at most 24 A candidates")
     output = Path(output)
     output.mkdir(parents=True, exist_ok=False)
     b = _backend()
-    profile = TASKS[task]
-    normal = protocol == "normal00-control"
+    profile = get_task(task) if nine else TASKS[task]
+    normal = protocol in ("normal00-control", "nine-normal00")
     identity = b.environment_identity(20)
     manifest = {"schema_version": "remaining-goals-v0.1", "environment": identity, "episodes": []}
     group = {"task_id": task, "suite": profile["suite"], "task_name": profile["name"],
@@ -76,12 +79,15 @@ def build(output, *, task, index, protocol="selected-mask10", max_candidates=24)
               "dynamic_stability": None if normal else "see_selected_audit",
               "policy_called": False, "release_authorized": False, "complete": False,
               "builder_sources_sha256": {name: _sha((Path(__file__).parent / name).read_bytes())
-                                         for name in ("selected_build.py", "build.py", "construction.py", "validation.py", "task_catalog.py")},
+                                         for name in ("selected_build.py", "build.py", "construction.py", "validation.py", "task_catalog.py")
+                                         + (("nine_catalog.py", "libero_env.py") if nine else ())},
               "groups": [group]}
     env = None
     try:
         suite = _suite(profile)
         task_index = next(i for i in range(suite.n_tasks) if suite.get_task(i).name == profile["name"])
+        if nine and task_index != profile["official_task_id"]:
+            raise ValueError("nine-task official index/name mapping differs")
         initial_states = b._official_initial_states(suite, task_index)
         if index >= len(initial_states):
             raise ValueError("fixed official source index is absent; no replacement is allowed")
@@ -93,7 +99,8 @@ def build(output, *, task, index, protocol="selected-mask10", max_candidates=24)
         group["raw_official_state_array_sha256"] = _array_sha(official_state)
         env, official_task, bddl = b.create_scene(profile["suite"], profile["name"], image_size=256, control_freq=20)
         official_goals = [list(p) for p in env.env.parsed_problem["goal_state"]]
-        if sorted(official_goals) != sorted(p for g in profile["goals"] for p in g["predicates"]):
+        fields = episode_fields(task, official_goals) if nine else {"goal_specs": deepcopy(profile["goals"])}
+        if not nine and sorted(official_goals) != sorted(p for g in profile["goals"] for p in g["predicates"]):
             raise ValueError("task profile differs from official goals")
         env.seed(index)
         b.reset_scene(env)
@@ -105,6 +112,8 @@ def build(output, *, task, index, protocol="selected-mask10", max_candidates=24)
         base = b._state(env)
         if not np.isfinite(base).all() or b._goals(env, profile["goals"]) != [False, False]:
             raise ValueError("official settled base is not finite actual00")
+        if nine and not initial_constraints_match(read_goal_facts(env.env._eval_predicate, env.check_success(), fields["task_semantics"])):
+            raise ValueError("official settled base violates invariant or required Open predicate")
         group["base_state_array_sha256"] = _array_sha(base)
         base_q = b.ms.get_robot_qpos(base, b.ms.StateLayout.from_model(env.sim.model), n=9)
 
@@ -114,7 +123,7 @@ def build(output, *, task, index, protocol="selected-mask10", max_candidates=24)
             relative = Path("validation") / episode_id / f"attempt_{number:03d}"
             return {"episode_id": episode_id, "task_id": task, "suite": profile["suite"],
                     "libero_task_id": task_index, "task_name": official_task.name, "instruction": official_task.language,
-                    "goal_specs": deepcopy(profile["goals"]), "initial_mask": [False, False] if normal else [True, False],
+                    **deepcopy(fields), "initial_mask": [False, False] if normal else [True, False],
                     "source_id": f"{task}_official_{index}", "initial_state_index": index, "seed": index,
                     "split": "test", "pose_id": "official_settled_initial_only_v1" if normal else "selected_A_settled_transplant_v1",
                     "horizon": 520, "retention_steps": 150,
@@ -200,9 +209,9 @@ def build(output, *, task, index, protocol="selected-mask10", max_candidates=24)
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--out", required=True, type=Path)
-    parser.add_argument("--task", required=True, choices=SELECTED_TASKS)
+    parser.add_argument("--task", required=True, choices=(*SELECTED_TASKS, *NEW_TASKS))
     parser.add_argument("--index", required=True, type=int)
-    parser.add_argument("--protocol", choices=("selected-mask10", "normal00-control"), default="selected-mask10")
+    parser.add_argument("--protocol", choices=("selected-mask10", "normal00-control", *NINE_PROTOCOLS), default="selected-mask10")
     args = parser.parse_args(argv)
     if not build(args.out, task=args.task, index=args.index, protocol=args.protocol)["complete"]:
         raise SystemExit("source construction failed; inspect construction_report.json")

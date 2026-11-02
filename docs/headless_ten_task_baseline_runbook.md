@@ -1,4 +1,6 @@
-# Stage05：十任务、100条原始OFT基线
+# Stage05：十任务、100条原始OFT基线（legacy）
+
+> **当前范围已由033替代：** 新作业使用[九任务 runbook](task033_nine_task_runbook.md)及 `python -m benchmark.remaining_goals.headless.nine_cli --help`。正式范围仅LIBERO-10九任务，00/10各90条，120条历史结果只读复用、60条新三任务episode可执行。本文十任务/100分母与LIBERO-90命令保留为历史协议；`frypan_stove9`、`cabinet_close_top_bowl` 未执行的补建/补测已取消，不再作为开跑前置，也不声称物理故障已修复。
 
 对应[Plan5](experiment_plans/stage05_ten_task_baseline.md)与[011](../collaboration/tasks/011_headless_ten_task_baseline.md)。本入口使用独立协议 `remaining-headless-goal-endpoint-v1`。代码验收后由Codex填写服务器路径、部署；**用户亲自启动所有真实状态构造、独立回放和模型评测**。本次软件交付只执行CPU/fake测试。
 
@@ -6,7 +8,7 @@
 
 **Task013 离线重评分**：桌面支撑判据移除 body 原点高度的错误假设，旧 v1 仍按旧语义读取。使用[独立派生重评分入口](task013_table_support_rescore.md)处理已有记录，不覆盖旧 raw/summary，不重新运行模型或仿真。
 
-## 固定范围
+## 历史固定范围
 
 每任务官方初态索引 `0..9`，仅 `mask10`，policy seed 7，共100条。不是同一个状态重复10次。basket 0..4 已用于开发，记录 `development_source=true`，不声明全体未见测试。
 

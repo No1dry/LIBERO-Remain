@@ -13,6 +13,21 @@ RESULT_SCHEMA = "remaining-headless-episode-v1"
 EVENTS = ("wrong_grasp", "wrong_placement", "table_drop")
 ROLES = {"target", "support", "container", "fixture", "distractor"}
 HASH = re.compile(r"[0-9a-f]{64}\Z")
+FACT_FIELDS = ("goals", "released", "tcp", "objects", "event_candidates", "event_evidence")
+NINE_FACT_FIELDS = ("invariant_values", "official_goal_values", "official_success", "required_open_values")
+
+
+def trace_facts(row, descriptor):
+    fields = FACT_FIELDS + (NINE_FACT_FIELDS if descriptor.nine_semantics else ())
+    return {key: row[key] for key in fields}
+
+
+def initial_matches(facts, descriptor):
+    valid = tuple(facts["goals"]) == descriptor.initial_mask
+    if descriptor.nine_semantics:
+        from ..nine_catalog import initial_constraints_match
+        valid = valid and initial_constraints_match(facts)
+    return valid
 
 
 def canonical_hash(value):
@@ -40,9 +55,15 @@ def _boolean(value, name):
 
 
 def validate_evaluator_state(value):
-    required = {"goals", "released", "tcp", "objects", "event_candidates", "event_evidence"}
-    if not isinstance(value, dict) or set(value) != required:
-        raise ValueError("headless evaluator requires its six explicit fact fields")
+    required = set(FACT_FIELDS)
+    if not isinstance(value, dict) or set(value) not in (required, required | set(NINE_FACT_FIELDS)):
+        raise ValueError("headless evaluator requires explicit legacy or nine-task fact fields")
+    if "official_success" in value:
+        if type(value["official_success"]) is not bool:
+            raise ValueError("official success must be boolean")
+        for key in ("invariant_values", "official_goal_values", "required_open_values"):
+            if not isinstance(value[key], list) or any(type(x) is not bool for x in value[key]):
+                raise ValueError("nine-task predicate facts must be boolean lists")
     canonical_hash(value)
     if not isinstance(value["goals"], list) or len(value["goals"]) != 2 or any(type(x) is not bool for x in value["goals"]):
         raise ValueError("exactly two official boolean goals are required")
@@ -80,21 +101,26 @@ def validate_evaluator_state(value):
     return deepcopy(value)
 
 
-def analyze_trace(trace, *, confirmation_steps=4, protocol=LEGACY_PROTOCOL):
+def analyze_trace(trace, *, confirmation_steps=4, protocol=LEGACY_PROTOCOL, task_semantics=None):
     """Recompute facts, sticky events and TCP path; unknown never means false."""
     integer(confirmation_steps, "confirmation_steps", 1)
     descriptor = get_protocol(protocol)
+    if descriptor.nine_semantics:
+        from ..nine_catalog import validate_task_semantics, validate_goal_facts
+        validate_task_semantics(task_semantics)
     preservation = bool(descriptor.preserved_goal_indices)
     streak = 0
     confirmed = begin = None
     counters, events, unknown = {}, [], []
     regression, length, previous, inventory = False if preservation else None, 0., None, None
     derived = []
+    invariant_regression = False if preservation and descriptor.nine_semantics else None
     for step, row in enumerate(trace):
         if row.get("step") != step or type(row.get("step")) is not int:
             raise ValueError("physical trace must be contiguous from step zero")
-        facts = validate_evaluator_state({key: row[key] for key in
-            ("goals", "released", "tcp", "objects", "event_candidates", "event_evidence")})
+        facts = validate_evaluator_state(trace_facts(row, descriptor))
+        if descriptor.nine_semantics:
+            validate_goal_facts(facts, task_semantics)
         identity = {"tcp": {k: facts["tcp"][k] for k in ("site_id", "site_name", "frame")},
                     "roles": {name: obj["role"] for name, obj in facts["objects"].items()},
                     "candidates": {key: sorted(facts["event_candidates"][key]) for key in EVENTS}}
@@ -108,10 +134,14 @@ def analyze_trace(trace, *, confirmation_steps=4, protocol=LEGACY_PROTOCOL):
         previous = position
         if preservation:
             regression = regression or any(not facts["goals"][index] for index in descriptor.preserved_goal_indices)
-        complete = all(facts["goals"]) and facts["released"] is True
+            if descriptor.nine_semantics:
+                invariant_regression = invariant_regression or not all(facts["invariant_values"])
+                regression = regression or invariant_regression
+        official = facts["official_success"] if descriptor.nine_semantics else all(facts["goals"])
+        complete = official and (descriptor.official_endpoint or facts["released"] is True)
         streak = streak + 1 if complete else 0
-        if confirmed is None and streak >= confirmation_steps + 1:
-            confirmed, begin = step, step - confirmation_steps
+        if confirmed is None and streak >= (1 if descriptor.official_endpoint else confirmation_steps + 1):
+            confirmed, begin = step, step if descriptor.official_endpoint else step - confirmation_steps
         for kind in EVENTS:
             for name, candidate in facts["event_candidates"][kind].items():
                 key = (kind, name)
@@ -127,11 +157,15 @@ def analyze_trace(trace, *, confirmation_steps=4, protocol=LEGACY_PROTOCOL):
                         "confirmed_events": deepcopy(events)})
         if not preservation:
             derived[-1]["preservation_applicable"] = False
+        if descriptor.nine_semantics:
+            derived[-1]["invariant_regression"] = invariant_regression
     result = {"frames": derived, "path_length_m": length, "goal_completion_step": begin,
             "goal_confirmed_step": confirmed, "goal_regression": regression,
             "confirmed_events": events, "event_unknown": unknown,
             "release_unknown_steps": [row["step"] for row in trace if row["released"] is None],
-            "official_goals_achieved": any(all(row["goals"]) for row in trace)}
+            "official_goals_achieved": any(row["official_success"] if descriptor.nine_semantics else all(row["goals"]) for row in trace)}
+    if descriptor.nine_semantics:
+        result["invariant_regression"] = invariant_regression
     if not preservation:
         result["preservation_applicable"] = False
     return result
@@ -149,6 +183,16 @@ def _validate_result(result, episode=None, identity=None, *, protocol=LEGACY_PRO
     descriptor.validate_mask(result.get("initial_mask"))
     descriptor.validate_identity(result)
     descriptor.validate_identity(identity)
+    if descriptor.nine_semantics:
+        from ..nine_catalog import validate_task_semantics, validate_episode_semantics
+        validate_task_semantics(result.get("task_semantics"), key=result["task_id"])
+        if episode is not None:
+            validate_episode_semantics(episode)
+            if result["task_semantics"] != episode["task_semantics"]:
+                raise ValueError("result task semantics differ from source")
+        wanted_endpoint = "official_success_or_horizon" if descriptor.official_endpoint else "all_goals_release_five_observations_or_horizon"
+        if result.get("endpoint_rule") != wanted_endpoint:
+            raise ValueError("nine-task endpoint rule differs")
     for key in ("episode_id", "task_id", "suite", "instruction"):
         if not isinstance(result.get(key), str) or not result[key]:
             raise ValueError("missing source episode identity")
@@ -178,8 +222,7 @@ def _validate_result(result, episode=None, identity=None, *, protocol=LEGACY_PRO
         static_options = {} if protocol == LEGACY_PROTOCOL else {"protocol": protocol}
         validate_measurement_static(result["measurement_static"], episode=episode if episode is not None else result, **static_options)
         for row in result["trace"]:
-            validate_evaluator_evidence({key: row[key] for key in
-                ("goals", "released", "tcp", "objects", "event_candidates", "event_evidence")}, result["measurement_static"])
+            validate_evaluator_evidence(trace_facts(row, descriptor), result["measurement_static"])
     elif result["trace"] or result["status"] == "completed":
         raise ValueError("recorded headless facts require the frozen measurement source")
     configuration = result["configuration"]
@@ -233,8 +276,8 @@ def _validate_result(result, episode=None, identity=None, *, protocol=LEGACY_PRO
             key: actions[step - 1][key] for key in ("action", "query_sequence", "chunk_index")}
         if any(not _same(row.get(key), value) for key, value in expected.items()):
             raise ValueError("frame does not match its physical action")
-    analysis = analyze_trace(trace, confirmation_steps=k, protocol=protocol)
-    if protocol == NORMAL00_PROTOCOL and ("goal_regression" not in result or
+    analysis = analyze_trace(trace, confirmation_steps=k, protocol=protocol, task_semantics=result.get("task_semantics"))
+    if not descriptor.preserved_goal_indices and ("goal_regression" not in result or
             any("goal_regression" not in row for row in trace)):
         raise ValueError("normal00 preservation requires explicit null goal_regression")
     for row, derived in zip(trace, analysis["frames"]):
@@ -243,20 +286,22 @@ def _validate_result(result, episode=None, identity=None, *, protocol=LEGACY_PRO
     for key in ("path_length_m", "goal_completion_step", "goal_confirmed_step", "goal_regression", "confirmed_events", "event_unknown", "release_unknown_steps", "official_goals_achieved"):
         if not _same(result.get(key), analysis[key]):
             raise ValueError(f"headless result {key} does not recompute")
-    if protocol == NORMAL00_PROTOCOL and result.get("preservation_applicable") is not False:
+    if descriptor.nine_semantics and not _same(result.get("invariant_regression"), analysis["invariant_regression"]):
+        raise ValueError("invariant regression does not recompute")
+    if not descriptor.preserved_goal_indices and result.get("preservation_applicable") is not False:
         raise ValueError("normal00 preservation must be explicitly inapplicable")
     if analysis["goal_confirmed_step"] is not None and analysis["goal_confirmed_step"] != steps:
         raise ValueError("actions continued after the first confirmed goal endpoint")
     if result["status"] == "completed":
-        if len(trace) != steps + 1 or not trace or tuple(trace[0]["goals"]) != descriptor.initial_mask:
+        if len(trace) != steps + 1 or not trace or not initial_matches(trace[0], descriptor):
             raise ValueError("completed result lacks valid t0 or per-step observations")
-        reason = "goal_confirmed" if analysis["goal_confirmed_step"] is not None else "horizon"
+        reason = ("official_success" if descriptor.official_endpoint else "goal_confirmed") if analysis["goal_confirmed_step"] is not None else "horizon"
         if result.get("exit_reason") != reason or reason == "horizon" and steps != horizon:
             raise ValueError("completion endpoint differs from H/K4 observations")
         if result.get("error") is not None:
             raise ValueError("completed result carries a technical error")
     elif result["status"] == "invalid_initial_state":
-        if steps or queries or not trace or tuple(trace[0]["goals"]) == descriptor.initial_mask or result.get("exit_reason") != "invalid_initial_state":
+        if steps or queries or not trace or initial_matches(trace[0], descriptor) or result.get("exit_reason") != "invalid_initial_state":
             raise ValueError("invalid-initial report does not describe actual t0 mismatch")
     elif result.get("exit_reason") != "technical_error" or not result.get("error"):
         raise ValueError("runtime failure needs its actual error and technical endpoint")

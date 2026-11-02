@@ -14,12 +14,18 @@ PROTOCOLS = {"normal00-control", "selected-mask10"}
 
 
 def runtime_protocol(protocol):
+    from .protocols import NINE_PROTOCOLS
+    if protocol in NINE_PROTOCOLS:
+        return protocol
     if protocol not in PROTOCOLS:
         raise ValueError("unknown scoped protocol")
     return "normal00-control" if protocol == "normal00-control" else "mask10"
 
 
 def protocol_version(protocol):
+    from .protocols import NINE_PROTOCOLS, get_protocol
+    if protocol in NINE_PROTOCOLS:
+        return get_protocol(protocol).protocol_version
     runtime_protocol(protocol)
     return ("remaining-headless-normal00-control-v1" if protocol == "normal00-control"
             else "remaining-headless-goal-endpoint-v1")

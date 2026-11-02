@@ -12,9 +12,12 @@ from ..libero_env import LiberoGoalEnv, _task_environment
 from ..finish.environment import _release
 from .roles import build_roles, task_key, validate_roles
 from . import geometry as geo
+from ..nine_catalog import (NINE_PROTOCOLS, FACT_FIELDS, validate_task_semantics,
+                            validate_goal_facts, validate_episode_semantics)
 
 LEGACY_SCHEMA = "remaining-headless-measurement-v1"
 SCHEMA = "remaining-headless-measurement-v2"
+NINE_SCHEMA = "remaining-headless-nine-measurement-v1"
 LEGACY_SUPPORT_RULE = "direct-table-top-contact-body-origin-v1"
 SUPPORT_RULE = "direct-table-top-contact-no-body-origin-v2"
 LIFT_METERS = DROP_METERS = .02
@@ -176,7 +179,7 @@ def _relation_read(inner, name, relation):
         return {"predicate": predicate, "value": None, "reason": "relation_evidence_unavailable", "error": str(error)}
 
 
-def _frame_from_records(goals, tcp, records, poses, static):
+def _frame_from_records(goals, tcp, records, poses, static, goal_facts=None):
     roles, geometry = static["role_profile"], static["geometry"]
     geo._poses(poses, geometry)
     objects = {}
@@ -226,8 +229,14 @@ def _frame_from_records(goals, tcp, records, poses, static):
             "initial_support": deepcopy(support), "object_bounds": bounds, "below_table_margin": below,
             "minimum_drop_m": DROP_METERS}
     target_release = [objects[name]["released"] for name in roles["movable_targets"]]
-    return {"goals": list(goals), "released": _tri_and(*target_release), "tcp": deepcopy(tcp), "objects": objects,
-            "event_candidates": events, "event_evidence": evidence}
+    result = {"goals": list(goals), "released": _tri_and(*target_release), "tcp": deepcopy(tcp), "objects": objects,
+              "event_candidates": events, "event_evidence": evidence}
+    if "task_semantics" in static:
+        validate_goal_facts(goal_facts, static["task_semantics"])
+        if list(goals) != goal_facts["goals"]:
+            raise geo.MeasurementError("active goal facts differ")
+        result.update({field: deepcopy(goal_facts[field]) for field in FACT_FIELDS})
+    return result
 
 
 def _support_rule(static):
@@ -235,7 +244,7 @@ def _support_rule(static):
         raise geo.MeasurementError("invalid headless measurement schema")
     if static.get("schema_version") == LEGACY_SCHEMA and "support_rule" not in static:
         return LEGACY_SUPPORT_RULE
-    if static.get("schema_version") == SCHEMA and static.get("support_rule") == SUPPORT_RULE:
+    if static.get("schema_version") in (SCHEMA, NINE_SCHEMA) and static.get("support_rule") == SUPPORT_RULE:
         return SUPPORT_RULE
     raise geo.MeasurementError("invalid headless measurement/support version")
 
@@ -248,6 +257,14 @@ def validate_measurement_static(static, episode=None, *, protocol="mask10"):
         raise geo.MeasurementError("headless measurement static hash mismatch")
     geometry = geo.validate_measurement_static(static["geometry"])
     role = static["role_profile"]
+    if static.get("schema_version") == NINE_SCHEMA:
+        validate_task_semantics(static.get("task_semantics"), key=role["task_key"])
+        if role.get("task_semantics") != static["task_semantics"]:
+            raise geo.MeasurementError("static/role nine-task semantics differ")
+        if episode is not None and episode.get("task_semantics") != static["task_semantics"]:
+            raise geo.MeasurementError("static/episode nine-task semantics differ")
+    elif "task_semantics" in static or "task_semantics" in role:
+        raise geo.MeasurementError("nine-task semantics need explicit measurement version")
     try:
         validate_roles(role, geometry)
     except (ValueError, KeyError, TypeError) as error:
@@ -382,7 +399,11 @@ def recompute_table_drop(facts, corrected_static):
 def validate_evaluator_evidence(facts, static):
     validate_measurement_static(static)
     try:
-        if set(facts) != {"goals", "released", "tcp", "objects", "event_candidates", "event_evidence"}:
+        fields = {"goals", "released", "tcp", "objects", "event_candidates", "event_evidence"}
+        if "task_semantics" in static:
+            fields.update(FACT_FIELDS)
+            validate_goal_facts(facts, static["task_semantics"])
+        if set(facts) != fields:
             raise geo.MeasurementError("headless evaluator field mismatch")
         if set(facts["objects"]) != set(static["role_profile"]["roles"]):
             raise geo.MeasurementError("headless object inventory changed")
@@ -400,7 +421,7 @@ def validate_evaluator_evidence(facts, static):
             if [item["predicate"] for item in rows] != expected or any(item["value"] is not None and type(item["value"]) is not bool for item in rows):
                 raise geo.MeasurementError("per-step official relation evidence malformed")
         poses = facts["objects"][static["pose_carrier"]]["geometry_poses"]
-        expected = _frame_from_records(facts["goals"], tcp, records, poses, static)
+        expected = _frame_from_records(facts["goals"], tcp, records, poses, static, goal_facts=facts)
         if geo.canonical_hash(expected) != geo.canonical_hash(facts):
             raise geo.MeasurementError("headless event/release evidence differs from recomputation")
         return deepcopy(facts)
@@ -410,9 +431,9 @@ def validate_evaluator_evidence(facts, static):
 
 class HeadlessMeasurements:
     """Per-reset observer; native source fields are read, never advanced."""
-    def __init__(self, env, key, *, source_reset_model_xml_sha256=None):
+    def __init__(self, env, key, *, source_reset_model_xml_sha256=None, task_semantics=None):
         self.env, self.inner = env, _task_environment(env)
-        self.roles = build_roles(self.inner, env.sim.model, key)
+        self.roles = build_roles(self.inner, env.sim.model, key, task_semantics=task_semantics)
         self.inventory = {**self.inner.objects_dict, **self.inner.fixtures_dict}
         self.gripper = env.robots[0].gripper
         movable = {name: self.inventory[name] for name, role in self.roles["roles"].items() if role["movable"]}
@@ -424,7 +445,8 @@ class HeadlessMeasurements:
         for name in self.roles["table_drop_objects"]:
             initial[name]["table_support"] = _initial_support(name, initial[name]["position"], table,
                 self.geometry.static, contacts, self.geometry.static["filters"]["contact_filter_callback"])
-        self.static = {"schema_version": SCHEMA, "support_rule": SUPPORT_RULE,
+        self.static = {"schema_version": NINE_SCHEMA if task_semantics is not None else SCHEMA, "support_rule": SUPPORT_RULE,
+                       **({"task_semantics": deepcopy(task_semantics)} if task_semantics is not None else {}),
                        "role_profile": deepcopy(self.roles), "geometry": self.geometry.static,
                        "source_reset_model_xml_sha256": source_reset_model_xml_sha256,
                        "initial_objects": initial, "initial_contacts": contacts, "table": table, "pose_carrier": sorted(self.inventory)[0],
@@ -454,7 +476,7 @@ class HeadlessMeasurements:
     def measurement_static(self):
         return deepcopy(self.static)
 
-    def evaluator_state(self, goals):
+    def evaluator_state(self, goals, *, goal_facts=None):
         poses = self.geometry.pose()
         tcp = _tcp(self.env)
         if {k: v for k, v in tcp.items() if k != "position"} != self.static["tcp_identity"]:
@@ -466,7 +488,7 @@ class HeadlessMeasurements:
             if (not np.array_equal(self.env.sim.data.geom_xpos[gid], item["position"])
                     or not np.array_equal(np.asarray(self.env.sim.data.geom_xmat[gid]).reshape(3, 3), item["rotation"])):
                 raise geo.MeasurementError("fixed workspace table pose changed")
-        return _frame_from_records(goals, tcp, self._records(), poses, self.static)
+        return _frame_from_records(goals, tcp, self._records(), poses, self.static, goal_facts=goal_facts)
 
 
 class HeadlessLiberoEnv(LiberoGoalEnv):
@@ -483,6 +505,8 @@ class HeadlessLiberoEnv(LiberoGoalEnv):
         self._ready = False
         key = task_key(episode)
         self.protocol.validate_mask(episode.get("initial_mask"))
+        if self.protocol.key in NINE_PROTOCOLS:
+            validate_episode_semantics(episode)
         observation = super().reset(episode)
         try:
             if self.protocol.key == "mask10" and self.goal_values() != [True, False]:
@@ -492,8 +516,9 @@ class HeadlessLiberoEnv(LiberoGoalEnv):
             # The existing bridge has already checked this exact reset-model SHA
             # before restoring state. Native post-processing may legitimately change
             # stove indicator site RGBA; retain the post-restore XML independently.
+            semantic_options = {"task_semantics": self.task_semantics} if getattr(self, "task_semantics", None) is not None else {}
             self.measurements = HeadlessMeasurements(self.env, key,
-                source_reset_model_xml_sha256=episode["model_xml_sha256"])
+                source_reset_model_xml_sha256=episode["model_xml_sha256"], **semantic_options)
         except BaseException:
             self._ready = False
             raise
@@ -502,6 +527,9 @@ class HeadlessLiberoEnv(LiberoGoalEnv):
     def evaluator_state(self):
         if not self._ready or self.measurements is None:
             raise RuntimeError("headless evaluator requires a successful reset")
+        if getattr(self, "task_semantics", None) is not None:
+            facts = self.goal_facts()
+            return self.measurements.evaluator_state(facts["goals"], goal_facts=facts)
         return self.measurements.evaluator_state(self.goal_values())
 
     def measurement_static(self):

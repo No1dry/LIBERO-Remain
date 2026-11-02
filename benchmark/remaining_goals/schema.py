@@ -216,6 +216,9 @@ def validate_manifest(
         if episode.get("split") not in ("train", "val", "test"):
             _error(f"{here}.split", "must be 'train', 'val', or 'test'")
         _validate_goals(episode.get("goal_specs"), f"{here}.goal_specs")
+        if "task_semantics" in episode:
+            from .nine_catalog import validate_episode_semantics
+            validate_episode_semantics(episode)
         mask = episode.get("initial_mask")
         if not isinstance(mask, list) or len(mask) != len(episode["goal_specs"]) or any(type(bit) is not bool for bit in mask):
             _error(f"{here}.initial_mask", "must contain one JSON boolean per goal")
@@ -233,6 +236,8 @@ def validate_manifest(
 
         task_id = episode["task_id"]
         task_definition = {field: episode[field] for field in _TASK_FIELDS}
+        if "task_semantics" in episode:
+            task_definition["task_semantics"] = episode["task_semantics"]
         if task_id in task_definitions and task_definitions[task_id] != task_definition:
             _error(here, f"task_id {task_id!r} has an inconsistent task definition")
         task_definitions[task_id] = task_definition
@@ -243,6 +248,8 @@ def validate_manifest(
 
         group_key = (task_id, episode["source_id"], episode["pose_id"])
         group_definition = {field: episode[field] for field in _GROUP_FIELDS}
+        if "task_semantics" in episode:
+            group_definition["task_semantics"] = episode["task_semantics"]
         if group_key not in groups:
             groups[group_key] = (group_definition, set())
         first, seen_masks = groups[group_key]

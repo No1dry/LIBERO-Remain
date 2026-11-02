@@ -1,5 +1,7 @@
 # Task012：只读复用既有 mask10 状态与回放
 
+> 本页保留旧十任务/100分母的来源验收接口。当前033采用九个LIBERO-10任务、00/10各90条，历史结果通过显式reuse清单只读引用；新作业和来源准备见[九任务 runbook](task033_nine_task_runbook.md)。旧LIBERO-90缺两任务补建/补测已取消。
+
 本页对应[任务012](../collaboration/tasks/012_mask10_scoped_acceptance.md)，补充[十任务 headless runbook](headless_ten_task_baseline_runbook.md)。新增入口只改变本轮**来源验收范围**：由选中的 mask10 证据决定是否就绪。已有 00/01/11 失败仍保留，不能解释为它们通过，也不是 VLA 评测结果。
 
 默认省略新配置项时，仍使用原来的全 mask 验收。显式启用方式是在独立的 batch JSON 顶层增加：

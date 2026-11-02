@@ -95,6 +95,12 @@ def _audit(audit, episode, state, *, steps, initial_hash, initial_only=False, fi
     re-render or independently reconstruct their pixels here.
     """
     expected_mask = [False, False] if initial_only else [True, False]
+    semantics = episode.get("task_semantics")
+    if semantics is not None:
+        from ..nine_catalog import validate_episode_semantics, validate_goal_facts, initial_constraints_match
+        semantics = validate_episode_semantics(episode)
+        if audit.get("task_semantics") != semantics:
+            raise ValueError("selected audit nine-task semantics mismatch")
     if (audit.get("schema_version") != "remaining-goals-validation-v1"
             or audit.get("episode_id") != episode["episode_id"]
             or audit.get("initial_mask") != expected_mask
@@ -185,6 +191,9 @@ def _audit(audit, episode, state, *, steps, initial_hash, initial_only=False, fi
             "contact_penetration_within_limit": checked_penetration <= limits["penetration_tolerance"],
             "observation_matches_fresh": True, "initial_non_rgb_bit_exact": True,
             "refresh_did_not_step": True, "rgb_allowance_state_verified": True}
+        if semantics is not None:
+            validate_goal_facts(row, semantics)
+            checks["initial_constraints_match"] = initial_constraints_match(row)
         if (row.get("checks") != checks or any(type(v) is not bool for v in row["checks"].values())
                 or not all(checks.values())):
             raise ValueError("selected audit physical checks failed or disagree with raw trace")
@@ -197,9 +206,12 @@ def _audit(audit, episode, state, *, steps, initial_hash, initial_only=False, fi
             "ignored_contact_pairs": deepcopy(audit["ignored_contact_pairs"])}
 
 
-def _load_mask10_source(task, manifest_path, replay_path, *, indices=None, fixed=False):
+def _load_mask10_source(task, manifest_path, replay_path, *, indices=None, fixed=False, protocol=None):
     """Return original manifest, both original byte strings and scoped evidence."""
-    if task not in COMMON_TEN_TASKS: raise ValueError("unknown headless ten-task identity")
+    from ..nine_catalog import NINE_PROTOCOLS, NINE_TASKS, get_task, validate_episode_semantics
+    nine = protocol in NINE_PROTOCOLS
+    if task not in (NINE_TASKS if nine else COMMON_TEN_TASKS): raise ValueError("unknown headless task identity")
+    profile = get_task(task) if nine else TASKS[task]
     manifest_path, replay_path = Path(manifest_path).resolve(), Path(replay_path).resolve()
     files = _Files(manifest_path, replay_path)
     raw = files.read("manifest", manifest_path.name)
@@ -217,20 +229,23 @@ def _load_mask10_source(task, manifest_path, replay_path, *, indices=None, fixed
         matches = [e for e in entries if isinstance(e, dict) and e.get("episode_id") == identifier]
         if len(matches) != 1: raise ValueError("all ten unique mask10 official sources 0..9 are required")
         episode = matches[0]
-        if (episode.get("task_id") != task or episode.get("suite") != TASKS[task]["suite"]
-                or episode.get("task_name") != TASKS[task]["name"] or episode.get("goal_specs") != TASKS[task]["goals"]
+        if (episode.get("task_id") != task or episode.get("suite") != profile["suite"]
+                or episode.get("task_name") != profile["name"] or episode.get("goal_specs") != profile["goals"]
                 or episode.get("initial_mask") != [True, False] or episode.get("initial_state_index") != index
                 or episode.get("seed") != index or episode.get("source_id") != f"{task}_official_{index}"
                 or episode.get("horizon") != 520 or episode.get("retention_steps") != 150
                 or episode.get("construction", {}).get("legal") is not False
                 or not _digest(episode.get("bddl_sha256")) or not _digest(episode.get("model_xml_sha256"))):
             raise ValueError("selected source task/goal/order/index identity mismatch")
+        if nine:
+            validate_episode_semantics(episode)
         selected.append(episode)
     view = {**manifest, "episodes": selected}
     view.pop("content_hash", None)
     validate_manifest(view, base_dir=manifest_path.parent, check_files=False,
                       require_complete_masks=False, allow_unreviewed=True)
     if (report.get("kind") != "candidate_formal_adapter_replay"
+            or (nine and report.get("protocol") != "nine-mask10")
             or report.get("source_content_hash") != manifest["content_hash"]
             or report.get("source_manifest_sha256") != _sha(raw)
             or report.get("policy_called") is not False or report.get("release_authorized") is not False

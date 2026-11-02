@@ -9,7 +9,7 @@ from ..observation_artifact import save_observation_artifact, load_observation_a
 from ..pilot_evidence import observation_sha256
 from ..runner import _observation
 from .schema import canonical_hash, validate_protocol_result
-from .protocols import get_protocol, NORMAL00_PROTOCOL, LEGACY_PROTOCOL
+from .protocols import get_protocol, NORMAL00_PROTOCOL, LEGACY_PROTOCOL, NINE_PROTOCOLS
 
 SCHEMA = "remaining-headless-evidence-v1"
 
@@ -19,7 +19,7 @@ def _identity(value):
         raise ValueError("headless evidence requires its full source/run identity")
     canonical_hash(value)
     if "protocol_version" in value:
-        matched = [get_protocol(key) for key in (LEGACY_PROTOCOL, NORMAL00_PROTOCOL)
+        matched = [get_protocol(key) for key in (LEGACY_PROTOCOL, NORMAL00_PROTOCOL, *NINE_PROTOCOLS)
                    if get_protocol(key).protocol_version == value["protocol_version"]]
         if not matched:
             raise ValueError("evidence has an unsupported protocol identity")
@@ -69,7 +69,7 @@ class HeadlessEvidence:
         if any(self.identity[key] != episode[key] for key in ("episode_id", "state_sha256")):
             raise ValueError("evidence source differs from the actual reset episode")
         if "protocol_version" in self.identity:
-            for key in (LEGACY_PROTOCOL, NORMAL00_PROTOCOL):
+            for key in (LEGACY_PROTOCOL, NORMAL00_PROTOCOL, *NINE_PROTOCOLS):
                 descriptor = get_protocol(key)
                 if descriptor.protocol_version == self.identity["protocol_version"]:
                     descriptor.validate_mask(episode.get("initial_mask"))

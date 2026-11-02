@@ -11,6 +11,7 @@ import io
 from pathlib import Path
 
 import numpy as np
+from .nine_catalog import NEW_TASKS
 
 SELECTED_TASKS = ("frypan_stove9", "cabinet_close_top_bowl")
 
@@ -20,17 +21,19 @@ def _backend():
     return replay_candidates
 
 
-def _candidate(task, index, manifest_path):
+def _candidate(task, index, manifest_path, *, protocol=None):
     from .headless.scoped_sources import inspect_candidate
-    return inspect_candidate(task, index, manifest_path)
+    return inspect_candidate(task, index, manifest_path, protocol=protocol)
 
 
-def replay(manifest_path, output, *, task, index):
+def replay(manifest_path, output, *, task, index, protocol="selected-mask10"):
     """Replay one source in a fresh formal adapter with fixed physical rules."""
-    if task not in SELECTED_TASKS or type(index) is not int or index not in range(10):
+    nine = protocol == "nine-mask10"
+    if (protocol not in ("selected-mask10", "nine-mask10") or task not in (NEW_TASKS if nine else SELECTED_TASKS)
+            or type(index) is not int or index not in range(10)):
         raise ValueError("selected replay requires a fixed task and source index 0..9")
     manifest_path, output = Path(manifest_path).resolve(), Path(output)
-    candidate = _candidate(task, index, manifest_path)
+    candidate = _candidate(task, index, manifest_path, protocol=protocol) if nine else _candidate(task, index, manifest_path)
     episode, manifest = candidate["episode"], candidate["manifest"]
     original_raw = manifest_path.read_bytes()
     if hashlib.sha256(original_raw).hexdigest() != candidate["source_manifest_sha256"]:
@@ -43,7 +46,7 @@ def replay(manifest_path, output, *, task, index):
     state = np.load(io.BytesIO(state_raw), allow_pickle=False)
     observation_hash = episode["initial_observation"]["observation_sha256"]
     output.mkdir(parents=True, exist_ok=False)
-    report = {"kind": "candidate_formal_adapter_replay", "protocol": "selected-mask10",
+    report = {"kind": "candidate_formal_adapter_replay", "protocol": protocol,
               "selected_replay_version": "single_source_formal_adapter_v1",
               "adapter_lifetime": "one fresh formal adapter for this source and both repeats",
               "policy_called": False, "release_authorized": False,
@@ -97,10 +100,11 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--manifest", required=True, type=Path)
     parser.add_argument("--out", required=True, type=Path)
-    parser.add_argument("--task", required=True, choices=SELECTED_TASKS)
+    parser.add_argument("--task", required=True, choices=(*SELECTED_TASKS, *NEW_TASKS))
+    parser.add_argument("--protocol", choices=("selected-mask10", "nine-mask10"), default="selected-mask10")
     parser.add_argument("--index", required=True, type=int)
     args = parser.parse_args(argv)
-    if not replay(args.manifest, args.out, task=args.task, index=args.index)["technical_acceptance"]:
+    if not replay(args.manifest, args.out, task=args.task, index=args.index, protocol=args.protocol)["technical_acceptance"]:
         raise SystemExit("source replay failed; inspect replay_report.json")
 
 

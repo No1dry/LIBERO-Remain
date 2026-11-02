@@ -12,11 +12,12 @@ import importlib
 import json
 from pathlib import Path
 from time import perf_counter
+from ..nine_catalog import NEW_TASKS, NINE_PROTOCOLS
 
 SCHEMA = "remaining-headless-composite-sources-v1"
 REPORT_SCHEMA = "remaining-headless-selected-preparation-v1"
 TASKS = ("frypan_stove9", "cabinet_close_top_bowl")
-PROTOCOLS = ("selected-mask10", "normal00-control")
+PROTOCOLS = ("selected-mask10", "normal00-control", *NINE_PROTOCOLS)
 MODES = ("inspect", "build-missing", "replay-missing", "prepare-missing")
 
 
@@ -48,13 +49,14 @@ def _sources():
     return scoped_sources
 
 
-def _selection(tasks, indices):
-    tasks = list(TASKS if tasks is None else tasks)
+def _selection(tasks, indices, protocol=None):
+    allowed = NEW_TASKS if protocol in NINE_PROTOCOLS else TASKS
+    tasks = list(allowed if tasks is None else tasks)
     indices = list(range(10) if indices is None else indices)
-    if (not tasks or len(set(tasks)) != len(tasks) or any(task not in TASKS for task in tasks)
+    if (not tasks or len(set(tasks)) != len(tasks) or any(task not in allowed for task in tasks)
             or not indices or any(type(index) is not int or not 0 <= index < 10 for index in indices)
             or len(set(indices)) != len(indices)):
-        raise ValueError("preparation is restricted to the two fixed tasks and unique indices 0..9")
+        raise ValueError("preparation is restricted to the protocol's new fixed tasks and unique indices 0..9")
     return tasks, indices
 
 
@@ -91,9 +93,10 @@ def _inspect(protocol, task, index, origin):
         row.update(status="ready", phase="complete", candidate="existing",
                    episode_id=plan["episodes"][0]["episode_id"], acceptance=plan["source_acceptance"])
         return row
-    if protocol == "selected-mask10":
+    if protocol in ("selected-mask10", "nine-mask10"):
         try:
-            candidate = sources.inspect_candidate(task, index, origin["manifest"])
+            options = {"protocol": protocol} if protocol in NINE_PROTOCOLS else {}
+            candidate = sources.inspect_candidate(task, index, origin["manifest"], **options)
         except FileNotFoundError:
             return row
         except (OSError, ValueError, KeyError, TypeError) as error:
@@ -167,7 +170,8 @@ def _native(operation, task, index, origin, output, protocol):
         else:
             producer = importlib.import_module("benchmark.remaining_goals.selected_replay")
             owner = importlib.import_module("benchmark.remaining_goals.replay_candidates").ReplayAuditEnv
-            function = lambda: producer.replay(origin["manifest"], output, task=task, index=index)
+            options = {"protocol": protocol} if protocol in NINE_PROTOCOLS else {}
+            function = lambda: producer.replay(origin["manifest"], output, task=task, index=index, **options)
             attribute = "step"
     except BaseException as error:
         ledger = {**identity, "count_status": "unknown", "actual_control_steps": None,
@@ -182,7 +186,7 @@ def _native(operation, task, index, origin, output, protocol):
         manifest = _read(manifest_path)
         origin = {"manifest": str(manifest_path.resolve()), "manifest_sha256": _hash(manifest_path.read_bytes()),
                   "content_hash": manifest["content_hash"]}
-        if protocol == "normal00-control":
+        if protocol in ("normal00-control", "nine-normal00"):
             initialization = output / "construction_report.json"
             origin.update(initialization=str(initialization.resolve()), initialization_sha256=_hash(initialization.read_bytes()))
         accepted = result.get("complete") is True
@@ -201,7 +205,6 @@ def _native(operation, task, index, origin, output, protocol):
 def prepare(inventory_path, output, *, mode="inspect", indices=None, tasks=None,
             protocol=None, allow_failed_retry=False, continuation=False):
     """Inspect or explicitly prepare selected sources, preserving a full denominator."""
-    tasks, indices = _selection(tasks, indices)
     if mode not in MODES:
         raise ValueError("invalid preparation mode")
     inventory_path, output = Path(inventory_path).resolve(), Path(output).resolve()
@@ -210,7 +213,11 @@ def prepare(inventory_path, output, *, mode="inspect", indices=None, tasks=None,
     protocol = protocol or inventory.get("protocol")
     if protocol not in PROTOCOLS or inventory.get("protocol") != protocol or inventory.get("schema_version") != SCHEMA:
         raise ValueError("inventory protocol/schema mismatch")
-    from .scoped_planning import expected_episodes
+    tasks, indices = _selection(tasks, indices, protocol)
+    if protocol in NINE_PROTOCOLS:
+        from .nine_planning import expected_episodes
+    else:
+        from .scoped_planning import expected_episodes
     expected = expected_episodes(protocol)
     expected_tasks = {episode["task_id"] for episode in expected}
     if inventory.get("expected") != expected:
@@ -318,7 +325,7 @@ def prepare(inventory_path, output, *, mode="inspect", indices=None, tasks=None,
                     if operation == "build":
                         needed = row["phase"] == "candidate" and mode in ("build-missing", "prepare-missing")
                     else:
-                        needed = (protocol == "selected-mask10" and row["phase"] == "replay"
+                        needed = (protocol in ("selected-mask10", "nine-mask10") and row["phase"] == "replay"
                                   and mode in ("replay-missing", "prepare-missing"))
                     if not needed:
                         continue
@@ -360,7 +367,7 @@ def main(argv=None):
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--protocol", choices=PROTOCOLS)
     parser.add_argument("--mode", choices=MODES, default="inspect")
-    parser.add_argument("--tasks", nargs="+", choices=TASKS)
+    parser.add_argument("--tasks", nargs="+", choices=(*TASKS, *NEW_TASKS))
     parser.add_argument("--indices", nargs="+", type=int)
     parser.add_argument("--continue", dest="continuation", action="store_true")
     parser.add_argument("--allow-failed-retry", action="store_true",
@@ -368,7 +375,7 @@ def main(argv=None):
     args = parser.parse_args(argv)
     report = prepare(args.inventory, args.output, mode=args.mode, indices=args.indices, tasks=args.tasks,
                      protocol=args.protocol, allow_failed_retry=args.allow_failed_retry, continuation=args.continuation)
-    tasks, indices = _selection(args.tasks, args.indices)
+    tasks, indices = _selection(args.tasks, args.indices, report.get("protocol", args.protocol))
     selected = [row for row in report["sources"] if row["task_id"] in tasks and row["initial_state_index"] in indices]
     return 0 if selected and all(row["status"] == "ready" for row in selected) else 2
 

@@ -2,9 +2,14 @@
 from copy import deepcopy
 from ..task_catalog import TASKS, COMMON_TEN_TASKS
 from ..libero_env import _predicate
+from ..nine_catalog import get_task, validate_task_semantics, NINE_TASKS
 
 SCHEMA = "remaining-headless-roles-v1"
+NINE_SCHEMA = "remaining-headless-nine-roles-v1"
 PROFILES = {
+    "two_pots": {"flat_stove_1_cook_region": "flat_stove_1"},
+    "bowl_drawer_close": {"white_cabinet_1_bottom_region": "white_cabinet_1"},
+    "mug_microwave_close": {"microwave_1_heating_region": "microwave_1"},
     "basket": {"basket_1_contain_region": "basket_1"},
     "basket_cheese_butter": {"basket_1_contain_region": "basket_1"},
     "basket_soup_cheese": {"basket_1_contain_region": "basket_1"},
@@ -19,6 +24,13 @@ PROFILES = {
 
 
 def task_key(episode):
+    if "task_semantics" in episode:
+        semantics = validate_task_semantics(episode["task_semantics"], key=episode.get("task_id"))
+        key = semantics["task_key"]
+        profile = get_task(key)
+        if episode.get("suite") != "libero_10" or episode.get("task_name") != profile["name"]:
+            raise ValueError("nine-task full name/suite identity differs")
+        return key
     matches = [key for key in COMMON_TEN_TASKS if TASKS[key]["suite"] == episode.get("suite")
                and TASKS[key]["name"] == episode.get("task_name")]
     if len(matches) != 1:
@@ -48,11 +60,15 @@ def _owner(inner, reference, expected, inventory, workspace):
     return actual
 
 
-def build_roles(inner, model, key):
-    if key not in COMMON_TEN_TASKS:
+def build_roles(inner, model, key, *, task_semantics=None):
+    nine = task_semantics is not None
+    if key not in (NINE_TASKS if nine else COMMON_TEN_TASKS):
         raise ValueError("unsupported headless task")
-    profile = TASKS[key]
-    predicates = [list(_predicate(p)) for goal in profile["goals"] for p in goal["predicates"]]
+    profile = get_task(key) if nine else TASKS[key]
+    predicates = ([list(_predicate(p)) for p in profile["official_goal_predicates"]] if nine else
+                  [list(_predicate(p)) for goal in profile["goals"] for p in goal["predicates"]])
+    if nine:
+        validate_task_semantics(task_semantics, key=key, official_predicates=inner.parsed_problem["goal_state"])
     if sorted(tuple(p) for p in predicates) != sorted(_predicate(p) for p in inner.parsed_problem["goal_state"]):
         raise ValueError("headless role catalog differs from official final predicates")
     objects, fixtures = inner.objects_dict, inner.fixtures_dict
@@ -99,7 +115,8 @@ def build_roles(inner, model, key):
         role = ("target" if name in targets else "container" if name in containers else
                 "support" if name in related else "fixture" if not free[name] else "distractor")
         roles[name] = {"role": role, "movable": free[name], "body_id": body_ids[name], "root_body": inventory[name].root_body}
-    return {"schema_version": SCHEMA, "task_key": key, "suite": profile["suite"], "task_name": profile["name"],
+    return {"schema_version": NINE_SCHEMA if nine else SCHEMA, "task_key": key, "suite": profile["suite"], "task_name": profile["name"],
+            **({"task_semantics": deepcopy(task_semantics)} if nine else {}),
             "goal_specs": deepcopy(profile["goals"]), "roles": roles, "movable_targets": sorted(targets),
             "relations": relations, "workspace": workspace, "table_body": table_body,
             "wrong_grasp_objects": sorted(name for name, role in roles.items() if role["role"] == "distractor"),
@@ -110,9 +127,12 @@ def build_roles(inner, model, key):
 def validate_roles(value, geometry):
     """Re-derive catalog roles and event sets without importing a native env."""
     key = value["task_key"]
-    if key not in COMMON_TEN_TASKS or value["schema_version"] != SCHEMA:
+    nine = value.get("schema_version") == NINE_SCHEMA
+    if key not in (NINE_TASKS if nine else COMMON_TEN_TASKS) or value["schema_version"] not in (SCHEMA, NINE_SCHEMA):
         raise ValueError("unsupported headless role identity")
-    profile = TASKS[key]
+    profile = get_task(key) if nine else TASKS[key]
+    if nine:
+        validate_task_semantics(value.get("task_semantics"), key=key)
     if (value["suite"] != profile["suite"] or value["task_name"] != profile["name"]
             or value["goal_specs"] != profile["goals"]):
         raise ValueError("headless role catalog identity differs")
@@ -121,7 +141,7 @@ def validate_roles(value, geometry):
     if value["workspace"] != workspace or value["table_body"] != table:
         raise ValueError("headless workspace identity differs")
     targets, related, containers, relations = set(), set(), set(), []
-    for goal in profile["goals"]:
+    for goal in profile["goals"] + ([{"predicates": profile["invariant_predicates"]}] if nine else []):
         for raw in goal["predicates"]:
             predicate = _predicate(raw)
             op = predicate[0]
