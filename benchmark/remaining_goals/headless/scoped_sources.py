@@ -116,7 +116,8 @@ def _observation_binding(observation, comparison, *, profile=None, revalidate=Fa
     check_comparison(comparison, initial=True, camera_reference=cameras, profile=profile, revalidate=revalidate)
 
 
-def _candidate(task, index, manifest_path, *, normal=False, protocol=None, revalidate_profile=None):
+def _candidate(task, index, manifest_path, *, normal=False, protocol=None, revalidate_profile=None,
+               stability_profile=None):
     protocol = protocol or ("normal00-control" if normal else "selected-mask10")
     _identity(task, index, protocol)
     mp = Path(manifest_path).resolve()
@@ -130,6 +131,12 @@ def _candidate(task, index, manifest_path, *, normal=False, protocol=None, reval
     verify_state_file(e, mp.parent)
     state = np.load(io.BytesIO(state_raw), allow_pickle=False)
     audit = legacy._json(files.read("manifest", e["construction"]["technical_audit"]))
+    from .rgb_revalidation import stability_identity
+    binding = stability_identity(e, manifest, audit)
+    if stability_profile is not None and e.get("stability_profile") != stability_profile:
+        raise ValueError("requested stability profile differs from source")
+    if binding is not None and (protocol != "nine-mask10" or revalidate_profile is not None):
+        raise ValueError("active pose stability requires a new nine-mask10 source without RGB regrading")
     if not (manifest.get("observation_profile") == e.get("observation_profile") == audit.get("observation_profile")):
         raise ValueError("manifest/episode/construction observation profile mismatch")
     if not normal and revalidate_profile is None and (audit.get("technical_acceptance") is False or audit.get("static_acceptance") is False
@@ -154,7 +161,7 @@ def _candidate(task, index, manifest_path, *, normal=False, protocol=None, reval
     return result, files, audit, state
 
 
-def inspect_candidate(task, index, manifest_path, *, protocol=None, rgb_certificate=None):
+def inspect_candidate(task, index, manifest_path, *, protocol=None, rgb_certificate=None, stability_profile=None):
     """Return manifest, episode, construction, selected_files and original hashes.
 
     Construction is validated for >=150 steps with the frozen physical rules.
@@ -162,9 +169,12 @@ def inspect_candidate(task, index, manifest_path, *, protocol=None, rgb_certific
     FailedSourceError an explicit failure, ValueError malformed/binding evidence.
     """
     if rgb_certificate is not None:
+        if stability_profile is not None:
+            raise ValueError("RGB certificate cannot authorize a stability profile")
         from .rgb_revalidation import inspect_certified_candidate
         return _guard(lambda: inspect_certified_candidate(task,index,manifest_path,rgb_certificate,protocol=protocol))
-    return _guard(lambda: _candidate(task, index, manifest_path, protocol=protocol)[0])
+    return _guard(lambda: _candidate(task, index, manifest_path, protocol=protocol,
+                                     stability_profile=stability_profile)[0])
 
 
 def _initialization(files, origin, candidate, state):

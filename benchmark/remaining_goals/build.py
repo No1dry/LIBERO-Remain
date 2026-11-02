@@ -73,7 +73,8 @@ def _image(path: Path, observation):
 
 class CandidateAuditEnv:
     """Adapter exposing privileged data exclusively to the technical auditor."""
-    def __init__(self, env, state, goals, *, frames_dir: Path | None = None, task_semantics=None):
+    def __init__(self, env, state, goals, *, frames_dir: Path | None = None, task_semantics=None,
+                 stability_profile=None):
         self.env, self.candidate, self.goals = env, state, goals
         self.layout = ms.StateLayout.from_model(env.sim.model)
         self.frames_dir = frames_dir
@@ -83,6 +84,12 @@ class CandidateAuditEnv:
         self.articulation_sites = []
         self.articulation_geoms = []
         self.task_semantics = task_semantics
+        self.stability_profile = stability_profile
+        if stability_profile is not None:
+            from .stability import PROFILE, binding_from_model
+            if stability_profile != PROFILE:
+                raise ValueError("unknown stability profile")
+            self.stability_binding = binding_from_model(env.sim.model, model_xml_hash(env))
         targets = sorted({predicate[1] for goal in goals for predicate in goal["predicates"]
                           if predicate[0].lower() in ("open", "close")})
         if task_semantics is not None:
@@ -126,6 +133,12 @@ class CandidateAuditEnv:
             self.articulation_sites.append((name, site))
 
     def restore_candidate(self, episode):
+        if self.stability_profile is not None:
+            from .stability import validate_scope, binding_from_model
+            expected = validate_scope(episode)
+            actual = binding_from_model(self.env.sim.model, model_xml_hash(self.env))
+            if expected != actual:
+                raise ValueError("candidate stability binding differs from actual compiled model")
         self.steps = 0
         _clear_done(self.env)
         observation = restore_raw_state(self.env, self.candidate)
@@ -173,11 +186,15 @@ class CandidateAuditEnv:
         if self.task_semantics is not None:
             from .nine_catalog import read_goal_facts
             goal_facts = read_goal_facts(self.env.env._eval_predicate, self.env.check_success(), self.task_semantics)
-        return {"state": state, "state_before_refresh": before,
+        snapshot = {"state": state, "state_before_refresh": before,
                 "qvel": state[self.layout.qvel_slice],
                 "robot_qpos": ms.get_robot_qpos(state, self.layout, n=9),
                 "object_positions": positions, "penetrations": contacts,
                 **goal_facts, "fresh_observation": observation}
+        if self.stability_profile is not None:
+            from .stability import binding_from_model
+            snapshot["stability_binding"] = binding_from_model(self.env.sim.model, model_xml_hash(self.env))
+        return snapshot
 
 
 def _official_initial_states(suite, task_index):
@@ -292,20 +309,24 @@ def _matched_states(base, settled, model, per_goal, candidate):
 
 
 def _audit_state(env, state, episode, output, relative, *, validation_steps,
-                 velocity_tolerance, robot_tolerance, observation_profile=None):
+                 velocity_tolerance, robot_tolerance, observation_profile=None, stability_profile=None):
     """Reject static failures before paying for a full dynamic audit."""
     directory = output / relative
     directory.mkdir(parents=True, exist_ok=True)
     wrapper = CandidateAuditEnv(env, state, episode["goal_specs"], frames_dir=directory,
-                                task_semantics=episode.get("task_semantics"))
+                                task_semantics=episode.get("task_semantics"),
+                                **({"stability_profile": stability_profile} if stability_profile is not None else {}))
     config = observation_profile_config(observation_profile)
     kwargs = {"hold_action": HOLD, "velocity_tolerance": velocity_tolerance,
               "robot_position_tolerance": robot_tolerance, **config["limits"]}
     if observation_profile is not None:
         kwargs["observation_profile"] = observation_profile
+    if stability_profile is not None:
+        kwargs["stability_profile"] = stability_profile
     static = validate_candidate(wrapper, episode, steps=0, **kwargs)
     _write(directory / "static_audit.json", static)
-    if not static["technical_acceptance"]:
+    static_ok = static["static_acceptance"] if stability_profile is not None else static["technical_acceptance"]
+    if not static_ok:
         audit = dict(static, stage="static_rejection", requested_dynamic_steps=validation_steps)
     else:
         audit = validate_candidate(wrapper, episode, steps=validation_steps, **kwargs)
@@ -319,7 +340,7 @@ def _audit_state(env, state, episode, output, relative, *, validation_steps,
         audit["initial_observation"] = reference
     _write(directory / "audit.json", audit)
     return {"technical_acceptance": bool(audit["technical_acceptance"]),
-            "static_acceptance": bool(static["technical_acceptance"]),
+            "static_acceptance": bool(static_ok),
             "checks": audit["checks"], "error": audit.get("error"),
             "audit_path": (relative / "audit.json").as_posix(),
             "static_audit_path": (relative / "static_audit.json").as_posix()}

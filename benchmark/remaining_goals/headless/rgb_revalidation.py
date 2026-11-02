@@ -1,4 +1,4 @@
-"""Explicit v6 acceptance of bound recorded evidence; never creates native work.
+"""Recorded v6 RGB and explicit R7 physical audit readers; no native work.
 
 Original audits and failed flags are immutable. This reader validates complete
 recorded diagnostics, not fresh pixels that were never stored.
@@ -108,8 +108,42 @@ def comparison(check, *, initial=False, returned_hash=None, reference_hash=None,
     return True
 
 
+def stability_identity(episode, *containers):
+    """Keep physical admission separate from the RGB profile and certificates."""
+    from ..stability import PROFILE, validate_scope
+    profiles = [item.get("stability_profile") for item in (episode, *containers)]
+    if any(profile not in (None, PROFILE) for profile in profiles):
+        raise ValueError("unknown source stability profile")
+    if not any(profile is not None for profile in profiles):
+        if any(item.get("stability_binding") is not None for item in (episode, *containers)):
+            raise ValueError("stability binding requires an explicit stability profile")
+        return None
+    binding = validate_scope(episode)
+    if any(item.get("stability_profile") != PROFILE or item.get("stability_binding") != binding
+           or item.get("observation_profile") != V6_PROFILE for item in (episode, *containers)):
+        raise ValueError("source stability profile/binding/observation identity mismatch")
+    return binding
+
+
 def audit_v6(audit, episode, state, *, steps, initial_hash, initial_only=False, fixed=False):
-    """Recheck full physical traces and original result consistency under v6."""
+    if any(item.get("stability_profile") is not None or item.get("stability_binding") is not None
+           for item in (audit, episode)):
+        raise ValueError("v6 RGB reader cannot reinterpret physical stability profiles")
+    return _audit_recorded(audit, episode, state, steps=steps, initial_hash=initial_hash,
+                           initial_only=initial_only, fixed=fixed)
+
+
+def audit_v7(audit, episode, state, *, steps, initial_hash, initial_only=False, fixed=False):
+    binding = stability_identity(episode, audit)
+    if binding is None or initial_only or type(steps) is not int or steps != 150:
+        raise ValueError("v7 requires a complete explicitly bound physical audit")
+    return _audit_recorded(audit, episode, state, steps=steps, initial_hash=initial_hash,
+                           initial_only=initial_only, fixed=fixed, stability_binding=binding)
+
+
+def _audit_recorded(audit, episode, state, *, steps, initial_hash, initial_only=False, fixed=False,
+                    stability_binding=None):
+    """Recheck complete raw traces under the explicitly selected physical rule."""
     profile = audit_profile(audit)
     # New v6 normal00 sources keep their existing initial-only reader scope.
     # This does not authorize deriving/regrading old00: derive_source remains
@@ -117,7 +151,8 @@ def audit_v6(audit, episode, state, *, steps, initial_hash, initial_only=False, 
     if initial_only and (profile != V6_PROFILE or steps != 0):
         raise ValueError("v6 initial-only reading requires a native v6 zero-step scope")
     mask = [False, False] if initial_only else [True, False]
-    if (audit.get("schema_version") != "remaining-goals-validation-v1"
+    from ..stability import AUDIT_SCHEMA
+    if (audit.get("schema_version") != (AUDIT_SCHEMA if stability_binding else "remaining-goals-validation-v1")
             or audit.get("episode_id") != episode["episode_id"] or audit.get("initial_mask") != mask
             or type(steps) is not int or audit.get("reference_robot_qpos") != episode.get("reference_robot_qpos")):
         raise ValueError("v6 audit identity/state evidence required")
@@ -149,7 +184,7 @@ def audit_v6(audit, episode, state, *, steps, initial_hash, initial_only=False, 
             raise ValueError("audit semantic identity differs")
     reference = _vector(episode.get("reference_robot_qpos"), "reference robot")
     first_robot = first_positions = velocity_size = None
-    original_checks = []
+    original_checks, stability_samples = [], []
     for index, row in enumerate(trace):
         if (type(row.get("step")) is not int or row["step"] != index or row.get("goals") != mask
                 or any(type(b) is not bool for b in row["goals"])
@@ -172,6 +207,16 @@ def audit_v6(audit, episode, state, *, steps, initial_hash, initial_only=False, 
         drift = {k: float(np.linalg.norm(v - first_positions[k])) for k, v in positions.items()}
         robot_drift, reference_error = float(np.max(np.abs(robot-first_robot))), float(np.max(np.abs(robot-reference)))
         speed = float(np.max(np.abs(velocity)))
+        if stability_binding is not None:
+            from ..stability import sample, pose_window
+            measured = sample(current, velocity, stability_binding)
+            active_position = positions.get(stability_binding["object_name"])
+            if active_position is None or not legacy._same_array(active_position, measured["active_pose_wxyz"][:3]):
+                raise ValueError("active monitored position differs from the bound raw state pose")
+            stability_samples.append(measured)
+            window = pose_window(stability_samples)
+            if row.get("stability_sample") != measured or row.get("stability_window") != window:
+                raise ValueError("v7 cached pose/velocity evidence differs from raw state/binding")
         contacts = row.get("penetrations")
         if not isinstance(contacts, list):
             raise ValueError("penetration evidence missing")
@@ -190,11 +235,14 @@ def audit_v6(audit, episode, state, *, steps, initial_hash, initial_only=False, 
         comparison(check, initial=index == 0, returned_hash=initial_hash if index == 0 else None,
             camera_reference=trace[0].get("observation_check", {}).get("image_diagnostics"), profile=profile, revalidate=True)
         expected = {"finite_state_and_velocity": True, "predicate_mask_matches": True,
-            "object_positions_stable": max(drift.values()) <= .005, "velocities_below_limit": speed <= .01,
+            "object_positions_stable": max(drift.values()) <= .005,
+            "velocities_below_limit": (measured["max_abs_non_active_velocity"] if stability_binding else speed) <= .01,
             "robot_pose_stable": robot_drift <= .002, "reference_robot_pose_matches": reference_error <= .002,
             "contact_penetration_within_limit": penetration <= .002,
             "observation_matches_fresh": check["matches"], "initial_non_rgb_bit_exact": True,
             "refresh_did_not_step": True, "rgb_allowance_state_verified": True}
+        if stability_binding is not None:
+            expected.update(active_pose_stable=window["stable"], stability_binding_matches=True)
         if semantics is not None:
             validate_goal_facts(row, semantics)
             expected["initial_constraints_match"] = initial_constraints_match(row)
@@ -204,20 +252,30 @@ def audit_v6(audit, episode, state, *, steps, initial_hash, initial_only=False, 
         original_checks.append(expected)
     aggregate = {k: all(r[k] for r in original_checks) for k in original_checks[0]}
     aggregate.update(validation_window_complete=True, snapshot_contract_valid=True)
+    if stability_binding is not None:
+        aggregate["formal_stability_window_complete"] = steps == 150 and len(trace) == 151
     accepted = all(aggregate.values())
+    if stability_binding is not None and not accepted:
+        raise ValueError("v7 physical/observation acceptance failed")
+    if stability_binding is not None and (audit.get("stability_window") != window or not window["stable"]):
+        raise ValueError("v7 complete active pose window failed or differs from raw evidence")
     if audit.get("static_acceptance") is not all(original_checks[0].values()):
         raise ValueError("original static result contradicts initial trace")
     if not initial_only and (audit.get("checks") != aggregate or any(type(v) is not bool for v in audit["checks"].values())
             or audit.get("technical_acceptance") is not accepted or audit.get("dynamic_stability") is not accepted
             or audit.get("static_acceptance") is not all(original_checks[0].values())):
         raise ValueError("original aggregate result contradicts original complete trace")
-    return {"steps": steps, "initial_state_array_sha256": _array_hash(state),
+    result = {"steps": steps, "initial_state_array_sha256": _array_hash(state),
         "initial_observation_sha256": initial_hash, "technical_acceptance": True,
         "limits": {**deepcopy(limits), **observation_profile_config(V6_PROFILE)["limits"]},
         "hold_action": hold, "ignored_contact_pairs": [], "observation_profile": V6_PROFILE,
         "original_observation_profile": profile or RGB_QUANTIZATION_RULE["rule_id"],
         "original_technical_acceptance": audit["technical_acceptance"],
         "recorded_diagnostics_revalidated": True, "new_native_steps": 0}
+    if stability_binding is not None:
+        result.update(stability_profile=audit["stability_profile"], stability_binding=deepcopy(stability_binding),
+                      stability_window=deepcopy(window))
+    return result
 
 
 def _origin_identity(origin, *, replay=False):
@@ -249,6 +307,7 @@ def _partial_replay(candidate, origin):
             or report.get("observation_audit_limits") != replay_config["limits"]):
         raise ValueError("partial replay profile/rule/limits mismatch")
     e = candidate["episode"]
+    stability_identity(e, report)
     if (report.get("kind") != "candidate_formal_adapter_replay" or report.get("protocol") != "nine-mask10"
             or report.get("source_manifest_sha256") != origin["manifest_sha256"]
             or report.get("source_content_hash") != origin["content_hash"]
@@ -328,6 +387,7 @@ def _read_certificate(task,index,manifest_path,certificate_path,protocol):
     path = Path(certificate_path)
     cert = legacy._json(path.read_bytes())
     if (cert.get("schema_version") != SCHEMA or cert.get("observation_profile") != V6_PROFILE
+            or cert.get("stability_profile") is not None or cert.get("stability_binding") is not None
             or cert.get("protocol") != protocol or cert.get("task_id") != task or cert.get("initial_state_index") != index
             or type(cert.get("initial_state_index")) is not int
             or cert.get("scope") not in ("construction","source") or cert.get("recorded_diagnostics_revalidated") is not True

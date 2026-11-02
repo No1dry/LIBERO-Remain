@@ -95,6 +95,13 @@ def _audit(audit, episode, state, *, steps, initial_hash, initial_only=False, fi
     re-render or independently reconstruct their pixels here.
     """
     from ..validation import V6_PROFILE
+    from .rgb_revalidation import stability_identity, audit_v7
+    binding = stability_identity(episode, audit)
+    if binding is not None:
+        if revalidate_profile is not None:
+            raise ValueError("RGB certificate cannot regrade a physical stability profile")
+        return audit_v7(audit, episode, state, steps=steps, initial_hash=initial_hash,
+                        initial_only=initial_only, fixed=fixed)
     if audit.get("observation_profile") == V6_PROFILE or revalidate_profile == V6_PROFILE:
         from .rgb_revalidation import audit_v6
         return audit_v6(audit, episode, state, steps=steps, initial_hash=initial_hash,
@@ -277,9 +284,15 @@ def _load_mask10_source(task, manifest_path, replay_path, *, indices=None, fixed
     accepted = []
     for episode in selected:
         identifier = episode["episode_id"]
+        from .rgb_revalidation import stability_identity
+        stability_binding = stability_identity(episode, manifest, report)
+        if stability_binding is not None and (protocol != "nine-mask10" or report.get("steps") != 150
+                or report.get("repeats") != 2 or revalidate_profile is not None):
+            raise ValueError("v7 requires a new nine-mask10 paired 150+150 replay")
         verify_state_file(episode, manifest_path.parent)
         state = np.load(io.BytesIO(files.read("manifest", episode["state_path"], episode["state_sha256"])), allow_pickle=False)
         construction = _json(files.read("manifest", episode["construction"]["technical_audit"]))
+        stability_identity(episode, construction)
         if not (manifest.get("observation_profile") == episode.get("observation_profile") == construction.get("observation_profile")):
             raise ValueError("manifest/episode/construction profile mismatch")
         initial_hash = construction.get("trace", [{}])[0].get("observation_check", {}).get("returned_sha256")
@@ -303,10 +316,14 @@ def _load_mask10_source(task, manifest_path, replay_path, *, indices=None, fixed
                 raise ValueError("selected replay repetitions require distinct audit files; audit reused")
             replay_audit_files.add(resolved_audit)
             audit = _json(files.read("replay", audit_path))
+            stability_identity(episode, audit)
             if audit.get("observation_profile") != report.get("observation_profile"):
                 raise ValueError("replay report/audit observation profile mismatch")
             reset = row.get("reset_checks")
-            if (not isinstance(reset, dict) or set(reset) != {"saved_state_exact", "initial_mask_exact", "construction_observation_matches", "initial_non_rgb_exact"}
+            reset_fields = {"saved_state_exact", "initial_mask_exact", "construction_observation_matches", "initial_non_rgb_exact"}
+            if stability_binding is not None:
+                reset_fields.add("stability_binding_matches_compiled_model")
+            if (not isinstance(reset, dict) or set(reset) != reset_fields
                     or any(v is not True for k,v in reset.items() if revalidate_profile is None or k != "construction_observation_matches")
                     or type(reset.get("construction_observation_matches")) is not bool or audit.get("formal_reset_checks") != reset
                     or audit.get("expected_reset_model_xml_sha256") != episode["model_xml_sha256"]

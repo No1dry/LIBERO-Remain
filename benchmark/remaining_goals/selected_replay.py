@@ -6,6 +6,7 @@ original full manifest raw-byte hash; no reduced manifest or all-mask pass exist
 from __future__ import annotations
 
 import argparse
+from copy import deepcopy
 import hashlib
 import io
 from pathlib import Path
@@ -22,14 +23,16 @@ def _backend():
     return replay_candidates
 
 
-def _candidate(task, index, manifest_path, *, protocol=None, rgb_certificate=None):
+def _candidate(task, index, manifest_path, *, protocol=None, rgb_certificate=None, stability_profile=None):
     from .headless.scoped_sources import inspect_candidate
     options = {"rgb_certificate": rgb_certificate} if rgb_certificate is not None else {}
+    if stability_profile is not None:
+        options["stability_profile"] = stability_profile
     return inspect_candidate(task, index, manifest_path, protocol=protocol, **options)
 
 
 def replay(manifest_path, output, *, task, index, protocol="selected-mask10", observation_profile=None,
-           rgb_certificate=None):
+           rgb_certificate=None, stability_profile=None):
     """Replay one source in a fresh formal adapter with fixed physical rules."""
     nine = protocol == "nine-mask10"
     observation_config = observation_profile_config(observation_profile)
@@ -38,14 +41,29 @@ def replay(manifest_path, output, *, task, index, protocol="selected-mask10", ob
     if (protocol not in ("selected-mask10", "nine-mask10") or task not in (NEW_TASKS if nine else SELECTED_TASKS)
             or type(index) is not int or index not in range(10)):
         raise ValueError("selected replay requires a fixed task and source index 0..9")
+    if stability_profile is not None:
+        from .stability import PROFILE
+        if (stability_profile != PROFILE or not nine or task != "mug_microwave_close"
+                or observation_profile != V6_PROFILE):
+            raise ValueError("R7 stability replay requires nine-mask10/mug_microwave_close and explicit v6")
     manifest_path, output = Path(manifest_path).resolve(), Path(output)
     options = {"protocol": protocol} if nine else {}
+    if stability_profile is not None:
+        options["stability_profile"] = stability_profile
     if rgb_certificate is not None:
         if not nine:
             raise ValueError("RGB evidence certificate is limited to the nine-mask10 source protocol")
         options["rgb_certificate"] = rgb_certificate
     candidate = _candidate(task, index, manifest_path, **options)
     episode, manifest = candidate["episode"], candidate["manifest"]
+    if (episode.get("stability_profile") != stability_profile
+            or manifest.get("stability_profile") != stability_profile):
+        raise ValueError("source stability profile must match the explicit replay profile")
+    if stability_profile is not None:
+        from .stability import validate_scope
+        binding = validate_scope(episode)
+        if manifest.get("stability_binding") != binding:
+            raise ValueError("source manifest stability binding differs from its episode")
     original_raw = manifest_path.read_bytes()
     if hashlib.sha256(original_raw).hexdigest() != candidate["source_manifest_sha256"]:
         raise ValueError("original manifest changed after selected preflight")
@@ -71,6 +89,9 @@ def replay(manifest_path, output, *, task, index, protocol="selected-mask10", ob
     profile_options = {"observation_profile": observation_profile} if observation_profile is not None else {}
     if observation_profile is not None:
         report["observation_profile"] = observation_profile
+    if stability_profile is not None:
+        profile_options["stability_profile"] = stability_profile
+        report.update(stability_profile=stability_profile, stability_binding=deepcopy(binding))
     if rgb_certificate is not None:
         certificate_path = Path(rgb_certificate).resolve()
         report.update(rgb_certificate=str(certificate_path),
@@ -123,11 +144,14 @@ def main(argv=None):
     parser.add_argument("--index", required=True, type=int)
     from .validation import V6_PROFILE, RGB_QUANTIZATION_RULE
     parser.add_argument("--observation-profile", choices=(RGB_QUANTIZATION_RULE["rule_id"], V6_PROFILE))
+    from .stability import PROFILE
+    parser.add_argument("--stability-profile", choices=(PROFILE,))
     parser.add_argument("--rgb-certificate", type=Path,
                         help="Immutable v6 recorded-evidence certificate for the selected original candidate")
     args = parser.parse_args(argv)
     if not replay(args.manifest, args.out, task=args.task, index=args.index, protocol=args.protocol,
-                  observation_profile=args.observation_profile, rgb_certificate=args.rgb_certificate)["technical_acceptance"]:
+                  observation_profile=args.observation_profile, rgb_certificate=args.rgb_certificate,
+                  stability_profile=args.stability_profile)["technical_acceptance"]:
         raise SystemExit("source replay failed; inspect replay_report.json")
 
 

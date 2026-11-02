@@ -158,7 +158,7 @@ def _run_counted(function, owner, attribute, path, identity):
 
 
 def _native(operation, task, index, origin, output, protocol, *, construction_method=None,
-            observation_profile=None):
+            observation_profile=None, stability_profile=None):
     """Lazy native boundary. Called only by an explicitly selected native mode."""
     output = Path(output)
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -168,6 +168,8 @@ def _native(operation, task, index, origin, output, protocol, *, construction_me
         identity["construction_method"] = construction_method
     if observation_profile is not None:
         identity["observation_profile"] = observation_profile
+    if stability_profile is not None:
+        identity["stability_profile"] = stability_profile
     ledger_path = output.with_name(output.name + ".control_ledger.json")
     # Import errors before a hook is installed leave unknown evidence, never 0.
     try:
@@ -177,6 +179,8 @@ def _native(operation, task, index, origin, output, protocol, *, construction_me
             options = {"construction_method": construction_method} if construction_method is not None else {}
             if observation_profile is not None:
                 options["observation_profile"] = observation_profile
+            if stability_profile is not None:
+                options["stability_profile"] = stability_profile
             function = lambda: producer.build(output, task=task, index=index, protocol=protocol, **options)
             attribute = "_step"
         else:
@@ -185,6 +189,8 @@ def _native(operation, task, index, origin, output, protocol, *, construction_me
             options = {"protocol": protocol} if protocol in NINE_PROTOCOLS else {}
             if observation_profile is not None:
                 options["observation_profile"] = observation_profile
+            if stability_profile is not None:
+                options["stability_profile"] = stability_profile
             if origin.get("rgb_certificate"):
                 options["rgb_certificate"] = origin["rgb_certificate"]
             function = lambda: producer.replay(origin["manifest"], output, task=task, index=index, **options)
@@ -220,7 +226,7 @@ def _native(operation, task, index, origin, output, protocol, *, construction_me
 
 def prepare(inventory_path, output, *, mode="inspect", indices=None, tasks=None,
             protocol=None, allow_failed_retry=False, continuation=False, construction_method=None,
-            replace_failed_originals=False, observation_profile=None):
+            replace_failed_originals=False, observation_profile=None, stability_profile=None):
     """Inspect or explicitly prepare selected sources, preserving a full denominator."""
     if mode not in MODES:
         raise ValueError("invalid preparation mode")
@@ -243,6 +249,12 @@ def prepare(inventory_path, output, *, mode="inspect", indices=None, tasks=None,
         from ..validation import V6_PROFILE
         if tasks != ["mug_microwave_close"] or observation_profile != V6_PROFILE:
             raise ValueError("R5 requires only mug_microwave_close with the explicit v6 profile")
+    if stability_profile is not None:
+        from ..stability import PROFILE
+        from ..validation import V6_PROFILE
+        if (stability_profile != PROFILE or protocol != "nine-mask10" or tasks != ["mug_microwave_close"]
+                or construction_method != R5_METHOD or observation_profile != V6_PROFILE):
+            raise ValueError("R7 stability requires the explicit microwave R5 method and RGB v6")
     if protocol in NINE_PROTOCOLS:
         from .nine_planning import expected_episodes
     else:
@@ -267,6 +279,7 @@ def prepare(inventory_path, output, *, mode="inspect", indices=None, tasks=None,
         if (report.get("schema_version") != REPORT_SCHEMA or report.get("inventory_sha256") != _hash(inventory_raw)
                 or report.get("protocol") != protocol or report.get("construction_method") != construction_method
                 or report.get("observation_profile") != observation_profile
+                or report.get("stability_profile") != stability_profile
                 or report.get("replace_failed_originals", False) != replace_failed_originals):
             raise ValueError("continuation inventory identity mismatch")
     else:
@@ -278,6 +291,8 @@ def prepare(inventory_path, output, *, mode="inspect", indices=None, tasks=None,
             report["construction_method"] = construction_method
         if observation_profile is not None:
             report["observation_profile"] = observation_profile
+        if stability_profile is not None:
+            report["stability_profile"] = stability_profile
         if replace_failed_originals:
             report["replace_failed_originals"] = True
     prior = {(r["task_id"], r["initial_state_index"]): r for r in report["sources"]}
@@ -374,6 +389,8 @@ def prepare(inventory_path, output, *, mode="inspect", indices=None, tasks=None,
                     options = {"construction_method": construction_method} if construction_method is not None else {}
                     if observation_profile is not None:
                         options["observation_profile"] = observation_profile
+                    if stability_profile is not None:
+                        options["stability_profile"] = stability_profile
                     origin, ledger = _native(operation, task, index, origin, root / operation, protocol, **options)
                     row["operations"][-1].update(status="completed", ledger=ledger)
                     inspected = _inspect(protocol, task, index, origin)
@@ -416,12 +433,16 @@ def main(argv=None):
     from ..validation import V6_PROFILE
     parser.add_argument("--observation-profile", choices=(V6_PROFILE,),
                         help="Explicit adjudicated v6 comparison; absent retains legacy behavior.")
+    from ..stability import PROFILE
+    parser.add_argument("--stability-profile", choices=(PROFILE,),
+                        help="Explicit R7 A-pose admission; independent of the RGB observation profile.")
     parser.add_argument("--allow-failed-retry", action="store_true",
                         help="Explicit new attempt with unchanged fixed physical rules; preserve prior failure evidence. Does not relax stability requirements.")
     args = parser.parse_args(argv)
     report = prepare(args.inventory, args.output, mode=args.mode, indices=args.indices, tasks=args.tasks,
                      protocol=args.protocol, allow_failed_retry=args.allow_failed_retry, continuation=args.continuation,
-                     construction_method=args.construction_method, observation_profile=args.observation_profile)
+                     construction_method=args.construction_method, observation_profile=args.observation_profile,
+                     stability_profile=args.stability_profile)
     tasks, indices = _selection(args.tasks, args.indices, report.get("protocol", args.protocol))
     selected = [row for row in report["sources"] if row["task_id"] in tasks and row["initial_state_index"] in indices]
     return 0 if selected and all(row["status"] == "ready" for row in selected) else 2

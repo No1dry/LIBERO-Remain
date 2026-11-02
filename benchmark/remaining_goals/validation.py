@@ -331,6 +331,7 @@ def validate_candidate(
     rgb_max_abs_error: int = 0,
     rgb_max_changed_fraction: float = 0.0,
     observation_profile: str | None = None,
+    stability_profile: str | None = None,
     ignored_contact_pairs=(),
 ) -> dict:
     """Restore a candidate and audit an explicit constant 7D hold controller.
@@ -375,6 +376,19 @@ def validate_candidate(
         raise ValueError("steps must be a nonnegative integer")
     if not isinstance(episode, dict):
         raise ValueError("episode must be a dictionary")
+    stability_binding = None
+    if stability_profile is not None:
+        from . import stability
+        if stability_profile != stability.PROFILE:
+            raise ValueError("unsupported stability profile")
+        stability_binding = stability.validate_scope(episode)
+        if (observation_profile != episode["observation_profile"] or steps not in (0, 150)
+                or (position_tolerance, velocity_tolerance, robot_position_tolerance,
+                    penetration_tolerance, observation_tolerance) != (.005, .01, .002, .002, 1e-8)
+                or list(hold_action) != [0., 0., 0., 0., 0., 0., -1.] or ignored_contact_pairs):
+            raise ValueError("R7 requires frozen physical/observation/hold rules and 150 steps (or static zero precheck)")
+    elif episode.get("stability_profile") is not None or "stability_binding" in episode:
+        raise ValueError("episode stability metadata requires an explicit supported stability profile")
     initial_mask = episode.get("initial_mask")
     if not isinstance(initial_mask, list) or not initial_mask or any(type(x) is not bool for x in initial_mask):
         raise ValueError("episode.initial_mask must be a nonempty list of booleans")
@@ -419,6 +433,13 @@ def validate_candidate(
     }
     if observation_profile is not None:
         audit["observation_profile"] = observation_profile
+    stability_samples = []
+    if stability_binding is not None:
+        audit.update(schema_version=stability.AUDIT_SCHEMA, stability_profile=stability_profile,
+                     stability_binding=deepcopy(stability_binding), stability_window=None)
+        audit["limitations"].append(
+            "R7 is a post hoc source-preparation measurement revision: A instantaneous generalized velocity is diagnostic; "
+            "a complete 150-control-step/151-observation pose window is required. CPU doubles do not prove physics.")
     semantics = episode.get("task_semantics")
     if semantics is not None:
         from .nine_catalog import validate_episode_semantics
@@ -436,7 +457,22 @@ def validate_candidate(
                 returned = deepcopy(env.step(action.copy()))
                 audit["completed_steps"] = step
             phase = "validation_snapshot"
-            snapshot = _snapshot(env.validation_snapshot(), initial_mask, ignored_pairs, semantics)
+            raw_snapshot = env.validation_snapshot()
+            snapshot = _snapshot(raw_snapshot, initial_mask, ignored_pairs, semantics)
+            stability_sample = stability_window = None
+            if stability_binding is not None:
+                live_binding = stability.validate_binding(raw_snapshot.get("stability_binding"), episode["model_xml_sha256"])
+                if live_binding != stability_binding:
+                    raise ValueError("live compiled-model stability binding differs from the episode")
+                stability_sample = stability.sample(snapshot["state"], snapshot["qvel"], stability_binding)
+                active_position = snapshot["object_positions"].get(stability.OBJECT)
+                if active_position is None or not np.array_equal(
+                        active_position.view(np.uint64),
+                        np.array(stability_sample["active_pose_wxyz"][:3], dtype=np.float64).view(np.uint64)):
+                    raise ValueError("monitored A position differs from the bound raw-state pose")
+                stability_samples.append(stability_sample)
+                stability_window = stability.pose_window(stability_samples)
+                audit["stability_window"] = deepcopy(stability_window)
             if first is None:
                 first = snapshot
                 if reference is not None and reference.shape != first["robot_qpos"].shape:
@@ -466,7 +502,8 @@ def validate_candidate(
                 "finite_state_and_velocity": True,
                 "predicate_mask_matches": snapshot["goals"] == initial_mask,
                 "object_positions_stable": max(drift.values()) <= limits["position_tolerance"],
-                "velocities_below_limit": max_velocity <= limits["velocity_tolerance"],
+                "velocities_below_limit": (stability_sample["max_abs_non_active_velocity"]
+                    if stability_sample is not None else max_velocity) <= limits["velocity_tolerance"],
                 "robot_pose_stable": robot_drift <= limits["robot_position_tolerance"],
                 "reference_robot_pose_matches": reference_error <= limits["robot_position_tolerance"] if reference_error is not None else None,
                 "contact_penetration_within_limit": checked_penetration <= limits["penetration_tolerance"],
@@ -479,6 +516,8 @@ def validate_candidate(
             if semantics is not None:
                 from .nine_catalog import initial_constraints_match
                 checks["initial_constraints_match"] = initial_constraints_match(snapshot)
+            if stability_sample is not None:
+                checks.update(active_pose_stable=stability_window["stable"], stability_binding_matches=True)
             row = {
                 "step": step, "goals": snapshot["goals"],
                 "action": None if step == 0 else action.tolist(),
@@ -492,6 +531,8 @@ def validate_candidate(
                 "checks": checks,
             }
             audit["trace"].append(row)
+            if stability_sample is not None:
+                row.update(stability_sample=stability_sample, stability_window=stability_window)
             if semantics is not None:
                 from .nine_catalog import FACT_FIELDS
                 row.update({field: deepcopy(snapshot[field]) for field in FACT_FIELDS})
@@ -509,6 +550,8 @@ def validate_candidate(
         audit["checks"][name] = False if False in values else (True if complete and all(value is not None for value in values) else None)
     audit["checks"]["validation_window_complete"] = complete
     audit["checks"]["snapshot_contract_valid"] = audit["error"] is None
+    if stability_binding is not None:
+        audit["checks"]["formal_stability_window_complete"] = complete and steps == 150 and len(audit["trace"]) == 151
     audit["refresh_nonstepping_checked"] = complete and audit["checks"].get("refresh_did_not_step") is not None
     if steps:
         audit["dynamic_stability"] = complete and all(

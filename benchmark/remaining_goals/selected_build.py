@@ -61,7 +61,8 @@ def _official_asset(suite, task_index):
     return {"asset": path.relative_to(root).as_posix(), "sha256": _sha(path.read_bytes())}
 
 
-def _settle_component(b, env, profile, semantics, whitelist, evidence):
+def _settle_component(b, env, profile, semantics, whitelist, evidence, *, stability_profile=None,
+                      reference_robot_qpos=None):
     """Observe bounded real HOLD convergence; never edit a measured velocity."""
     layout = b.ms.StateLayout.from_model(env.sim.model)
     entry = b.ms.resolve_free_joint(env.sim.model, profile["goals"][0]["predicates"][0][1])
@@ -73,11 +74,22 @@ def _settle_component(b, env, profile, semantics, whitelist, evidence):
     evidence.update(deepcopy(BOUNDED_SETTLE), mode="bounded_convergence", attempted_steps=0,
         completed_steps=0, exception_calls=0, converged=False, stop_reason="running", samples=[],
         count_scope="candidate HOLD only; excludes base80 and construction audit150")
+    if stability_profile is not None:
+        from .stability import binding_from_model, sample, pose_window
+        from .validation import compare_observations, V6_PROFILE
+        binding = binding_from_model(env.sim.model, b.model_xml_hash(env))
+        evidence.update(schema_version="remaining-selected-component-settle-v3-active-pose",
+                        stability_profile=stability_profile, stability_binding=binding,
+                        orientation_span_limit_deg=1., velocity_limit_scope="non_active_qvel_only",
+                        active_velocity_policy="diagnostic_only_preserve_raw")
+        observer = b.CandidateAuditEnv(env, b._state(env), profile["goals"], task_semantics=semantics,
+                                       stability_profile=stability_profile)
+        window = []
     positions = []
     for step in range(1, evidence["max_steps"] + 1):
         evidence["attempted_steps"] += 1
         try:
-            b._step(env, b.HOLD)
+            returned = b._step(env, b.HOLD)
         except BaseException:
             evidence["exception_calls"] += 1
             evidence["stop_reason"] = "step_exception"
@@ -89,6 +101,36 @@ def _settle_component(b, env, profile, semantics, whitelist, evidence):
             raise ValueError("bounded settle produced a nonfinite physical state")
         facts = read_goal_facts(env.env._eval_predicate, env.check_success(), semantics)
         max_velocity = float(np.max(np.abs(state[layout.qvel_slice])))
+        if stability_profile is not None:
+            snapshot = observer.validation_snapshot()
+            if snapshot["stability_binding"] != binding or _array_sha(state) != _array_sha(snapshot["state"]):
+                raise ValueError("settle snapshot model/state changed")
+            measurement = sample(snapshot["state"], snapshot["qvel"], binding)
+            refresh_unchanged = _array_sha(snapshot["state_before_refresh"]) == _array_sha(snapshot["state"])
+            observation_check = compare_observations(returned, snapshot["fresh_observation"], atol=1e-8,
+                require_non_rgb_exact=False, observation_profile=V6_PROFILE,
+                refresh_state_unchanged=refresh_unchanged)
+            reference_error = float(np.max(np.abs(snapshot["robot_qpos"] - reference_robot_qpos)))
+            eligible = (measurement["max_abs_non_active_velocity"] <= evidence["velocity_limit"]
+                and facts["goals"] == [True, False] and initial_constraints_match(facts)
+                and reference_error <= .002 and observation_check["matches"] and refresh_unchanged
+                and max((c["depth"] for c in snapshot["penetrations"]), default=0.) <= .002)
+            window = (window + [measurement])[-evidence["required_stable_observations"]:] if eligible else []
+            pose = pose_window(window) if window else None
+            row = {"step": step, **measurement, "stability_binding": deepcopy(binding),
+                "state_before_refresh": snapshot["state_before_refresh"].tolist(),
+                "object_positions": {k: np.asarray(v).tolist() for k, v in snapshot["object_positions"].items()},
+                "robot_qpos": snapshot["robot_qpos"].tolist(), "max_abs_reference_robot_error": reference_error,
+                "penetrations": deepcopy(snapshot["penetrations"]), "observation_check": observation_check,
+                "selected_qpos": state[qpos_indices].tolist(), "selected_qvel": state[qvel_indices].tolist(),
+                "max_abs_qvel": max_velocity, "goal_facts": facts, "eligible": bool(eligible),
+                "stable_observations": len(window), "pose_window": pose}
+            evidence["samples"].append(row)
+            if (step >= evidence["min_steps"] and len(window) == evidence["required_stable_observations"]
+                    and pose["stable"]):
+                evidence.update(converged=True, stop_reason="bounded_settle_converged", state_array_sha256=_array_sha(state))
+                return state
+            continue
         eligible = max_velocity <= evidence["velocity_limit"] and facts["goals"] == [True, False] and initial_constraints_match(facts)
         positions = (positions + [state[position_indices].copy()])[-evidence["required_stable_observations"]:] if eligible else []
         span = float(np.linalg.norm(np.ptp(np.asarray(positions), axis=0))) if positions else None
@@ -105,13 +147,15 @@ def _settle_component(b, env, profile, semantics, whitelist, evidence):
 
 
 def build(output, *, task, index, protocol="selected-mask10", max_candidates=24, construction_method=None,
-          observation_profile=None):
+          observation_profile=None, stability_profile=None):
     """Produce one fixed official source, always in a fresh directory.
 
     Default v1 keeps settle80. Explicit R2 microwave convergence is bounded at
     400 HOLD steps; base80 and selected150 audit remain unchanged. Failed
     candidates stay in the new output and never replace old files. Explicit R5
     changes only microwave pose seeds, retaining R2's bounded real HOLD rules.
+    R7 is a separate opt-in stability profile: A's full pose window replaces
+    only its instantaneous velocity gate; all measured velocities stay intact.
     """
     nine = protocol in NINE_PROTOCOLS
     from .validation import observation_profile_config, V6_PROFILE
@@ -128,6 +172,10 @@ def build(output, *, task, index, protocol="selected-mask10", max_candidates=24,
         raise ValueError("R2 construction is explicit and limited to new-three nine-mask10 sources")
     if r5 and (protocol != "nine-mask10" or task != "mug_microwave_close" or observation_profile != V6_PROFILE):
         raise ValueError("R5 construction requires nine-mask10/mug_microwave_close with explicit v6")
+    if stability_profile is not None:
+        from .stability import PROFILE
+        if stability_profile != PROFILE or not r5:
+            raise ValueError("R7 stability requires explicit R5 nine-mask10/mug_microwave_close with v6")
     output = Path(output)
     output.mkdir(parents=True, exist_ok=False)
     b = _backend()
@@ -155,9 +203,16 @@ def build(output, *, task, index, protocol="selected-mask10", max_candidates=24,
         report.update(observation_audit_limits=observation_config["limits"],
                       observation_audit_rule=observation_config["rule"],
                       observation_audit_limitation=observation_config["limitation"])
+    if stability_profile is not None:
+        manifest["stability_profile"] = report["stability_profile"] = stability_profile
+        report["builder_sources_sha256"]["stability.py"] = _sha((Path(__file__).parent / "stability.py").read_bytes())
     if r2 or r5:
         report["candidate_settle_contract"] = deepcopy(BOUNDED_SETTLE) if task == "mug_microwave_close" else {"mode": "fixed80", "steps": 80}
         report["seed_velocity_policy"] = "preserve_entire_real_settled_base_qvel_before_native_restore"
+    if stability_profile is not None:
+        report["candidate_settle_contract"].update(schema_version="remaining-selected-component-settle-v3-active-pose",
+            stability_profile=stability_profile, orientation_span_limit_deg=1.,
+            velocity_limit_scope="non_active_qvel_only", active_velocity_policy="diagnostic_only_preserve_raw")
     env = None
     try:
         suite = _suite(profile)
@@ -182,6 +237,10 @@ def build(output, *, task, index, protocol="selected-mask10", max_candidates=24,
         b.reset_scene(env)
         reset_xml_hash = b.model_xml_hash(env)
         group["reset_model_xml_sha256"] = reset_xml_hash
+        if stability_profile is not None:
+            from .stability import binding_from_model
+            binding = binding_from_model(env.sim.model, reset_xml_hash)
+            manifest["stability_binding"] = report["stability_binding"] = deepcopy(binding)
         b.restore_raw_state(env, official_state)
         for _ in range(80):
             b._step(env, b.HOLD)
@@ -217,6 +276,9 @@ def build(output, *, task, index, protocol="selected-mask10", max_candidates=24,
             if observation_profile is not None:
                 episode["observation_profile"] = observation_profile
                 options["observation_profile"] = observation_profile
+            if stability_profile is not None:
+                episode.update(stability_profile=stability_profile, stability_binding=deepcopy(binding))
+                options["stability_profile"] = stability_profile
             acceptance = b._audit_state(env, state, episode, output, relative,
                                         validation_steps=0 if normal else 150,
                                         velocity_tolerance=.01, robot_tolerance=.002, **options)
@@ -289,7 +351,9 @@ def build(output, *, task, index, protocol="selected-mask10", max_candidates=24,
                 if (r2 or r5) and task == "mug_microwave_close":
                     settling = {}
                     try:
-                        settled = _settle_component(b, env, profile, fields["task_semantics"], whitelist, settling)
+                        settled = _settle_component(b, env, profile, fields["task_semantics"], whitelist, settling,
+                            **({"stability_profile": stability_profile, "reference_robot_qpos": base_q}
+                               if stability_profile is not None else {}))
                     except BaseException:
                         group["attempts"].append({"candidate": number, "technical_acceptance": False,
                             "candidate_settle": settling, "candidate_diagnostics": candidate["diagnostics"], **seed_provenance})
@@ -344,9 +408,12 @@ def main(argv=None):
     parser.add_argument("--construction-method", choices=(METHOD, METHOD_R2, METHOD_R5))
     from .validation import V6_PROFILE, RGB_QUANTIZATION_RULE
     parser.add_argument("--observation-profile", choices=(RGB_QUANTIZATION_RULE["rule_id"], V6_PROFILE))
+    from .stability import PROFILE
+    parser.add_argument("--stability-profile", choices=(PROFILE,))
     args = parser.parse_args(argv)
     if not build(args.out, task=args.task, index=args.index, protocol=args.protocol,
-                 construction_method=args.construction_method, observation_profile=args.observation_profile)["complete"]:
+                 construction_method=args.construction_method, observation_profile=args.observation_profile,
+                 stability_profile=args.stability_profile)["complete"]:
         raise SystemExit("source construction failed; inspect construction_report.json")
 
 

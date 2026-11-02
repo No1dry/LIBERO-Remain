@@ -54,13 +54,24 @@ def _inputs(inventory_path, report_path, output):
     return inventory, entries, rows
 
 
-def prepare(inventory_path, report_path, output, *, continuation=False):
+def prepare(inventory_path, report_path, output, *, continuation=False,
+            stability_profile=None, revision_report_path=None):
     inventory_path, report_path, output = (Path(p).resolve() for p in (inventory_path, report_path, output))
     inventory, entries, original_rows = _inputs(inventory_path, report_path, output)
     identity = {'schema_version': SCHEMA, 'protocol': 'nine-mask10', 'construction_method': METHOD,
                 'observation_profile': V6_PROFILE, 'original_inventory': str(inventory_path),
                 'original_inventory_sha256': SOURCES_SHA256, 'original_report': str(report_path),
                 'original_report_sha256': REPORT_SHA256}
+    if stability_profile is not None:
+        from .repair033_pose_stability import PROFILE, REPORT_SCHEMA, reviewed_revision
+        if stability_profile != PROFILE or revision_report_path is None:
+            raise ValueError('R7 requires the explicit stability profile and reviewed R5 failure evidence')
+        revision_report_path = Path(revision_report_path).resolve()
+        r2._isolate(output, {revision_report_path.parent})
+        identity.update(reviewed_revision(revision_report_path, entries),
+                        schema_version=REPORT_SCHEMA, stability_profile=PROFILE)
+    elif revision_report_path is not None:
+        raise ValueError('a revision report requires the explicit R7 stability profile')
     path = output/'microwave_repair_report.json'
     child = output/'preparation'
     child_report = child/'preparation_report.json'
@@ -78,6 +89,8 @@ def prepare(inventory_path, report_path, output, *, continuation=False):
         for source, name in ((inventory_path, 'original_sources.json'),
                              (report_path, 'original_preparation_report.json')):
             (output/name).write_bytes(source.read_bytes())
+        if revision_report_path is not None:
+            (output/'pre_revision_report.json').write_bytes(revision_report_path.read_bytes())
         report = {**identity, 'policy_called': False, 'model_rollouts': 0,
                   'source0_dispatched': False, 'stopped_after_source0': True,
                   'note': 'Old twenty reused; only microwave 0..9 may receive new native operations.'}
@@ -106,6 +119,7 @@ def prepare(inventory_path, report_path, output, *, continuation=False):
             if (value.get('schema_version') != preparation.REPORT_SCHEMA or
                     value.get('inventory_sha256') != SOURCES_SHA256 or
                     value.get('construction_method') != METHOD or value.get('protocol') != 'nine-mask10' or
+                    value.get('stability_profile') != stability_profile or
                     value.get('observation_profile') != V6_PROFILE or value.get('replace_failed_originals') is not True):
                 raise ValueError('R5 child preparation identity differs')
             seen = set()
@@ -127,11 +141,12 @@ def prepare(inventory_path, report_path, output, *, continuation=False):
         persist()
 
     def run(indices):
+        options = {'stability_profile': stability_profile} if stability_profile is not None else {}
         try:
             preparation.prepare(inventory_path, child, mode='prepare-missing', tasks=[TASK], indices=indices,
                                 protocol='nine-mask10', construction_method=METHOD,
                                 observation_profile=V6_PROFILE, replace_failed_originals=True,
-                                allow_failed_retry=False, continuation=child.exists())
+                                allow_failed_retry=False, continuation=child.exists(), **options)
         finally:
             sync()
 

@@ -182,7 +182,8 @@ def _candidate_pack(path):
 
 class ReplayAuditEnv:
     """Use the real evaluator reset/step path while exposing auditor snapshots."""
-    def __init__(self, adapter, state, observation_hash, *, frames_dir, manifest_dir, observation_profile=None):
+    def __init__(self, adapter, state, observation_hash, *, frames_dir, manifest_dir, observation_profile=None,
+                 stability_profile=None):
         self.adapter, self.expected_state = adapter, state
         self.expected_observation_hash, self.frames_dir = observation_hash, frames_dir
         self.reset_checks = {}
@@ -192,8 +193,18 @@ class ReplayAuditEnv:
         self.post_restore_xml_sha256 = None
         self.observation_profile = observation_profile
         self.observation_config = observation_profile_config(observation_profile)
+        self.stability_profile = stability_profile
+        if stability_profile is not None:
+            from .stability import PROFILE
+            if stability_profile != PROFILE:
+                raise ValueError("unknown stability profile")
 
     def restore_candidate(self, episode):
+        if episode.get("stability_profile") != self.stability_profile:
+            raise ValueError("formal replay requires explicit matching stability profile")
+        if self.stability_profile is not None:
+            from .stability import validate_scope
+            expected_binding = validate_scope(episode)
         self.steps = 0
         self.reset_checks = {}
         self.reset_observation_comparison = None
@@ -221,11 +232,17 @@ class ReplayAuditEnv:
             "initial_non_rgb_exact": check["non_rgb_bit_exact"],
         }
         self.post_restore_xml_sha256 = model_xml_hash(self.adapter.env)
+        if self.stability_profile is not None:
+            from .stability import binding_from_model
+            actual_binding = binding_from_model(self.adapter.env.sim.model, self.post_restore_xml_sha256)
+            self.reset_checks["stability_binding_matches_compiled_model"] = actual_binding == expected_binding
         _image(self.frames_dir / "start.png", observation)
         if not all(self.reset_checks.values()):
             raise ValueError(f"formal reset differs from construction: {self.reset_checks}")
         self.native = CandidateAuditEnv(self.adapter.env, self.expected_state, episode["goal_specs"],
-                                        task_semantics=episode.get("task_semantics"))
+                                        task_semantics=episode.get("task_semantics"),
+                                        **({"stability_profile": self.stability_profile}
+                                           if self.stability_profile is not None else {}))
         return observation
 
     def step(self, action):
