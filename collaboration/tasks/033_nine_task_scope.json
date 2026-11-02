@@ -1,0 +1,335 @@
+{
+  "schema_version": "remaining-nine-task-scope-request-v1",
+  "date": "2026-11-02",
+  "status": "approved_scope_not_implemented",
+  "suite": "libero_10",
+  "official_task_ids_zero_based": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    6,
+    7,
+    8,
+    9
+  ],
+  "official_initial_state_indices": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9
+  ],
+  "policy_seed": 7,
+  "horizon": 520,
+  "max_chunk_steps": 8,
+  "masks": {
+    "normal00": {
+      "active_goals": [
+        false,
+        false
+      ],
+      "invariants_true": true
+    },
+    "mask10": {
+      "active_goals": [
+        true,
+        false
+      ],
+      "invariants_true": true
+    }
+  },
+  "budget": {
+    "expected_per_condition": 90,
+    "reuse_per_condition": 60,
+    "new_per_condition": 30,
+    "new_model_episodes_total": 60
+  },
+  "excluded_single_goal": {
+    "task_id": 5,
+    "reason": "single final In predicate"
+  },
+  "removed_from_active_scope": [
+    "frypan_stove3",
+    "frypan_stove9",
+    "cabinet_close_top_bowl",
+    "cabinet_close_bottom_open_top"
+  ],
+  "cancelled_unexecuted_legacy_preparation": [
+    "frypan_stove9",
+    "cabinet_close_top_bowl"
+  ],
+  "preserve_legacy_code_data_and_results": true,
+  "tasks": [
+    {
+      "official_default_task_id": 0,
+      "key": "basket",
+      "official_task_name": "LIVING_ROOM_SCENE2_put_both_the_alphabet_soup_and_the_tomato_sauce_in_the_basket",
+      "active_goals": [
+        {
+          "id": "A",
+          "predicate": [
+            "in",
+            "alphabet_soup_1",
+            "basket_1_contain_region"
+          ]
+        },
+        {
+          "id": "B",
+          "predicate": [
+            "in",
+            "tomato_sauce_1",
+            "basket_1_contain_region"
+          ]
+        }
+      ],
+      "invariant_predicates": [],
+      "required_open_container_at_00_and_10": [],
+      "reuse_existing_00_and_10": true,
+      "new_initial_conditions_to_prepare": []
+    },
+    {
+      "official_default_task_id": 1,
+      "key": "basket_cheese_butter",
+      "official_task_name": "LIVING_ROOM_SCENE2_put_both_the_cream_cheese_box_and_the_butter_in_the_basket",
+      "active_goals": [
+        {
+          "id": "A",
+          "predicate": [
+            "in",
+            "cream_cheese_1",
+            "basket_1_contain_region"
+          ]
+        },
+        {
+          "id": "B",
+          "predicate": [
+            "in",
+            "butter_1",
+            "basket_1_contain_region"
+          ]
+        }
+      ],
+      "invariant_predicates": [],
+      "required_open_container_at_00_and_10": [],
+      "reuse_existing_00_and_10": true,
+      "new_initial_conditions_to_prepare": []
+    },
+    {
+      "official_default_task_id": 2,
+      "key": "stove",
+      "official_task_name": "KITCHEN_SCENE3_turn_on_the_stove_and_put_the_moka_pot_on_it",
+      "active_goals": [
+        {
+          "id": "A",
+          "predicate": [
+            "turnon",
+            "flat_stove_1"
+          ]
+        },
+        {
+          "id": "B",
+          "predicate": [
+            "on",
+            "moka_pot_1",
+            "flat_stove_1_cook_region"
+          ]
+        }
+      ],
+      "invariant_predicates": [],
+      "required_open_container_at_00_and_10": [],
+      "reuse_existing_00_and_10": true,
+      "new_initial_conditions_to_prepare": []
+    },
+    {
+      "official_default_task_id": 3,
+      "key": "bowl_drawer_close",
+      "official_task_name": "KITCHEN_SCENE4_put_the_black_bowl_in_the_bottom_drawer_of_the_cabinet_and_close_it",
+      "active_goals": [
+        {
+          "id": "A",
+          "predicate": [
+            "in",
+            "akita_black_bowl_1",
+            "white_cabinet_1_bottom_region"
+          ]
+        },
+        {
+          "id": "B",
+          "predicate": [
+            "close",
+            "white_cabinet_1_bottom_region"
+          ]
+        }
+      ],
+      "invariant_predicates": [],
+      "required_open_container_at_00_and_10": [
+        [
+          "open",
+          "white_cabinet_1_bottom_region"
+        ]
+      ],
+      "reuse_existing_00_and_10": false,
+      "new_initial_conditions_to_prepare": [
+        "00",
+        "10"
+      ]
+    },
+    {
+      "official_default_task_id": 4,
+      "key": "dual_mugs",
+      "official_task_name": "LIVING_ROOM_SCENE5_put_the_white_mug_on_the_left_plate_and_put_the_yellow_and_white_mug_on_the_right_plate",
+      "active_goals": [
+        {
+          "id": "A",
+          "predicate": [
+            "on",
+            "porcelain_mug_1",
+            "plate_1"
+          ]
+        },
+        {
+          "id": "B",
+          "predicate": [
+            "on",
+            "white_yellow_mug_1",
+            "plate_2"
+          ]
+        }
+      ],
+      "invariant_predicates": [],
+      "required_open_container_at_00_and_10": [],
+      "reuse_existing_00_and_10": true,
+      "new_initial_conditions_to_prepare": []
+    },
+    {
+      "official_default_task_id": 6,
+      "key": "mug_pudding",
+      "official_task_name": "LIVING_ROOM_SCENE6_put_the_white_mug_on_the_plate_and_put_the_chocolate_pudding_to_the_right_of_the_plate",
+      "active_goals": [
+        {
+          "id": "A",
+          "predicate": [
+            "on",
+            "porcelain_mug_1",
+            "plate_1"
+          ]
+        },
+        {
+          "id": "B",
+          "predicate": [
+            "on",
+            "chocolate_pudding_1",
+            "living_room_table_plate_right_region"
+          ]
+        }
+      ],
+      "invariant_predicates": [],
+      "required_open_container_at_00_and_10": [],
+      "reuse_existing_00_and_10": true,
+      "new_initial_conditions_to_prepare": []
+    },
+    {
+      "official_default_task_id": 7,
+      "key": "basket_soup_cheese",
+      "official_task_name": "LIVING_ROOM_SCENE1_put_both_the_alphabet_soup_and_the_cream_cheese_box_in_the_basket",
+      "active_goals": [
+        {
+          "id": "A",
+          "predicate": [
+            "in",
+            "alphabet_soup_1",
+            "basket_1_contain_region"
+          ]
+        },
+        {
+          "id": "B",
+          "predicate": [
+            "in",
+            "cream_cheese_1",
+            "basket_1_contain_region"
+          ]
+        }
+      ],
+      "invariant_predicates": [],
+      "required_open_container_at_00_and_10": [],
+      "reuse_existing_00_and_10": true,
+      "new_initial_conditions_to_prepare": []
+    },
+    {
+      "official_default_task_id": 8,
+      "key": "two_pots",
+      "official_task_name": "KITCHEN_SCENE8_put_both_moka_pots_on_the_stove",
+      "active_goals": [
+        {
+          "id": "A",
+          "predicate": [
+            "on",
+            "moka_pot_1",
+            "flat_stove_1_cook_region"
+          ]
+        },
+        {
+          "id": "B",
+          "predicate": [
+            "on",
+            "moka_pot_2",
+            "flat_stove_1_cook_region"
+          ]
+        }
+      ],
+      "invariant_predicates": [
+        [
+          "turnon",
+          "flat_stove_1"
+        ]
+      ],
+      "required_open_container_at_00_and_10": [],
+      "reuse_existing_00_and_10": false,
+      "new_initial_conditions_to_prepare": [
+        "00",
+        "10"
+      ]
+    },
+    {
+      "official_default_task_id": 9,
+      "key": "mug_microwave_close",
+      "official_task_name": "KITCHEN_SCENE6_put_the_yellow_and_white_mug_in_the_microwave_and_close_it",
+      "active_goals": [
+        {
+          "id": "A",
+          "predicate": [
+            "in",
+            "white_yellow_mug_1",
+            "microwave_1_heating_region"
+          ]
+        },
+        {
+          "id": "B",
+          "predicate": [
+            "close",
+            "microwave_1"
+          ]
+        }
+      ],
+      "invariant_predicates": [],
+      "required_open_container_at_00_and_10": [
+        [
+          "open",
+          "microwave_1"
+        ]
+      ],
+      "reuse_existing_00_and_10": false,
+      "new_initial_conditions_to_prepare": [
+        "00",
+        "10"
+      ]
+    }
+  ]
+}
