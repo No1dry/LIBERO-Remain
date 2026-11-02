@@ -1,5 +1,19 @@
 # 当前协作状态
 
+## 2026-11-02：033 R3软件accepted，已隔离部署；用户可启动必要22来源补建
+
+已审PR #14固定06817e61（实现65e0509d），[033 R4裁决](reviews/033_round4.md)为本轮软件/旧证据复验/部署accepted，无返修阻断。独立53项本轮CPU/fake通过，0skip，8.56秒；复用R2既有280测试，不重复全组。v6规则、legacy reader、显式证书及native前绑定通过；抽屉/微波炉算法和策略图像/计分未改。
+
+服务器代码在 /HUBU-AI096/zp/ICML/LIBERO-Remain-task033-r3-06817e61，输出根task033_r3_06817e61，不热改aedfe169。实际纯文件plan exit0、18.09秒、reuse_issues=[]、blocked=0：5旧ready＋two_pots0/2/8三条完整原记录v6派生，共8/30=26.67%就绪；20条R2物理修复＋two_pots7只paired300回放＋9缺episode须最小构造，共22个待用户真实操作。原失败/原hash不改，派生不是新native测量。
+
+[用户完整python启动命令](../docs/experiment_plans/2026-11-02_task033_r3_server_commands.md)已准备，用户可直接开始必要来源补建，不再等待X。Codex未启动任何仿真/模型/训练，未自动串联eval；新三30条10模型仍0/30，完整10记录覆盖60/90=66.67%；完整00仍78/90=86.67%、覆盖100%，不重跑。真实报告交回后再给仅新增30条10评测命令。
+
+033整体open，R3软件范围accepted，X无本轮修复待办；PR未自动merge，旧六/00/五旧ready不重建，不清理，待删=[]。
+
+X????????accepted????????[033 R4????](responses/033_round4.md)????????????????????????/??????????PR?
+
+---
+
 ## 2026-11-02：X交付033 R3统一v6与旧证据复用，待Codex审查
 
 沿用 [PR #14](https://github.com/No1dry/LIBERO-Remain/pull/14)，R3实现 `65e0509d0fc713130110f0fcce158e619b49c744`；先fetch main `3d23eb6`并合入R3工单/裁决。见[033 R3回复](responses/033_round3.md)、[完整命令与预算](../docs/task033_r3_v6_runbook.md)。已验收R2抽屉/微波炉算法不返工，aedfe169不热改。
