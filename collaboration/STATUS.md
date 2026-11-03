@@ -1,5 +1,17 @@
 # 当前协作状态
 
+## 2026-11-03：034二元报告软件accepted并隔离部署；030仅两项修复
+
+X的[PR15](https://github.com/No1dry/LIBERO-Remain/pull/15)固定cb8aca6a（实现d2afce4e），Codex独立12/12受影响CPU/fake通过（100%、0skip、0.79秒）。[034 R1](reviews/034_round1.md)accepted限软件/文件部署：完成success→1，failure/unknown→0，原诊断不改；系统错误/缺失/混模型不冒充完整模型SR。固定d8541ef4证据reader，无新物理评分器、无规则/endpoint改动。
+
+报告包归档本地/服务器同SHA0ff8ceab，隔离新目录部署，不改已冻结core或原始输出。已用CLI对旧六原baseline＋既有rescore和新三30条进行**只读文件派生**，此时reader尚未结束，不把合成22/90当实际派生已完成。没有模型/GPU/仿真/恢复/回放/渲染/episode重跑；当前基线正式成功24.44%（22/90）、不成功75.56%（68/90）保持。[阶段总结](../docs/stage_summaries/2026-11-03_binary_reporting_software_review.md)。
+
+方法PR9独立review只保留两项返修：真实proprio被state子串规则误拒，实际进度监督producer未交；主体训练/adapter/eval不重做。X按[030 R2](https://github.com/No1dry/Learning-Not-to-Act/blob/main/collaboration/tasks/030_v2_round2_production_data_path.md)小修/补实际路径，不让034跟着返工。用户暂不启动新实验，真实训练和新增数据预算仍未授权。
+
+033基线范围closed保持，034实际文件派生待读完；未自动merge、未删除任何资料，待删=[]。下方为此前历史。
+
+---
+
 ## 2026-11-02：用户确定二元合规SR，034仅报告层；030转入代码实现
 
 正式九任务mask10报告：**成功24.44%（22/90），不成功75.56%（68/90）**。原始90条全部completed、技术/缺失0；旧诊断67 failure＋1 unknown均属二元不成功，原raw/释放/动作/终止/视频和SHA不改。原UNKNOWN只保留诊断原因，不再成为第三种主结果；同一映射适用于所有后续模型，不只baseline。
