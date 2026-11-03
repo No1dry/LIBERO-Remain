@@ -1,5 +1,17 @@
 # 当前协作状态
 
+## 2026-11-03：034真实二元报告90/90完成，方法030软件已验收
+
+[034实际报告总结](../docs/stage_summaries/2026-11-03_binary_report_complete.md)：原90条纯文件派生已完成，成功22=24.44%、不成功68=75.56%，完成100%、完整性错误0、未解决作业0，总计/等任务宏平均一致。两结果文件已本地取回，SHA与服务器一致；源诊断不改，正式episode结果只有success/unsuccessful。
+
+固定PR15报告包cb8aca6a/实现d2afce4e与原d8541ef4 reader，旧六baseline/既有rescore＋新三30复用；没有GPU/模型/仿真/恢复/渲染/episode重跑或旧文件覆盖。此前“reader未结束”保留历史时点。034软件和本次原结果派生accepted/closed；033基线范围closed保持，真实基线SR没有变化。
+
+方法[030 R2](https://github.com/No1dry/Learning-Not-to-Act/blob/main/collaboration/reviews/030_v2_round2.md)软件通过并隔离部署：84/84定向CPU/fake、0skip，118依赖文件锁核对。X两处修复已闭环，无返修；Codex下一步准备实际数据/配置和完整命令。新增最多180普通演示、真实局部导出、两次1000更新及126新eval仍待用户确认/启动，不因软件通过擅自执行。
+
+未自动merge或清理；未合并PR所需交流、历史诊断、源码和原数据保留，待删=[]。下方为此前历史。
+
+---
+
 ## 2026-11-03：034二元报告软件accepted并隔离部署；030仅两项修复
 
 X的[PR15](https://github.com/No1dry/LIBERO-Remain/pull/15)固定cb8aca6a（实现d2afce4e），Codex独立12/12受影响CPU/fake通过（100%、0skip、0.79秒）。[034 R1](reviews/034_round1.md)accepted限软件/文件部署：完成success→1，failure/unknown→0，原诊断不改；系统错误/缺失/混模型不冒充完整模型SR。固定d8541ef4证据reader，无新物理评分器、无规则/endpoint改动。
