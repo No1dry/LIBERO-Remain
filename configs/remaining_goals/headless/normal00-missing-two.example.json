@@ -1,0 +1,14 @@
+{
+  "schema_version": "remaining-headless-scoped-config-v1",
+  "protocol": "normal00-control",
+  "population": "missing-two",
+  "runtime_config": "../runtime/openvla_oft_sog10.json",
+  "extension_transfer": {
+    "schema_version": "remaining-oft-suite-transfer-v1",
+    "checkpoint_training_suites": ["libero_spatial", "libero_object", "libero_goal", "libero_10"],
+    "normalization_suite": "libero_10",
+    "normalization_key": "libero_10_no_noops",
+    "evaluation_track": "libero_90_zero_shot"
+  },
+  "sources": "../../../reports/task031/normal00-prepare/sources.json"
+}

@@ -1,0 +1,8 @@
+{
+  "schema_version": "remaining-headless-nine-config-v1",
+  "protocol": "nine-mask10",
+  "population": "new-three",
+  "runtime_config": "../../../reports/task033/runtime.json",
+  "sources": "../../../reports/task033/prepare10/sources.json",
+  "reuse_manifest": "../../../reports/task033/reuse.json"
+}

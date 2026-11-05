@@ -1,0 +1,58 @@
+{
+  "schema_version": "remaining-headless-batch-config-v1",
+  "runtime_config": "../runtime/openvla_oft_sog10.json",
+  "extension_transfer": {
+    "schema_version": "remaining-oft-suite-transfer-v1",
+    "checkpoint_training_suites": [
+      "libero_spatial",
+      "libero_object",
+      "libero_goal",
+      "libero_10"
+    ],
+    "normalization_suite": "libero_10",
+    "normalization_key": "libero_10_no_noops",
+    "evaluation_track": "libero_90_zero_shot"
+  },
+  "sources": {
+    "basket": {
+      "manifest": "../../../data/stage05_headless/basket/manifest.candidates.json",
+      "candidate_replay": "../../../reports/stage05_preparation/basket/replay/replay_report.json"
+    },
+    "stove": {
+      "manifest": "../../../data/stage05_headless/stove/manifest.candidates.json",
+      "candidate_replay": "../../../reports/stage05_preparation/stove/replay/replay_report.json"
+    },
+    "basket_cheese_butter": {
+      "manifest": "../../../data/stage05_headless/basket_cheese_butter/manifest.candidates.json",
+      "candidate_replay": "../../../reports/stage05_preparation/basket_cheese_butter/replay/replay_report.json"
+    },
+    "basket_soup_cheese": {
+      "manifest": "../../../data/stage05_headless/basket_soup_cheese/manifest.candidates.json",
+      "candidate_replay": "../../../reports/stage05_preparation/basket_soup_cheese/replay/replay_report.json"
+    },
+    "dual_mugs": {
+      "manifest": "../../../data/stage05_headless/dual_mugs/manifest.candidates.json",
+      "candidate_replay": "../../../reports/stage05_preparation/dual_mugs/replay/replay_report.json"
+    },
+    "mug_pudding": {
+      "manifest": "../../../data/stage05_headless/mug_pudding/manifest.candidates.json",
+      "candidate_replay": "../../../reports/stage05_preparation/mug_pudding/replay/replay_report.json"
+    },
+    "frypan_stove3": {
+      "manifest": "../../../data/stage05_headless/frypan_stove3/manifest.candidates.json",
+      "candidate_replay": "../../../reports/stage05_preparation/frypan_stove3/replay/replay_report.json"
+    },
+    "frypan_stove9": {
+      "manifest": "../../../data/stage05_headless/frypan_stove9/manifest.candidates.json",
+      "candidate_replay": "../../../reports/stage05_preparation/frypan_stove9/replay/replay_report.json"
+    },
+    "cabinet_close_top_bowl": {
+      "manifest": "../../../data/stage05_headless/cabinet_close_top_bowl/manifest.candidates.json",
+      "candidate_replay": "../../../reports/stage05_preparation/cabinet_close_top_bowl/replay/replay_report.json"
+    },
+    "cabinet_close_bottom_open_top": {
+      "manifest": "../../../data/stage05_headless/cabinet_close_bottom_open_top/manifest.candidates.json",
+      "candidate_replay": "../../../reports/stage05_preparation/cabinet_close_bottom_open_top/replay/replay_report.json"
+    }
+  }
+}

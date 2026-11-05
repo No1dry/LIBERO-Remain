@@ -22,7 +22,7 @@ _BASE_OPTIONS = {"repo_path", "repo_revision", "checkpoint", "suite", "seed", "c
 _SUITES = {"libero_spatial", "libero_object", "libero_goal", "libero_10", "libero_90"}
 
 
-def _options(config, extra=()):
+def _options(config, extra=(), *, normalization_suite=None):
     if not isinstance(config, Mapping) or not isinstance(config.get("adapter_options"), Mapping):
         raise ValueError("config.adapter_options must be an object")
     options = dict(config["adapter_options"])
@@ -56,7 +56,9 @@ def _options(config, extra=()):
         raise ValueError("checkpoint is missing dataset_statistics.json")
     with stats_file.open(encoding="utf-8") as handle:
         stats = json.load(handle)
-    _normalization_key(stats, options["suite"])
+    # Only the OFT adapter passes an alternative after validating its explicit,
+    # versioned transfer contract. All existing callers remain same-suite.
+    _normalization_key(stats, options["suite"] if normalization_suite is None else normalization_suite)
     options["checkpoint"] = str(checkpoint)
     return options
 

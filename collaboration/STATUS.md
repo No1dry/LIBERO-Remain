@@ -74,6 +74,18 @@ X的[PR15](https://github.com/No1dry/LIBERO-Remain/pull/15)固定cb8aca6a（实�
 
 X本轮无返修，真实效果未通过/未主张；033整体open，无自动训练/merge/清理，待删=[]。
 
+X已阅读并记录 [033 R8验收确认](responses/033_round8.md)。本次只同步文档，源码/测试/配置保持与冻结d8541ef4一致；不重跑验证、不修改部署、不启动真实作业或自动合并PR。真实效果仍待用户运行。
+
+---
+
+## 2026-11-02：X交付033 R7显式A位姿稳定准入，待审查/用户真实验证
+
+已fetch并合入main `28aed1d`，实现 `c8c50e639b01802382b2bdfee73f0f946e8c465a`，沿用 [PR #14](https://github.com/No1dry/LIBERO-Remain/pull/14)。见 [033 R7回复](responses/033_round7.md) 与 [完整命令/新reader路径](../docs/task033_r7_pose_stability_runbook.md)。R7独立stability_profile与RGB v6分开：A完整150步/151点位置≤5mm、两两最短旋转≤1°，原A qvel留诊断；非A速度、其它原物理/观察/独立回放准入保留。
+
+复用R5几何、24/400预算、旧20及证书；绑定R3来源和R5实际失败报告，新输出、首0真ready才派发1..9。新schema/完整raw及实际joint/XML绑定贯通producer、回放和reader；旧profile/失败/raw不重写，冻结06817e61不能被伪装为支持v7，新工件由新隔离reader读取。
+
+最终95项新增CPU/fake通过，153项受影响旧用例通过，独立审阅及末轮delta复核无未关闭问题。**未启动真实仿真/制备/回放实验/模型/训练，真实状态仍20ready/1failed/9not_attempted**。这是已批准的事后来源测量修订，须在新增30模型评测前披露并固定；仍等30齐备一次评30，不评部分20，不自动merge/清理，033整体open。
+
 ---
 
 ## 2026-11-02：R5真实首源仍失败；用户已同意版本化A位姿稳定修订，交X实现
@@ -102,6 +114,16 @@ X本轮无修复待办。用户启动必要准备，Codex读回实际结果后�
 
 ---
 
+## 2026-11-02：X交付033 R5微波炉承托/姿态构造，待审查与真实验证
+
+沿用 [PR #14](https://github.com/No1dry/LIBERO-Remain/pull/14)，R5实现 `fc2dd617b9434a82d27710d1da023101e87af1f5`。见 [033 R5回复](responses/033_round5.md) 与 [完整命令](../docs/task033_r5_microwave_runbook.md)。只增加微波炉显式v3方法：真实有限底板、全部39杯碰撞盒、4个直立yaw逐姿态重算；仅改A pose种子，实际base qvel及settled quat/qvel保留，原24/400及150+300判据不变。
+
+直接绑定原R3真实报告/sources，复用全部20 ready和证书；固定index0真正ready才派发1..9，首源失败/缺证据停止且保留失败/未尝试/unknown。新输出保留原结果，冻结aedfe169/06817e61及旧六/00不动。
+
+新增33项CPU/fake通过，定向旧回归12项通过；隔离固定06817e61 reader接受完整新fake工件并拒绝缺第二回放，独立审阅无阻断。**真实微波炉仍为原记录0/10 ready，本轮未启动仿真/模型/训练**，不以fake宣布物理修复。Codex审查部署后用户运行必要步骤；仍等30齐备一次评新增30，不评部分20、不自动合并、不清理历史。
+
+---
+
 ## 2026-11-02：R3真实准备20/30就绪，微波炉10待修；用户选择齐30再评
 
 用户已完成06817e61的22来源真实补建，新增30中20ready/10failed（66.67%）：抽屉10、双壶10全部ready，微波炉10全部构造失败。报告policy_called=false/model_rollouts=0；全轮实际103,810控制步，其中微波炉96,800。原五ready/三派生及新通过源保留，00/旧六不重跑。
@@ -126,6 +148,20 @@ X本轮无修复待办。用户启动必要准备，Codex读回实际结果后�
 
 033整体open，R3软件范围accepted，X无本轮修复待办；PR未自动merge，旧六/00/五旧ready不重建，不清理，待删=[]。
 
+X????????accepted????????[033 R4????](responses/033_round4.md)????????????????????????/??????????PR?
+
+---
+
+## 2026-11-02：X交付033 R3统一v6与旧证据复用，待Codex审查
+
+沿用 [PR #14](https://github.com/No1dry/LIBERO-Remain/pull/14)，R3实现 `65e0509d0fc713130110f0fcce158e619b49c744`；先fetch main `3d23eb6`并合入R3工单/裁决。见[033 R3回复](responses/033_round3.md)、[完整命令与预算](../docs/task033_r3_v6_runbook.md)。已验收R2抽屉/微波炉算法不返工，aedfe169不热改。
+
+v6明确贯通构造、formal reset/回放、audit/manifest/profile及reader：uint8最大通道差≤1、面积仅诊断，状态/hash/相机和非RGB原要求保持，物理/评分不变。旧v4好坏结果不改，新增不可变证书复验完整原窗口；缺帧/缺hash不补通过。原五ready/旧六/00只读复用，0/2/8优先文件派生，7保留构造、必要时成对300步回放，9按真实工件缺口安排。计划/来源hash自动组合，native前校验证据未漂移，中断不重复派发。
+
+最终11个受影响CPU/fake文件 **234 passed（52.97s）**；独立5个R3文件 **53 passed（18.04s，与234重叠）**，无未关闭软件阻断。没有重跑R2的280全组，没有真实仿真/回放/模型/训练，没有重算00。服务器完整原工件未在本机重读，不能据此冒报0/2/8已派生或25缺口清零；实际30来源状态由文件plan与用户补建报告产生。
+
+下一步Codex审查后一次隔离部署，用户启动必要补建。旧00完整78/90保持；新30条10模型未由本轮启动。PR未自动合并、Eval未发布、历史未清理；033仍open，待删=[]。
+
 ---
 
 ## 2026-11-02：九任务00完整86.67%；R2物理修复软件通过，RGB统一v6收尾
@@ -137,6 +173,20 @@ X本轮无修复待办。用户启动必要准备，Codex读回实际结果后�
 [033 R3裁决](reviews/033_round3.md)：原完整source0重复0的step15已出现10像素差1、state/nonRGB一致，9像素提案仍会拒绝同一来源。[完整证据](tasks/033_rgb_adjudication_evidence.json)。采用任务无关v6：同状态、相机/来源/hash及非RGB原规则通过时，uint8最大通道差≤1，面积仅诊断；物理与计分门槛不变，旧v4不改，不声称GL成因已校准。
 
 [最后接入工单](tasks/033_round3_rgb_profile_implementation.md)已交X：仅完成v6全链/legacy reader与最小必要证据复用，不返修已通过R2两项、不重跑280全组。五条旧ready/旧六/00复用；有完整原窗口优先file-only派生，缺窗口仍用户补，不伪造新fresh像素或旧通过。为避免仍受v4面积门槛阻塞的重复准备，待v6接入后一次隔离部署/给必要补建命令；当前不交旧v4的20条新native命令，不自动启用提案或运行模型。033未closed，PR未merge，资料不清理，待删=[]。
+
+---
+
+## 2026-11-02：X交付033 R2构造修复与RGB提案，待Codex审查
+
+先fetch main `6e43f010`，独立分支 `x/task033-r2-sources` 继承已审aedfe169；实现commit `e850ae6a2494d08a7314c39e7783d4a70f94765a`。aedfe169工作树未热改。见[033 R2回复](responses/033_round2.md)、[仅补原失败来源完整命令](../docs/task033_r2_source_repair_runbook.md)、[RGB版本提案](../docs/task033_r2_rgb_proposal.md)。
+
+独立 [PR #14](https://github.com/No1dry/LIBERO-Remain/pull/14) 已上传，open且未合并；远端提交/tree核对一致。
+
+抽屉以真实有向In容积、父体collision floor与世界重力生成候选；微波炉显式v2有界HOLD收敛后复制实际完整pose/velocity，保留0.01阈值和原150/2×150审计，不清零qvel。25原缺口固定编排：20条物理修复可交用户执行，双壶0/2/7/8/9共5条保持review_blocked，已交只读诊断及明确待裁决v5提案，未更改v4准入或原失败bool。旧5ready、30条00及旧六任务只读复用。
+
+定向CPU/fake **280 passed（13.86s）**；独立复核关闭首条中断后遗漏剩余未尝试来源的续跑P1，强化第三次continue断言后R2文件 **43 passed（1.44s，与280重叠）**，无未关闭软件阻断。R1解释器venv路径P2同轮修复。没有真实制备、回放、模型或训练；这些结果不代表20条新来源已ready，也不代表25缺口已清零。
+
+下一步Codex审查并裁决RGB提案、隔离部署，用户运行必要补建；00正式评测直接继续，无需等待本轮。未自动merge、未更新Eval、未清理历史；033整体仍open，待删=[]。
 
 ---
 
@@ -161,6 +211,18 @@ X本轮无修复待办。用户启动必要准备，Codex读回实际结果后�
 已隔离上传固定源码，归档SHA核对，生成实际复用索引/每条件90、selected30预算/来源空模板/只读汇总。旧六00/10各60条可复用，reuse/model compatibility issues均=[]；正式记录覆盖120/180=66.67%。同口径官方目标达成：00为86.67%（52/60），10为53.33%（32/60）；10合规35.00%（21/60）另列。00主UNKNOWN=0，旧诊断不删。
 
 下一步用户启动新三任务00来源与10构造/既定独立回放（不是模型评测）；Codex读取真实准备结果再给新增30+30模型命令。新来源inspect各30 missing，exit2原样保留，无native/model调用；新60条模型仍0%。旧六/旧90不重跑，不加probe/训练。[阶段记录](../docs/stage_summaries/2026-11-02_task033_review_and_file_deployment.md)同步GitHub/本地；不清理，待删=[]。
+
+---
+
+## 2026-11-02：X交付033九任务实现及032评分，待Codex审查
+
+实现 `1b2ce8b7f88026e6c3aeee1cae22f864e266d183`，独立[PR #13](https://github.com/No1dry/LIBERO-Remain/pull/13)，分支 `x/task033-libero10-nine`，已上传且未合并；基于已审031 ac130177，先同步main c9145d1的033/Plan6/范围JSON/032。见[033完整回复](responses/033_round1.md)、[032回复](responses/032_round1.md)、[完整命令](../docs/task033_nine_task_runbook.md)。
+
+新默认正式范围九个LIBERO-10任务，00/10各90；旧六各60条只读复用，只执行新3/8/9共60条。抽屉/微波炉10物入门开，双壶保留完整Turnon/invariant；新00官方成功即停，新10保留原连续确认。新报告分别列官方SR/合规SR与覆盖，旧80/100报告和四90历史工件不改。旧两个90未执行补建/补测取消，不表示物理已修好。
+
+最终定向CPU/fake **187 passed（38.03s）**，独立审查所发现的重复尝试、旧诊断误标、路径口径、异质模型、输出隔离及中断证据问题已修复。仅软件实现交付，真实新来源尚未制备、新60尚未评测；本机未重新读取服务器旧六结果。下一步Codex审查并隔离部署，用户启动必要制备和新60。Eval导出工具已提供，须验收后从同commit导出；此刻未更新Eval、未复制方法逻辑、未自动merge、未清理，待删=[]。
+
+以下为历史决策与当时状态，旧“尚未实现”不覆盖本条实现交付，旧90补建指令已由033取消。
 
 ---
 
@@ -196,6 +258,14 @@ X本轮无修复待办。用户启动必要准备，Codex读回实际结果后�
 
 ---
 
+## 2026-11-01最新R2：031制备续跑P2已修复，待Codex复核
+
+X已在同一[PR #12](https://github.com/No1dry/LIBERO-Remain/pull/12)提交最小修复 `18059cb12abdd505144e36c87b521faeba897de9`，见[031 R2回复](responses/031_round2.md)。原库存ready且operations为空的来源失效后，原输出continue仅做文件重验，保留历史及计数；普通continue和retry标志均不隐式build/replay。恢复原文件可重新ready，新物理尝试须显式使用新输出目录。
+
+新增6个边界用例在修前均复现失败，修后受影响CPU/fake检查42 passed（1.47s）；独立只读复核无阻塞项。未运行真实sim／回放／模型／训练。制备修正版另目录部署，首批80及后续20条00继续固定a23a8116评测源码，不热改、不因此重跑80；PR未自动merge，031整体仍open。
+
+以下保留R1审查和此前交付记录，其旧“待修”描述为当时状态；以本R2交付及后续Codex裁决为准。
+
 ## 2026-11-01最新R1：首批00可运行，制备续跑P2独立小修
 
 Codex审查[PR #12](https://github.com/No1dry/LIBERO-Remain/pull/12)@a23a8116，实现0a198a18。独立190项定向CPU/fake通过；另一个新增fake复现确认一处普通制备continue会隐式重建失效原库存ready来源的P2。见[031 R1](reviews/031_round1.md)。首批00软件路径accepted；制备该分支needs-fix，031整体未closed，未自动merge。
@@ -207,6 +277,14 @@ X只修R1列出的一处边界，补原库存ready且operations=[]的丢失/恢�
 [本轮长期记录](../docs/stage_summaries/2026-11-01_task031_review_and_normal00_deployment.md)。首阶段按实际八任务80条报告SR，保留计划100/20未选中，不混称successes/100为八任务SR。旧80条10和失败原样保留，两个缺任务真实制备/00及10补齐未完成，030训练仍未启动。不清理，待删=[]。
 
 ---
+
+## 2026-11-01：031已提交PR #12，待审阅部署与真实运行
+
+X已在独立分支 `x/task031-normal00` 完成031；固定实现 `0a198a18d05d7a893518aa50d42f48e15e8172c2`，基于已审c6dc98d及main文档同步。normal00独立协议、逐来源selected10制备/回放/组合验收、80+20+20预算与录像/汇总均已实现；272项相关CPU/fake回归通过，最后汇总修正后9项集成检查通过，独立审查问题已修复并复审。
+
+见[031完整交付回复](responses/031_round1.md)与[runbook](../docs/task031_normal00_selected_preparation.md)。没有启动真实sim/恢复/回放/模型/训练，没有宣称两任务实际通过或100条已齐。旧80条10、原失败、历史PR保留，不自动merge。下一步为Codex审阅、服务器路径核对和隔离部署，再由用户启动真实作业。
+
+GitHub交付：[PR #12](https://github.com/No1dry/LIBERO-Remain/pull/12)，base `main`，head `x/task031-normal00`，open／unmerged。已通过系统 Git Credential Manager 的现有 No1dry 登录发布并核对远端 commit／tree；未使用历史聊天 token。发布补记仅修改本页与031回复，固定实现不变；根目录另存对应发布版本的完整交付包。
 
 ## 2026-11-01最新：031补00对照并修复两个准备缺口
 
@@ -224,7 +302,7 @@ frypan_stove9来源4的00观测一致性、cabinet_close_top_bowl来源5的00速
 
 以下为历史记录，其旧“当前阶段/下一步”不覆盖上方031；不倒改旧科研结论或关闭状态。
 
-更新：2026-10-16。当前权责以本页和[README](README.md)为准；历史记录保留，不把旧执行者署名改掉。
+更新：2026-10-18。当前权责以本页和[README](README.md)为准；历史记录保留，不把旧执行者署名改掉。
 
 ## 当前分工与审查方式
 
@@ -233,6 +311,10 @@ frypan_stove9来源4的00观测一致性、cabinet_close_top_bowl来源5的00速
 只有明确错误、关键已约定功能缺失、真值／数据泄漏、危险控制或证据错误才阻塞；其他意见作为non-blocking建议。需求一次写完整，不因偏好反复返修。
 
 ## 当前阶段
+
+**Stage05 / [Plan5](../docs/experiment_plans/stage05_ten_task_baseline.md) 当前任务为[013：桌面支撑误判修正与离线重评分](tasks/013_table_support_origin_fix_and_offline_rescore.md)。** [012软件已accepted](reviews/012_round1.md)。任务记载已有80条真实记录，另外20条准备缺口保留在固定100计划中；本轮不填补缺口、不追加真实实验。修正物体body参考点被误当支撑底面的假设，旧v1原记录按原规则验证，新v2只输出独立派生结果；端点、动作、目标、释放、2cm/K4阈值和每条TCP路径不变。见[013交付](responses/013_round1.md)与[纯文件重算命令](../docs/task013_table_support_rescore.md)。
+
+以下Stage04说明保留为历史阶段状态，不代表当前开跑命令：
 
 Stage04 / [Plan4](../docs/experiment_plans/stage04_finish_protocol.md)：009用户真实诊断完成/accepted，292/292动作和37/37原观测全部匹配；step280 collision几何分离≥14.72mm而旧球界重叠，测量保守性已定位。用户已同意[010版本化测量/校准修订](tasks/010_versioned_release_and_calibration.md)，不重训、保留旧结果、追加5新版校准、累计模型预算35。当前旧calibrated=false/threshold=null，normal_active/Remain未启动；009诊断范围closed，010 open、Stage04未closed。
 
@@ -244,8 +326,11 @@ Stage03的固定15条主pilot＋10条oracle诊断已完成；旧JSR主10=40%（2
 
 | 任务 | 状态 | 交付／裁决 |
 |---|---|---|
-| [010 版本化释放测量与校准](tasks/010_versioned_release_and_calibration.md) | open，用户确认，待X实现/CPU-fake/独立PR | 保守轴投影证书补充+first-hit/鲁棒tau；旧版/模型/头不改，5新shadow后独立10normal与15Remain，累计模型35 |
-| [009 最小释放测量诊断](tasks/009_release_observability_replay.md) | closed（授权最小诊断范围完成）；PR #6代码accepted，未合并交流保留 | [真实验收R2](reviews/009_round2.md)：292/292（100%）、293快照、37/37hash（100%）一致、0NN；883文件完整本地SHA备份，旧球包络过松证据 |
+| [013 桌面支撑修正与离线重评分](tasks/013_table_support_origin_fix_and_offline_rescore.md) | submitted：[PR #10](https://github.com/No1dry/LIBERO-Remain/pull/10) open/unmerged；实现ba21f38，待Codex集中审查部署 | 70项CPU/fake通过，无skip；[首轮回复](responses/013_round1.md)；旧v1可读，统一派生已有记录，不覆盖原分数、不宣称服务器80条已重算 |
+| [012 mask10范围验收](tasks/012_mask10_scoped_acceptance.md) | [R1软件accepted](reviews/012_round1.md)；[PR #9](https://github.com/No1dry/LIBERO-Remain/pull/9)交付6e14b7b保留 | Codex独立37 passed/0 skipped；8任务10来源就绪，另2任务各9来源且未进入回放；旧失败与100分母保留 |
+| [011 十任务headless基线](tasks/011_headless_ten_task_baseline.md) | [R1软件accepted](reviews/011_round1.md)，[PR #8](https://github.com/No1dry/LIBERO-Remain/pull/8)交付766ab96保留；后续80条记录见013任务 | Codex独立2165 passed/12 skipped；012是用户范围修订；固定100中20条缺口仍保留，不宣称100条模型已完成 |
+| [010 版本化释放测量与校准](tasks/010_versioned_release_and_calibration.md) | 历史保留；[PR #7](https://github.com/No1dry/LIBERO-Remain/pull/7) open/unmerged，未宣称科研closed | X已交034dd36（实现4521c53）；011任务允许复用其中有用测量，未代合并010；旧5新shadow/35条计划不自动启动 |
+| [009 最小释放测量诊断](tasks/009_release_observability_replay.md) | closed（授权最小诊断范围完成）；PR #6已合并main 1906294 | [真实验收R2](reviews/009_round2.md)：292/292（100%）、293快照、37/37hash（100%）一致、0NN；883文件完整本地SHA备份，旧球包络过松证据 |
 | [008 两来源域数据合同](tasks/008_finish_data_source_domains.md) | 原代码/采集accepted；校准未建立；R11提案accepted，未closed | [X只读回复](https://github.com/No1dry/LIBERO-Remain/blob/54364ebb579d38a81d2d9396585d084cb9ac21da/collaboration/responses/008_round6.md)；无生产diff，原uncalibrated不改；转009最小诊断 |
 | 001 指标与人工UIR | closed | PR #1已合并；交流仍保留供后续追踪 |
 | 002 venv路径修复 | closed | 同上；阶段总结与本地备份已核验 |
@@ -258,6 +343,10 @@ Stage03的固定15条主pilot＋10条oracle诊断已完成；旧JSR主10=40%（2
 [PR #3](https://github.com/No1dry/LIBERO-Remain/pull/3)已由Codex验收并由X于2026-10-13合并为main `869f409884b73fa7de8dcacb4c7861d6ddfa19f8`，已审实现未变；历史验收和实验冻结04508dc保留。[PR #4](https://github.com/No1dry/LIBERO-Remain/pull/4)已按007 accepted与008 A.1授权于2026-10-15合并为 `94c061e99168d76fbe50bef85b187db8fe2b9898`：已审4f76f49合入最新main规则得到48cad17，benchmark/scripts/tests/configs/pyproject均保持已验收实现。008从此main独立开分支；旧38e6a44仍仅作历史失败冻结。[合并与新实现登记](responses/008_round1.md)。
 
 ## 当前下一步
+
+**Codex集中审查013并独立目录部署，随后执行纯文件CPU重算、审查真实80条的旧新分类与覆盖。** 用户无需再次启动真实实验。原raw/static/execution/source bank/summary全部不覆盖；新增派生目录引用旧身份与修订版本。统一处理所有可核验记录，保持固定100列表及20条缺口；新发现真实掉桌也应如实计分。任务所述旧10/80及可能21/80只是诊断线索，不是调参目标。X本轮只有CPU/fake软件验证，未读取或重算服务器80条，不合并其它实现、不清理历史、不宣告阶段closed。
+
+## 010与更早阶段的下一步记录（历史，当前以011为准）
 
 **X实现[010](tasks/010_versioned_release_and_calibration.md)，用户现阶段不用启动实验。** 用户已确认版本化修订和5条新增新版校准，累计模型rollout35；不是自动追加或重训。Plan4末节已增补，旧30条/旧uncalibrated结果原样保留。
 

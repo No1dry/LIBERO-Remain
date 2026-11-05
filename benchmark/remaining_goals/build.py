@@ -17,7 +17,7 @@ import numpy as np
 from benchmark.states import mujoco_state as ms
 from .construction import placement_candidates, joint_candidates, drawer_candidates, combine_goal_candidates, state_diff_whitelist
 from .libero_env import create_scene, restore_raw_state, fresh_observation, model_xml_hash, environment_identity, reset_scene
-from .validation import validate_candidate, RGB_QUANTIZATION_AUDIT, RGB_QUANTIZATION_LIMITATION, RGB_QUANTIZATION_RULE
+from .validation import validate_candidate, RGB_QUANTIZATION_AUDIT, RGB_QUANTIZATION_LIMITATION, RGB_QUANTIZATION_RULE, observation_profile_config
 from .schema import manifest_hash
 from .observation_artifact import save_observation_artifact
 from .task_catalog import TASKS, mask_order, select_tasks
@@ -73,7 +73,8 @@ def _image(path: Path, observation):
 
 class CandidateAuditEnv:
     """Adapter exposing privileged data exclusively to the technical auditor."""
-    def __init__(self, env, state, goals, *, frames_dir: Path | None = None):
+    def __init__(self, env, state, goals, *, frames_dir: Path | None = None, task_semantics=None,
+                 stability_profile=None):
         self.env, self.candidate, self.goals = env, state, goals
         self.layout = ms.StateLayout.from_model(env.sim.model)
         self.frames_dir = frames_dir
@@ -81,9 +82,48 @@ class CandidateAuditEnv:
         self.initial_observation = None
         self.objects = [name for names in env.env.parsed_problem["objects"].values() for name in names]
         self.articulation_sites = []
+        self.articulation_geoms = []
+        self.task_semantics = task_semantics
+        self.stability_profile = stability_profile
+        if stability_profile is not None:
+            from .stability import PROFILE, binding_from_model
+            if stability_profile != PROFILE:
+                raise ValueError("unknown stability profile")
+            self.stability_binding = binding_from_model(env.sim.model, model_xml_hash(env))
         targets = sorted({predicate[1] for goal in goals for predicate in goal["predicates"]
                           if predicate[0].lower() in ("open", "close")})
+        if task_semantics is not None:
+            from .nine_catalog import validate_task_semantics
+            validate_task_semantics(task_semantics)
+            # Placement regions are measured after restoring the actual open
+            # state. Fixture-level Close is not a site (e.g. microwave_1).
+            targets = sorted(set(targets) | {p[2] for g in goals for p in g["predicates"] if p[0] in ("in", "on")})
+            inventory = {**getattr(env.env, "objects_dict", {}), **getattr(env.env, "fixtures_dict", {})}
+            from .construction import _collision_geoms
+            free_objects = []
+            for name in self.objects:
+                try:
+                    ms.resolve_free_joint(env.sim.model, name)
+                except (ValueError, KeyError):
+                    if name not in inventory:
+                        raise ValueError(f"non-free monitored object has no native owner: {name}")
+                    root = int(env.sim.model.body_name2id(inventory[name].root_body))
+                    self.articulation_geoms.extend(_collision_geoms(env.sim.model, root))
+                else:
+                    free_objects.append(name)
+            self.objects = free_objects
+            for predicate in task_semantics["required_open_predicates"]:
+                reference = predicate[1]
+                site_object = getattr(env.env, "object_sites_dict", {}).get(reference)
+                owner = site_object.parent_name if site_object is not None else reference
+                if owner not in inventory:
+                    raise ValueError(f"required open fixture is missing: {owner}")
+                root = int(env.sim.model.body_name2id(inventory[owner].root_body))
+                self.articulation_geoms.extend(_collision_geoms(env.sim.model, root))
+            self.articulation_geoms = sorted(set(self.articulation_geoms))
         for name in targets:
+            if task_semantics is not None and name in inventory:
+                continue
             try:
                 site = int(env.sim.model.site_name2id(name))
             except AttributeError:
@@ -93,6 +133,12 @@ class CandidateAuditEnv:
             self.articulation_sites.append((name, site))
 
     def restore_candidate(self, episode):
+        if self.stability_profile is not None:
+            from .stability import validate_scope, binding_from_model
+            expected = validate_scope(episode)
+            actual = binding_from_model(self.env.sim.model, model_xml_hash(self.env))
+            if expected != actual:
+                raise ValueError("candidate stability binding differs from actual compiled model")
         self.steps = 0
         _clear_done(self.env)
         observation = restore_raw_state(self.env, self.candidate)
@@ -122,6 +168,11 @@ class CandidateAuditEnv:
             if position.shape != (3,) or not np.isfinite(position).all():
                 raise ValueError(f"invalid articulated goal region position: {name}")
             positions[f"site:{name}"] = position.tolist()
+        for geom in self.articulation_geoms:
+            position = np.asarray(self.env.sim.data.geom_xpos[geom])
+            if position.shape != (3,) or not np.isfinite(position).all():
+                raise ValueError("invalid articulated fixture collision position")
+            positions[f"articulation_geom:{geom}"] = position.tolist()
         contacts = []
         model, data = self.env.sim.model, self.env.sim.data
         for i in range(int(data.ncon)):
@@ -131,11 +182,19 @@ class CandidateAuditEnv:
                 "geom2": model.geom_id2name(int(contact.geom2)) or f"geom_{contact.geom2}",
                 "depth": max(0.0, -float(contact.dist)),
             })
-        return {"state": state, "state_before_refresh": before,
+        goal_facts = {"goals": _goals(self.env, self.goals)}
+        if self.task_semantics is not None:
+            from .nine_catalog import read_goal_facts
+            goal_facts = read_goal_facts(self.env.env._eval_predicate, self.env.check_success(), self.task_semantics)
+        snapshot = {"state": state, "state_before_refresh": before,
                 "qvel": state[self.layout.qvel_slice],
                 "robot_qpos": ms.get_robot_qpos(state, self.layout, n=9),
                 "object_positions": positions, "penetrations": contacts,
-                "goals": _goals(self.env, self.goals), "fresh_observation": observation}
+                **goal_facts, "fresh_observation": observation}
+        if self.stability_profile is not None:
+            from .stability import binding_from_model
+            snapshot["stability_binding"] = binding_from_model(self.env.sim.model, model_xml_hash(self.env))
+        return snapshot
 
 
 def _official_initial_states(suite, task_index):
@@ -165,10 +224,12 @@ def _per_goal(env, base, profile, max_candidates):
         if predicate[0] in ("in", "on"):
             reserved = [g["predicates"][0][1] for g in profile["goals"]
                         if len(g["predicates"][0]) == 3 and g["predicates"][0][2] == predicate[2]]
+            reserved = profile.get("reservation_objects", {}).get(predicate[2], reserved)
+            geometry_options = {"in_volume": True} if predicate[2] in profile.get("in_volume_regions", []) else {}
             candidates = placement_candidates(base, model, data, predicate[1], predicate[2],
                                               relation=predicate[0], reservation_objects=reserved,
                                               target_kind="object" if predicate[2] in profile.get("object_supports", []) else "region",
-                                              max_candidates=max_candidates)
+                                              max_candidates=max_candidates, **geometry_options)
         elif predicate[0] == "turnon":
             candidates = []
             for joint in ms.iter_joints(model):
@@ -248,16 +309,24 @@ def _matched_states(base, settled, model, per_goal, candidate):
 
 
 def _audit_state(env, state, episode, output, relative, *, validation_steps,
-                 velocity_tolerance, robot_tolerance):
+                 velocity_tolerance, robot_tolerance, observation_profile=None, stability_profile=None):
     """Reject static failures before paying for a full dynamic audit."""
     directory = output / relative
     directory.mkdir(parents=True, exist_ok=True)
-    wrapper = CandidateAuditEnv(env, state, episode["goal_specs"], frames_dir=directory)
+    wrapper = CandidateAuditEnv(env, state, episode["goal_specs"], frames_dir=directory,
+                                task_semantics=episode.get("task_semantics"),
+                                **({"stability_profile": stability_profile} if stability_profile is not None else {}))
+    config = observation_profile_config(observation_profile)
     kwargs = {"hold_action": HOLD, "velocity_tolerance": velocity_tolerance,
-              "robot_position_tolerance": robot_tolerance, **RGB_QUANTIZATION_AUDIT}
+              "robot_position_tolerance": robot_tolerance, **config["limits"]}
+    if observation_profile is not None:
+        kwargs["observation_profile"] = observation_profile
+    if stability_profile is not None:
+        kwargs["stability_profile"] = stability_profile
     static = validate_candidate(wrapper, episode, steps=0, **kwargs)
     _write(directory / "static_audit.json", static)
-    if not static["technical_acceptance"]:
+    static_ok = static["static_acceptance"] if stability_profile is not None else static["technical_acceptance"]
+    if not static_ok:
         audit = dict(static, stage="static_rejection", requested_dynamic_steps=validation_steps)
     else:
         audit = validate_candidate(wrapper, episode, steps=validation_steps, **kwargs)
@@ -271,7 +340,7 @@ def _audit_state(env, state, episode, output, relative, *, validation_steps,
         audit["initial_observation"] = reference
     _write(directory / "audit.json", audit)
     return {"technical_acceptance": bool(audit["technical_acceptance"]),
-            "static_acceptance": bool(static["technical_acceptance"]),
+            "static_acceptance": bool(static_ok),
             "checks": audit["checks"], "error": audit.get("error"),
             "audit_path": (relative / "audit.json").as_posix(),
             "static_audit_path": (relative / "static_audit.json").as_posix()}
