@@ -12,6 +12,7 @@ def parser():
     sub = root.add_subparsers(dest="command", required=True)
     p = sub.add_parser("budget-plan", help="No assets/imports: fixed Stage04 evaluation budget")
     p.add_argument("--include-remain-shadow", action="store_true")
+    p.add_argument("--revision", choices=("legacy", "task010"), default="legacy")
     p = sub.add_parser("plan-data", help="Read configuration/files only; never construct simulator/model")
     p.add_argument("--config", required=True)
     p.add_argument("--out", required=True)
@@ -51,6 +52,9 @@ def parser():
         p.add_argument("--config", required=True)
         p.add_argument("--out", required=True)
     p = sub.add_parser("calibrate", help="Read-only official-init normal_calibration shadow first-hit threshold selection")
+    p.add_argument("--run", required=True)
+    p.add_argument("--out", required=True)
+    p = sub.add_parser("sensitivity", help="File-only task010 release v1/v2 x legacy/new calibration; never an active threshold")
     p.add_argument("--run", required=True)
     p.add_argument("--out", required=True)
     p = sub.add_parser("rescore", help="Read-only ledger/video verification and new scoring directory")
@@ -132,6 +136,11 @@ def main(argv=None):
                       "remain_active":15,"remain_shadow":extra,"rollouts":30+extra,
                       "horizon":520,"retention_steps":150,"chunk":8,"maximum_physical_steps":(30+extra)*670,
                       "notice":"Feature/audit/parity/preparation costs separate. Each real stage requires its own user command."}
+            if args.revision == "task010":
+                if args.include_remain_shadow:
+                    raise ValueError("task010 authorizes 35 total rollouts, no extra Remain shadow")
+                from .evaluation import budget_plan
+                result = budget_plan()
         elif command == "register-data":
             from .data_registry import build_source_registry, validate_source_registry
             from .data import scan_source_xml_assets, read_demonstrations, _validate_xml_asset_binding
@@ -183,6 +192,8 @@ def main(argv=None):
             result = workflow.run(read_json(args.config), args.out)
         elif command == "calibrate":
             result = workflow.calibrate(args.run, args.out)
+        elif command == "sensitivity":
+            result = workflow.sensitivity(args.run, args.out)
         elif command == "rescore":
             result = workflow.rescore(args.run, args.out, stable_steps=args.stable_steps)
         elif command == "inspect":

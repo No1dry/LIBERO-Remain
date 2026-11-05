@@ -1,0 +1,67 @@
+{
+  "schema_version": "remaining-finish-job-v3",
+  "source_registry": "/ABS/EXISTING_REGISTERED_SOURCES/registry.json",
+  "purpose": "normal_active",
+  "runtime_config": "/ABS/EXISTING_PRIVATE_CONFIG/oft_sog10.json",
+  "source": {
+    "kind": "normal_bank",
+    "manifest": "/ABS/EXISTING_PREPARED_NORMAL_BANK/normal_bank.json"
+  },
+  "head_artifact": "/ABS/EXISTING_FROZEN_FINISH_HEAD",
+  "calibration": "/ABS/NEW_TASK010_RESULTS/calibration/calibration.json",
+  "video": {
+    "enabled": true,
+    "camera": "both",
+    "fps": 20,
+    "stride": 1
+  },
+  "evaluation_contract": {
+    "schema_version": "remaining-finish-evaluation-contract-v1",
+    "release_method": "panda-contact-pinch-world-axis-separation-v2",
+    "calibration_rule": "first-hit-robust-tau-v2",
+    "legacy_release_method": "panda-dualpad-contact-and-conservative-pinch-clearance-v1",
+    "clearance_margin_m": 0.002,
+    "axes": [
+      "x",
+      "y",
+      "z"
+    ],
+    "supported_geom_types": [
+      6,
+      7
+    ],
+    "confirmation_steps": 4,
+    "timely_steps": 24,
+    "thresholds": [
+      0.05,
+      0.1,
+      0.15,
+      0.2,
+      0.25,
+      0.3,
+      0.35,
+      0.4,
+      0.45,
+      0.5,
+      0.55,
+      0.6,
+      0.65,
+      0.7,
+      0.75,
+      0.8,
+      0.85,
+      0.9,
+      0.95,
+      0.99
+    ],
+    "training_label_contract": {
+      "version": "current-state-passive-hold-v1",
+      "confirmation_steps": 4,
+      "future_task_actions_allowed": false,
+      "unknown_is_negative": false
+    },
+    "training_labels_changed": false,
+    "physics_identity_changed": false,
+    "contract_sha256": "7effc031c35a7dc95b68a0523d1a09a67787451fe4597f0188edc34f501493aa"
+  }
+}
